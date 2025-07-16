@@ -1,10 +1,12 @@
 package lc.fungee.IngrediCheck
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import lc.fungee.IngrediCheck.onboarding.WelcomeScreen
 
 @Composable
 fun AppNavigation() {
@@ -16,7 +18,7 @@ fun AppNavigation() {
         composable("splash") {
             SplashScreen(
                 onSplashFinished = {
-                    navController.navigate("home") {
+                    navController.navigate("welcome") {
                         popUpTo("splash") { inclusive = true }
                     }
                 }
@@ -26,18 +28,16 @@ fun AppNavigation() {
         composable("home") {
             HomeScreen()
         }
+
+        composable("welcome") {
+            WelcomeScreen()
+        }
     }
 }
 
-
 @Composable
 fun HomeScreen() {
-    // Your main home screen content
-
-
     Column {
-        Text(
-            text = "Welcome to Ingredicheck")
-
+        Text(text = "Welcome to Ingredicheck")
     }
 }
