@@ -1,13 +1,7 @@
 package lc.fungee.IngrediCheck.onboarding
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,55 +21,49 @@ fun WelcomePager(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
-        // Image
+        // Image - Slightly increased height
         Image(
             painter = painterResource(id = item.image),
             contentDescription = null,
             modifier = Modifier
-                .width(343.dp)
-                .height(488.dp)
+                .width(320.dp)
+                .height(360.dp)
         )
 
-        // Gap after image (32dp as mentioned in comment)
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Heading
+        // Heading - Increased size
         Text(
             text = item.heading,
-            fontSize = 28.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Medium,
             color = Color.Black,
             textAlign = TextAlign.Center,
-            lineHeight = 34.sp,
+            lineHeight = 32.sp,
             letterSpacing = 0.36.sp,
             modifier = Modifier
-                .width(304.dp)
-                .height(68.dp)
-                .padding(horizontal = 8.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
         )
 
-        // Gap between heading and description
-        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Description
+        // Description - Slightly increased
         Text(
             text = item.description,
-            fontSize = 17.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
             color = Color.Gray,
             lineHeight = 22.sp,
-            letterSpacing = (-0.41).sp,
+            letterSpacing = (-0.2).sp,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .width(304.dp)
-                .height(44.dp)
-                .padding(horizontal = 8.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
         )
-
-
     }
 }
