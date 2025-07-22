@@ -2,11 +2,13 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("plugin.serialization") version "2.0.0"
+
 }
 
 android {
     namespace = "lc.fungee.IngrediCheck"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "lc.fungee.IngrediCheck"
@@ -42,7 +44,6 @@ android {
 dependencies {
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
-    implementation(libs.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -58,4 +59,28 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    // Supabase bundle
+    implementation(libs.bundles.supabase)
+
+    // Auth bundle
+    implementation(libs.bundles.auth)
+
+    // Navigation
+    implementation(libs.navigation.compose)
+
+    // Coroutines
+    implementation(libs.coroutines.android)
+  implementation(libs.supabase.gotrue)
+//.
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:1.1.1")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:1.1.1")
+    implementation("io.github.jan-tennert.supabase:storage-kt:1.1.1")
+
+
+
+
+
+
+
+
 }
