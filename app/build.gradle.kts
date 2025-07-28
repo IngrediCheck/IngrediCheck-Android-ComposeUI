@@ -9,13 +9,14 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "lc.fungee.IngrediCheck"
+        applicationId = "llc.fungee.IngrediCheck"
         minSdk = 31
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appAuthRedirectScheme"] = "io.supabase.ingredicheck"
     }
 
     buildTypes {
@@ -58,4 +59,17 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    // AppAuth for OAuth with Apple
+    implementation("net.openid:appauth:0.11.1")
+    // Ktor client for Supabase HTTP requests
+    implementation("io.ktor:ktor-client-okhttp:2.3.4")
+    implementation("io.ktor:ktor-client-serialization:2.3.4")
+    implementation("io.ktor:ktor-client-logging:2.3.4")
+    // Ktor content negotiation and serialization
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
 }
