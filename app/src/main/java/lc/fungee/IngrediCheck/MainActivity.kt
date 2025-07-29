@@ -1,21 +1,24 @@
-
 package lc.fungee.IngrediCheck
+
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
+import androidx.compose.runtime.remember
 import lc.fungee.IngrediCheck.auth.AppleAuthRepository
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.auth.GoogleAuthClient
 import lc.fungee.IngrediCheck.auth.rememberGoogleSignInLauncher
-import androidx.compose.runtime.remember
-
+import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Handle the OAuth redirect
+        handleIntent(intent)
 
         setContent {
             IngrediCheckTheme {
@@ -30,13 +33,27 @@ class MainActivity : ComponentActivity() {
 
                 val viewModel = remember { AppleAuthViewModel(repository) }
                 val googleSignInClient = GoogleAuthClient.getClient(context)
-                val googleSignInLauncher = rememberGoogleSignInLauncher( viewModel)
+                val googleSignInLauncher = rememberGoogleSignInLauncher(viewModel)
 
                 AppNavigation(
                     viewModel = viewModel,
                     googleSignInLauncher = googleSignInLauncher,
                     googleSignInClient = googleSignInClient
                 )
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
+        intent.data?.let { uri ->
+            if (uri.toString().startsWith("lc.fungee.IngrediCheck://")) {
+                // Supabase handles the session automatically via deep link
+                // Optional: Log or process the URI if needed
             }
         }
     }
