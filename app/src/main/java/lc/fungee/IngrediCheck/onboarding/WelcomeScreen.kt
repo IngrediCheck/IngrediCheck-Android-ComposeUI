@@ -1,10 +1,5 @@
 package lc.fungee.IngrediCheck.onboarding
-import android.content.Context
-import android.content.Intent
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,13 +8,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -28,43 +21,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import lc.fungee.IngrediCheck.GoogleAuthViewModel
 import lc.fungee.IngrediCheck.R
-//import lc.fungee.IngrediCheck.auth.GoogleSignInSection
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import androidx.navigation.NavController
+import lc.fungee.IngrediCheck.auth.AppleAuthRepository
+import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.auth.AppleLoginState
+import lc.fungee.IngrediCheck.auth.AppleSignInSection
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
-fun WelcomeScreen(
-    onNavigateToHome: () -> Unit,
-    viewModel: GoogleAuthViewModel = viewModel()
+fun  WelcomeScreen(
+    onGoogleSignIn: (() -> Unit)? = null,
+    viewModel: AppleAuthViewModel,
+    navController: NavController,
+    googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
 ) {
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            val idToken = account.idToken
-            if (idToken != null) {
-                viewModel.authenticateWithSupabase(idToken)
-            }
-        } catch (e: ApiException) {
-            Log.e("GoogleSignIn", "Sign-in failed: ${e.message}")
-        }
-    }
-
-
-    val authState by viewModel.authState.collectAsState()
-
-    LaunchedEffect(authState) {
-        if (authState is GoogleAuthViewModel.AuthState.Authenticated) {
-            onNavigateToHome()
-        }
-    }
-
+    val loginState by viewModel.loginState.collectAsState()
     val welcomeScreenItem = listOf(
         WelcomeOnboardingItem(
             heading = "Personalize your dietary preferences",
@@ -88,6 +63,20 @@ fun WelcomeScreen(
         pageCount = { welcomeScreenItem.size }
     )
 
+    val context = LocalContext.current
+
+    // Navigation logic moved to LaunchedEffect
+    LaunchedEffect(loginState) {
+        if (loginState is AppleLoginState.Success) {
+            val user = (loginState as AppleLoginState.Success).session.user
+            if (user != null) {
+                navController.navigate("disclaimer") {
+                    popUpTo("welcome") { inclusive = true }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,7 +84,6 @@ fun WelcomeScreen(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -110,58 +98,54 @@ fun WelcomeScreen(
             )
         }
 
-
-
-        // Pager Indicators
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(vertical = 12.dp)
+                .padding(vertical = 16.dp)
         ) {
             repeat(welcomeScreenItem.size) { index ->
                 Box(
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = if (pagerState.currentPage == index) Color(0xFF789D0E)
-                            else Color(0xFFDDDEDA),
+                            color = if (pagerState.currentPage == index) {
+                                Color(0xFF789D0E)
+                            } else {
+                                Color(0xFFDDDEDA)
+                            },
                             shape = CircleShape
                         )
                 )
             }
         }
-        // Google Sign-In Button
-//        GoogleSignInSection(
-//            onSignInClick = {
-//                viewModel.signInWithGoogle()
-//                            },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(vertical = 16.dp)
-//        )
-        GoogleSignInButton(context = LocalContext.current,launcher)
 
-        when (authState) {
-            GoogleAuthViewModel.AuthState.Loading -> {
-                Spacer(modifier = Modifier.height(16.dp))
-                CircularProgressIndicator()
+        GoogleSignInButton(onClick = {
+            onGoogleSignIn?.invoke()
+        })
+        when (val state = loginState) {
+            is AppleLoginState.Success -> {
+                val user = state.session.user
+                if (user != null) {
+                    println("User ID: ${user.id}")
+                    println("User Email: ${user.email}")
+                    // Navigation handled by LaunchedEffect
+                } else {
+                    println("User object is null")
+                }
             }
-
-            is GoogleAuthViewModel.AuthState.Error -> {
-                val error = (authState as GoogleAuthViewModel.AuthState.Error).message
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
+            is AppleLoginState.Error -> {
+                println("Login error: ${state.message}")
             }
-
             else -> {}
         }
 
-        // Continue as Guest
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AppleSignInSection(viewModel = viewModel)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         Text(
             text = "Continue as guest",
             color = Color(0xFF789D0E),
@@ -172,7 +156,6 @@ fun WelcomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Terms and Privacy
         val annotatedText = buildAnnotatedString {
             append("By continuing, you are agreeing to our ")
             pushStyle(SpanStyle(color = Color(0xFF789D0E), textDecoration = TextDecoration.Underline))
@@ -189,27 +172,19 @@ fun WelcomeScreen(
             fontSize = 13.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center,
-            lineHeight = 18.sp,
             modifier = Modifier
                 .padding(bottom = 24.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            lineHeight = 18.sp
         )
     }
 }
 
 @Composable
-fun GoogleSignInButton(context: Context, launcher: ActivityResultLauncher<Intent>) {
-    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-        .requestIdToken("478832614549-r27o0h8dsj7rpguch3857ju6lg948008.apps.googleusercontent.com")
-        .requestEmail()
-        .build()
-
-    val googleSignInClient = GoogleSignIn.getClient(context, gso)
-
-    Button(onClick = {
-        val signInIntent = googleSignInClient.signInIntent
-        launcher.launch(signInIntent)
-    },shape = CircleShape,
+fun GoogleSignInButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = CircleShape,
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF789D0E)),
         modifier = Modifier
             .fillMaxWidth()

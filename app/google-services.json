@@ -1,9 +1,0 @@
-{
-  "installed": {
-    "client_id": "478832614549-r27o0h8dsj7rpguch3857ju6lg948008.apps.googleusercontent.com",
-    "project_id": "ingredicheck-426912",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
-  }
-}

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -20,14 +21,15 @@
             android:theme="@style/Theme.IngrediCheck.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="io.supabase.ingredicheck" android:host="login-callback" />
+            </intent-filter>
         </activity>
-        <meta-data
-            android:name="com.google.android.gms.client_id"
-            android:value="478832614549-r27o0h8dsj7rpguch3857ju6lg948008.apps.googleusercontent.com" />
     </application>
-
 
 </manifest>
