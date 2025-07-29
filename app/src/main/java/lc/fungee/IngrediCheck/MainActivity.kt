@@ -1,5 +1,6 @@
 package lc.fungee.IngrediCheck
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import lc.fungee.IngrediCheck.onboarding.WelcomeScreen
 import androidx.compose.runtime.remember
 
+
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private var onGoogleIdTokenReceived: ((String) -> Unit)? = null
@@ -24,6 +26,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+<<<<<<< HEAD
 
         // TODO: Replace with your actual Google OAuth client ID
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -50,6 +53,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+=======
+        // Handle the OAuth redirect
+        handleIntent(intent)
+>>>>>>> main
         setContent {
             IngrediCheckTheme {
                 // Create repository and viewModel here so we can access viewModel in launcher
@@ -75,6 +82,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+<<<<<<< HEAD
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.data?.let { uri: Uri ->
@@ -84,5 +92,19 @@ class MainActivity : ComponentActivity() {
             // TODO: Pass code or idToken to your ViewModel or repository for Supabase login
         }
     }
+=======
+
+override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    handleIntent(intent)
+>>>>>>> main
 }
 
+private fun handleIntent(intent: Intent) {
+    intent?.data?.let { uri ->
+        if (uri.toString().startsWith("lc.fungee.IngrediCheck://")) {
+            // Supabase will automatically handle this
+        }
+    }
+}
+}

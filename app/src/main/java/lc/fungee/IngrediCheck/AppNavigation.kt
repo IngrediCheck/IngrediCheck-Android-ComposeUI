@@ -30,24 +30,41 @@ fun AppNavigation(
         }
 
         composable("home") {
-            HomeScreen()
+            HomeScreen(
+                onSignOut = {
+                    navController.navigate("welcome") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("welcome") {
+<<<<<<< HEAD
 //            WelcomeScreen(
 //                onGoogleSignIn = {
 //                    googleSignInLauncher.launch(googleSignInClient.signInIntent)
 //                },
 //                viewModel = viewModel
 //            )
+=======
+            WelcomeScreen(
+                onNavigateToHome = {
+                    navController.navigate("home") {
+                        popUpTo("welcome") { inclusive = true }
+                    }
+                }
+            )
+>>>>>>> main
         }
     }
 }
 
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onSignOut: () -> Unit) {
     Column {
         Text(text = "Welcome to Ingredicheck")
+        // Add your sign out button here that calls onSignOut
     }
 }
