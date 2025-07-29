@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,9 +22,17 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import lc.fungee.IngrediCheck.auth.AppleAuthRepository
+import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.auth.AppleLoginState
+import lc.fungee.IngrediCheck.auth.AppleSignInSection
 
 @Composable
-fun WelcomeScreen() {
+fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
+                  viewModel: AppleAuthViewModel) {
+    val loginState by viewModel.loginState.collectAsState()
     val welcomeScreenItem = listOf(
         WelcomeOnboardingItem(
             heading = "Personalize your dietary preferences",
@@ -46,6 +55,16 @@ fun WelcomeScreen() {
         initialPage = 0,
         pageCount = { welcomeScreenItem.size }
     )
+
+    val context = LocalContext.current
+    val repository = remember {
+        AppleAuthRepository(
+            context = context,
+            supabaseUrl = "https://wqidjkpfdrvomfkmefqc.supabase.co",
+            supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI"
+        )
+    }
+    val viewModel = remember { AppleAuthViewModel(repository) }
 
     Column(
         modifier = Modifier
@@ -89,7 +108,29 @@ fun WelcomeScreen() {
             }
         }
 
-        GoogleSignInButton(onClick = { /* Handle Sign-In */ })
+        GoogleSignInButton(onClick = {
+            onGoogleSignIn?.invoke()
+        })
+        when (val state = loginState) {
+            is AppleLoginState.Success -> {
+                val user = state.session.user
+                if (user != null) {
+                    println("User ID: ${user.id}")
+                    println("User Email: ${user.email}")
+                } else {
+                    println("User object is null")
+                }
+            }
+            is AppleLoginState.Error -> {
+                println("Login error: ${state.message}")
+            }
+            else -> {}
+        }
+
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AppleSignInSection(viewModel = viewModel)
 
         Spacer(modifier = Modifier.height(12.dp))
 
