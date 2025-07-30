@@ -17,7 +17,10 @@ import com.google.android.gms.common.api.ApiException
 import androidx.activity.result.contract.ActivityResultContracts
 import lc.fungee.IngrediCheck.onboarding.WelcomeScreen
 import androidx.compose.runtime.remember
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -27,6 +30,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 
         // TODO: Replace with your actual Google OAuth client ID
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -53,10 +59,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+<<<<<<< HEAD
 =======
         // Handle the OAuth redirect
         handleIntent(intent)
 >>>>>>> main
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
         setContent {
             IngrediCheckTheme {
                 // Create repository and viewModel here so we can access viewModel in launcher
@@ -83,6 +92,9 @@ class MainActivity : ComponentActivity() {
     }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.data?.let { uri: Uri ->
@@ -92,12 +104,15 @@ class MainActivity : ComponentActivity() {
             // TODO: Pass code or idToken to your ViewModel or repository for Supabase login
         }
     }
+<<<<<<< HEAD
 =======
 
 override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     handleIntent(intent)
 >>>>>>> main
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 }
 
 private fun handleIntent(intent: Intent) {

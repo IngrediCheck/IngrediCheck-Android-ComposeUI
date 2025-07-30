@@ -14,9 +14,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 import androidx.compose.runtime.LaunchedEffect
 >>>>>>> main
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,6 +41,9 @@ import com.google.android.gms.common.api.ApiException
 import lc.fungee.IngrediCheck.GoogleAuthViewModel
 import lc.fungee.IngrediCheck.R
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import lc.fungee.IngrediCheck.auth.AppleAuthRepository
@@ -49,6 +55,7 @@ import lc.fungee.IngrediCheck.auth.AppleSignInSection
 fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
                   viewModel: AppleAuthViewModel) {
     val loginState by viewModel.loginState.collectAsState()
+<<<<<<< HEAD
 =======
 //import lc.fungee.IngrediCheck.auth.GoogleSignInSection
 
@@ -82,6 +89,8 @@ fun WelcomeScreen(
     }
 
 >>>>>>> main
+=======
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
     val welcomeScreenItem = listOf(
         WelcomeOnboardingItem(
             heading = "Personalize your dietary preferences",
@@ -189,6 +198,32 @@ fun WelcomeScreen(
             else -> {}
         }
 
+<<<<<<< HEAD
+=======
+        GoogleSignInButton(onClick = {
+            onGoogleSignIn?.invoke()
+        })
+        when (val state = loginState) {
+            is AppleLoginState.Success -> {
+                val user = state.session.user
+                if (user != null) {
+                    println("User ID: ${user.id}")
+                    println("User Email: ${user.email}")
+                } else {
+                    println("User object is null")
+                }
+            }
+            is AppleLoginState.Error -> {
+                println("Login error: ${state.message}")
+            }
+            else -> {}
+        }
+
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        AppleSignInSection(viewModel = viewModel)
+>>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
 
         Spacer(modifier = Modifier.height(12.dp))
 

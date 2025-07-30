@@ -61,6 +61,19 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 <<<<<<< HEAD
+    // AppAuth for OAuth with Apple
+    implementation("net.openid:appauth:0.11.1")
+    // Ktor client for Supabase HTTP requests
+    implementation("io.ktor:ktor-client-okhttp:2.3.4")
+    implementation("io.ktor:ktor-client-serialization:2.3.4")
+    implementation("io.ktor:ktor-client-logging:2.3.4")
+    // Ktor content negotiation and serialization
+    implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+=======
     // Supabase bundle
     implementation(libs.bundles.supabase)
 
@@ -85,18 +98,5 @@ dependencies {
 
 
 
-=======
-    // AppAuth for OAuth with Apple
-    implementation("net.openid:appauth:0.11.1")
-    // Ktor client for Supabase HTTP requests
-    implementation("io.ktor:ktor-client-okhttp:2.3.4")
-    implementation("io.ktor:ktor-client-serialization:2.3.4")
-    implementation("io.ktor:ktor-client-logging:2.3.4")
-    // Ktor content negotiation and serialization
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
-    implementation("com.google.code.gson:gson:2.10.1")
->>>>>>> 6b78b3e610decaefdea8842c516efbd4e5fdfe82
+>>>>>>> main
 }
