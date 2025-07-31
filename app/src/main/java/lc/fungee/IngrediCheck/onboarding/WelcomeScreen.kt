@@ -10,9 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -21,17 +23,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import lc.fungee.IngrediCheck.R
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.remember
-import lc.fungee.IngrediCheck.auth.AppleAuthRepository
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.auth.AppleLoginState
 import lc.fungee.IngrediCheck.auth.AppleSignInSection
 
 @Composable
-fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
-                  viewModel: AppleAuthViewModel) {
+fun WelcomeScreen(
+    onGoogleSignIn: (() -> Unit)? = null,
+    viewModel: AppleAuthViewModel,
+    navController: NavController,
+    googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
+) {
     val loginState by viewModel.loginState.collectAsState()
     val welcomeScreenItem = listOf(
         WelcomeOnboardingItem(
@@ -57,14 +61,18 @@ fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
     )
 
     val context = LocalContext.current
-    val repository = remember {
-        AppleAuthRepository(
-            context = context,
-            supabaseUrl = "https://wqidjkpfdrvomfkmefqc.supabase.co",
-            supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI"
-        )
+
+    // Navigation logic moved to LaunchedEffect
+    LaunchedEffect(loginState) {
+        if (loginState is AppleLoginState.Success) {
+            val user = (loginState as AppleLoginState.Success).session.user
+            if (user != null) {
+                navController.navigate("disclaimer") {
+                    popUpTo("welcome") { inclusive = true }
+                }
+            }
+        }
     }
-    val viewModel = remember { AppleAuthViewModel(repository) }
 
     Column(
         modifier = Modifier
@@ -87,53 +95,37 @@ fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
             )
         }
 
+        // Pager Indicators
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .padding(vertical = 16.dp)
+                .padding(vertical = 12.dp)
         ) {
             repeat(welcomeScreenItem.size) { index ->
                 Box(
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = if (pagerState.currentPage == index) {
-                                Color(0xFF789D0E)
-                            } else {
-                                Color(0xFFDDDEDA)
-                            },
+                            color = if (pagerState.currentPage == index) Color(0xFF789D0E) else Color(0xFFDDDEDA),
                             shape = CircleShape
                         )
                 )
             }
         }
 
-        GoogleSignInButton(onClick = {
-            onGoogleSignIn?.invoke()
-        })
-        when (val state = loginState) {
-            is AppleLoginState.Success -> {
-                val user = state.session.user
-                if (user != null) {
-                    println("User ID: ${user.id}")
-                    println("User Email: ${user.email}")
-                } else {
-                    println("User object is null")
-                }
-            }
-            is AppleLoginState.Error -> {
-                println("Login error: ${state.message}")
-            }
-            else -> {}
-        }
-
+        // Google Sign-In Button
+        GoogleSignInButton(
+            context = context,
+            onGoogleSignIn = onGoogleSignIn
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Apple Sign-In Section
         AppleSignInSection(viewModel = viewModel)
 
-        Spacer(modifier = Modifier.height(12.dp))
-
+        // Continue as Guest
         Text(
             text = "Continue as guest",
             color = Color(0xFF789D0E),
@@ -144,6 +136,7 @@ fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Terms and Privacy
         val annotatedText = buildAnnotatedString {
             append("By continuing, you are agreeing to our ")
             pushStyle(SpanStyle(color = Color(0xFF789D0E), textDecoration = TextDecoration.Underline))
@@ -160,18 +153,21 @@ fun WelcomeScreen(onGoogleSignIn: (() -> Unit)? = null,
             fontSize = 13.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center,
+            lineHeight = 18.sp,
             modifier = Modifier
                 .padding(bottom = 24.dp)
-                .fillMaxWidth(),
-            lineHeight = 18.sp
+                .fillMaxWidth()
         )
     }
 }
 
 @Composable
-fun GoogleSignInButton(onClick: () -> Unit) {
+fun GoogleSignInButton(
+    context: android.content.Context,
+    onGoogleSignIn: (() -> Unit)?
+) {
     Button(
-        onClick = onClick,
+        onClick = { onGoogleSignIn?.invoke() },
         shape = CircleShape,
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF789D0E)),
         modifier = Modifier

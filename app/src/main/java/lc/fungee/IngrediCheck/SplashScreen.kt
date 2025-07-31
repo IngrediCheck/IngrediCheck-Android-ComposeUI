@@ -1,4 +1,5 @@
 package lc.fungee.IngrediCheck
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -12,18 +13,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-@Preview(showBackground = true)
 @Composable
 fun SplashScreen(
-    onSplashFinished: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    onSplashFinished: (Boolean) -> Unit // Pass login state
 ) {
+    val context = LocalContext.current
     LaunchedEffect(Unit) {
-        delay(2000)// Industry standard: 2
-        onSplashFinished()
+        delay(2000) // Optional splash delay
+
+
+        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+        val sessionString = sharedPref.getString("session", null)
+
+        // Navigate based on session
+        onSplashFinished(sessionString != null)
     }
     Box(
         modifier = Modifier

@@ -10,9 +10,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import net.openid.appauth.AuthorizationRequest
-import net.openid.appauth.AuthorizationResponse
-import net.openid.appauth.AuthorizationException
 
 sealed class AppleLoginState {
     object Idle : AppleLoginState()
@@ -34,31 +31,30 @@ class AppleAuthViewModel(
     private val _loginState = MutableStateFlow<AppleLoginState>(AppleLoginState.Idle)
     val loginState: StateFlow<AppleLoginState> = _loginState
 
-    fun startAppleLogin(activity: Activity) {
+    fun launchAppleWebViewLogin(activity: Activity) {
         _loginState.value = AppleLoginState.Loading
-        val request = repository.getAppleAuthRequest()
-        repository.performAuthRequest(activity, request)
+        repository.launchAppleLoginWebView(activity)
     }
 
-    fun handleAuthResponse(response: AuthorizationResponse?, ex: AuthorizationException?) {
-        if (ex != null) {
-            _loginState.value = AppleLoginState.Error(ex.localizedMessage ?: "Unknown error")
-            return
+    fun signInWithAppleIdToken(idToken: String) {
+        _loginState.value = AppleLoginState.Loading
+        viewModelScope.launch {
+            val result = repository.exchangeAppleIdTokenWithSupabase(idToken)
+            _loginState.value = result.fold(
+                onSuccess = { AppleLoginState.Success(it) },
+                onFailure = { AppleLoginState.Error(it.localizedMessage ?: "Supabase error") }
+            )
         }
-        if (response != null) {
-            val idToken = response.idToken
+    }
 
-            if (idToken != null) {
-                viewModelScope.launch {
-                    val result = repository.exchangeIdTokenWithSupabase(idToken)
-                    _loginState.value = result.fold(
-                        onSuccess = { AppleLoginState.Success(it) },
-                        onFailure = { AppleLoginState.Error(it.localizedMessage ?: "Supabase error") }
-                    )
-                }
-            } else {
-                _loginState.value = AppleLoginState.Error("No id_token received from Apple")
-            }
+    fun signInWithAppleCode(code: String) {
+        _loginState.value = AppleLoginState.Loading
+        viewModelScope.launch {
+            val result = repository.exchangeAppleCodeWithSupabase(code)
+            _loginState.value = result.fold(
+                onSuccess = { AppleLoginState.Success(it) },
+                onFailure = { AppleLoginState.Error(it.localizedMessage ?: "Supabase error") }
+            )
         }
     }
 
@@ -71,6 +67,10 @@ class AppleAuthViewModel(
                 onFailure = { AppleLoginState.Error(it.localizedMessage ?: "Supabase error") }
             )
         }
+    }
+
+    fun setError(message: String) {
+        _loginState.value = AppleLoginState.Error(message)
     }
 
     fun resetState() {

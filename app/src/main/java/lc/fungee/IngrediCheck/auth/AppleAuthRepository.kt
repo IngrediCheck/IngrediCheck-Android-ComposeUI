@@ -1,9 +1,8 @@
-package lc.fungee.IngrediCheck.auth
 
+package lc.fungee.IngrediCheck.auth
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import net.openid.appauth.*
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -12,19 +11,8 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import android.app.Dialog
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.net.Uri
-import android.annotation.SuppressLint
-import android.view.ViewGroup
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import kotlinx.serialization.json.JsonObject
-import lc.fungee.IngrediCheck.auth.SupabaseSession
-import lc.fungee.IngrediCheck.auth.SupabaseUser
 import com.google.gson.Gson
 
 class AppleAuthRepository(
@@ -38,41 +26,36 @@ class AppleAuthRepository(
         }
     }
 
-    private val authService by lazy { AuthorizationService(context) }
-
-    fun getAppleAuthRequest(): AuthorizationRequest {
-        val serviceConfig = AuthorizationServiceConfiguration(
-            android.net.Uri.parse("https://appleid.apple.com/auth/authorize"),
-            android.net.Uri.parse("https://appleid.apple.com/auth/token")
-        )
-        val redirectUri = android.net.Uri.parse("https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback")
-        return AuthorizationRequest.Builder(
-            serviceConfig,
-            "llc.fungee.ingredicheck.web", // Service ID from Apple
-            ResponseTypeValues.CODE,
-            redirectUri
-        )
-            .setScopes("name", "email")
-            .setResponseMode("form_post")
+    fun launchAppleLoginWebView(activity: Activity) {
+        val authUrl = Uri.Builder()
+            .scheme("https")
+            .authority("wqidjkpfdrvomfkmefqc.supabase.co")
+            .appendPath("auth")
+            .appendPath("v1")
+            .appendPath("authorize")
+            .appendQueryParameter("provider", "apple")
+            .appendQueryParameter("redirect_to", "https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback")
             .build()
+            .toString()
+
+        val intent = Intent(activity, AppleLoginWebViewActivity::class.java).apply {
+            putExtra("auth_url", authUrl)
+            putExtra("redirect_uri", "https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback")
+        }
+
+        activity.startActivityForResult(intent, 1002)
     }
 
-    fun performAuthRequest(activity: Activity, request: AuthorizationRequest) {
-        val intent = authService.getAuthorizationRequestIntent(request)
-        activity.startActivityForResult(intent, 1001)
-        // Handle the result in your Activity's onActivityResult or Activity Result API
-    }
-
-    suspend fun exchangeCodeWithSupabase(code: String, redirectUri: String): Result<SupabaseSession> = withContext(Dispatchers.IO) {
+    suspend fun exchangeAppleCodeWithSupabase(code: String): Result<SupabaseSession> = withContext(Dispatchers.IO) {
         try {
-            val response: HttpResponse = client.post("$supabaseUrl/auth/v1/token?grant_type=pkce") {
+            val response: HttpResponse = client.post("$supabaseUrl/auth/v1/token?grant_type=authorization_code") {
                 headers.append("apikey", supabaseAnonKey)
                 headers.append("Content-Type", "application/json")
                 setBody(
                     mapOf(
                         "grant_type" to "authorization_code",
                         "code" to code,
-                        "redirect_uri" to redirectUri
+                        "redirect_uri" to "https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback"
                     )
                 )
             }
@@ -89,7 +72,7 @@ class AppleAuthRepository(
         }
     }
 
-    suspend fun exchangeIdTokenWithSupabase(idToken: String): Result<SupabaseSession> = withContext(Dispatchers.IO) {
+    suspend fun exchangeAppleIdTokenWithSupabase(idToken: String): Result<SupabaseSession> = withContext(Dispatchers.IO) {
         try {
             val response: HttpResponse = client.post("$supabaseUrl/auth/v1/token?grant_type=id_token") {
                 headers.append("apikey", supabaseAnonKey)
@@ -116,7 +99,6 @@ class AppleAuthRepository(
 
     suspend fun exchangeGoogleIdTokenWithSupabase(idToken: String): Result<SupabaseSession> = withContext(Dispatchers.IO) {
         try {
-//            val result = exchangeGoogleIdTokenWithSupabase(idToken)
             val response: HttpResponse = client.post("$supabaseUrl/auth/v1/token?grant_type=id_token") {
                 headers.append("apikey", supabaseAnonKey)
                 headers.append("Content-Type", "application/json")
@@ -138,92 +120,5 @@ class AppleAuthRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-
-    }
-
-    @SuppressLint("SetJavaScriptEnabled")
-    fun launchAppleLoginWebView(
-        activity: Activity,
-        clientId: String,
-        redirectUri: String,
-        onSuccess: (String) -> Unit,
-        onError: (String) -> Unit
-    ) {
-        val dialog = Dialog(activity)
-        val webView = WebView(activity)
-        webView.settings.javaScriptEnabled = true
-        webView.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-
-        val authUrl = Uri.Builder()
-            .scheme("https")
-            .authority("appleid.apple.com")
-            .appendPath("auth")
-            .appendPath("authorize")
-            .appendQueryParameter("response_type", "code id_token")
-            .appendQueryParameter("response_mode", "form_post")
-            .appendQueryParameter("client_id", clientId)
-            .appendQueryParameter("redirect_uri", redirectUri)
-            .appendQueryParameter("scope", "name email")
-            .build()
-            .toString()
-
-        println("Apple Auth URL: $authUrl")
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                if (url != null && url.startsWith(redirectUri)) {
-                    val uri = Uri.parse(url)
-                    val code = uri.getQueryParameter("code")
-                    val idToken = uri.getQueryParameter("id_token")
-                    if (idToken != null) {
-                        onSuccess(idToken)
-                    } else if (code != null) {
-                        onSuccess(code)
-                    } else {
-                        onError("No code or id_token found in redirect")
-                    }
-                    dialog.dismiss()
-                    return true
-                }
-                return false
-            }
-            override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: WebResourceError?
-            ) {
-                super.onReceivedError(view, request, error)
-                println("WebView error: ${error?.description}")
-            }
-        }
-
-        webView.loadUrl(authUrl)
-        dialog.setContentView(webView)
-        dialog.show()
-    }
-
-    fun launchAppleLoginInBrowser(
-        activity: Activity,
-        clientId: String,
-        redirectUri: String
-    ) {
-        val authUrl = Uri.Builder()
-            .scheme("https")
-            .authority("appleid.apple.com")
-            .appendPath("auth")
-            .appendPath("authorize")
-            .appendQueryParameter("response_type", "code id_token")
-            .appendQueryParameter("response_mode", "form_post")
-            .appendQueryParameter("client_id", clientId)
-            .appendQueryParameter("redirect_uri", redirectUri)
-            .appendQueryParameter("scope", "name email")
-            .build()
-            .toString()
-
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
-        activity.startActivity(intent)
     }
 }
