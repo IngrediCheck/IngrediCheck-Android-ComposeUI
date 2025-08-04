@@ -22,7 +22,7 @@ fun rememberGoogleSignInLauncher(
         val account = task.getResult(ApiException::class.java)
         val idToken = account.idToken
         if (idToken != null) {
-            viewModel.signInWithGoogleIdToken(idToken)
+            viewModel.signInWithGoogleIdToken(idToken, activity)
         }
     } catch (e: Exception) {
         Log.e("GoogleSignIn", "Sign-in failed", e)

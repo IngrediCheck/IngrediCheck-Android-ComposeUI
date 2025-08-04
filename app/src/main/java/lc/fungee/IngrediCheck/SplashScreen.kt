@@ -27,11 +27,12 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         delay(2000) // Optional splash delay
 
-
         val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
         val sessionString = sharedPref.getString("session", null)
 
         // Navigate based on session
+        // true = user is already logged in, go to home
+        // false = user needs to login, go to welcome
         onSplashFinished(sessionString != null)
     }
     Box(
@@ -49,12 +50,7 @@ fun SplashScreen(
                 .offset(x = (-90.79).dp, y = (-10).dp)
 
         )
-
-
-
-
-
-
+        //logo
         Image(
             painter = painterResource(id = R.drawable.ingredichecklogo),
             contentDescription = "Logo",
@@ -62,8 +58,7 @@ fun SplashScreen(
             modifier = Modifier
                 .width(206.27.dp)
                 .height(184.76.dp)
-                .align(alignment = Alignment.Center)
-
+                .offset(x = 84.36.dp, y = 313.62.dp)
         )
         Image(
             painter = painterResource(id = R.drawable.rightlogo),
