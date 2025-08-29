@@ -29,6 +29,10 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+
+
+                
+
                 val viewModel = remember { AppleAuthViewModel(repository) }
                 val googleSignInClient = GoogleAuthClient.getClient(context)
                 val googleSignInLauncher = rememberGoogleSignInLauncher(this, viewModel)
