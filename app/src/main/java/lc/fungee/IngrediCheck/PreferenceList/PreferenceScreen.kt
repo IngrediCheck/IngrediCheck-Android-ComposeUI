@@ -1,8 +1,31 @@
-//package lc.fungee.IngrediCheck.PreferenceList
-//
-//sealed class PreferenceScreen(val route: String) {
-//    object Home : PreferenceScreen("home")
-//    object Check : PreferenceScreen("Check")
-//    object History : PreferenceScreen("history")
-//    object Settings : PreferenceScreen("settings")
-//}
+
+package lc.fungee.IngrediCheck.PreferenceList
+
+import lc.fungee.IngrediCheck.R
+
+data class BottomNavigationItem(
+    val title: String,
+    val route: String,
+    val selectedIcon: Int,
+
+)
+
+// List of items for the BottomBar
+val items = listOf(
+    BottomNavigationItem(
+        title = "Home",
+        route = "home",
+        selectedIcon = R.drawable.homelogo
+    ),
+    BottomNavigationItem(
+        title = "check",
+        route = "check",
+        selectedIcon = R.drawable.scanner
+
+    ),
+    BottomNavigationItem(
+        title = "list",
+        route = "list",
+        selectedIcon = R.drawable.listlogo)
+    // Add more items as needed
+)

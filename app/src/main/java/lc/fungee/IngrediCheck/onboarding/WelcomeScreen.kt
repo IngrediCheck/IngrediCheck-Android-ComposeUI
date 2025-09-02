@@ -154,7 +154,7 @@ fun WelcomeScreen(
                     letterSpacing = (-0.08).sp,
 
 
-                )
+                    )
             )
             append("Terms of use")
             pop()

@@ -1,0 +1,250 @@
+package lc.fungee.IngrediCheck.data.repository
+
+import android.content.Context
+import android.util.Log
+
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import com.google.gson.Gson
+import lc.fungee.IngrediCheck.data.model.SupabaseSession
+import lc.fungee.IngrediCheck.data.model.DietaryPreference
+import lc.fungee.IngrediCheck.data.model.PreferenceValidationResult
+import lc.fungee.IngrediCheck.data.model.SafeEatsEndpoint
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
+
+private val Context.dataStore by preferencesDataStore("dietary_prefs")
+
+class PreferenceRepository(
+    private val context: Context,
+    private val supabaseClient: SupabaseClient,
+    private val functionsBaseUrl: String,
+    private val anonKey: String
+
+) {
+    companion object {
+        private val PREFS_KEY = stringPreferencesKey("preferences_json")
+        private val GRANDFATHERED_KEY = stringPreferencesKey("grandfathered_prefs")
+    }
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val client = OkHttpClient.Builder()
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    /** Save preferences locally */
+    suspend fun saveLocal(preferences: List<DietaryPreference>) {
+        val jsonString = json.encodeToString(ListSerializer(DietaryPreference.serializer()), preferences)
+        context.dataStore.edit { prefs ->
+            prefs[PREFS_KEY] = jsonString
+        }
+    }
+
+    /** Load preferences from local DataStore */
+    fun getLocal(): Flow<List<DietaryPreference>> =
+        context.dataStore.data.map { prefs ->
+            prefs[PREFS_KEY]?.let {
+                runCatching { json.decodeFromString(ListSerializer(DietaryPreference.serializer()), it) }
+                    .getOrDefault(emptyList())
+            } ?: emptyList()
+        }
+
+    /** Save "grandfathered" prefs (strings only) */
+    suspend fun saveGrandfathered(prefs: List<String>) {
+        context.dataStore.edit { it[GRANDFATHERED_KEY] = prefs.joinToString("|") }
+    }
+
+    /** Get and clear grandfathered prefs */
+    private suspend fun consumeGrandfathered(): List<String> {
+        val prefs = context.dataStore.data.first()[GRANDFATHERED_KEY]
+        if (prefs != null) {
+            context.dataStore.edit { it.remove(GRANDFATHERED_KEY) }
+            return prefs.split("|").filter { it.isNotBlank() }
+        }
+        return emptyList()
+    }
+
+    /** Upload grandfathered prefs if any */
+    private suspend fun uploadGrandfatheredPreferences() {
+        val legacyPrefs = consumeGrandfathered()
+        if (legacyPrefs.isNotEmpty()) {
+            val token = currentToken() ?: throw Exception("Not authenticated")
+            val url = "$functionsBaseUrl/${SafeEatsEndpoint.PREFERENCE_LISTS_GRANDFATHERED.format()}"
+            val body = json.encodeToString(ListSerializer(String.serializer()), legacyPrefs)
+            val req = Request.Builder()
+                .url(url)
+                .post(okhttp3.RequestBody.create("application/json".toMediaTypeOrNull(), body))
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("apikey", anonKey)
+                .build()
+            client.newCall(req).execute().use { resp ->
+                if (resp.code != 201) throw Exception("Grandfathered upload failed: ${resp.code}")
+            }
+        }
+    }
+
+    /** Fetch remote prefs and store locally */
+    suspend fun fetchAndStore(): List<DietaryPreference> = withContext(Dispatchers.IO) {
+        uploadGrandfatheredPreferences()
+        val token = currentToken() ?: throw Exception("Not authenticated")
+        val url = "$functionsBaseUrl/${SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT.format()}"
+        Log.d("PreferenceRepo", "GET $url")
+        val req = Request.Builder()
+            .url(url)
+            .get()
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", anonKey)
+            .build()
+
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            Log.d("PreferenceRepo", "Fetch code: ${resp.code}, body: ${body.take(200)}")
+            when (resp.code) {
+                200 -> {
+                    val list = if (body.isBlank()) emptyList() else json.decodeFromString(
+                        ListSerializer(DietaryPreference.serializer()), body
+                    )
+                    saveLocal(list)
+                    list
+                }
+                204 -> {
+                    saveLocal(emptyList())
+                    emptyList()
+                }
+                401 -> {
+                    Log.e("PreferenceRepo", "Authentication failed - token may be expired")
+                    // Clear stored session to force re-login
+                    context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        .edit().clear().apply()
+                    throw Exception("Authentication failed. Please log in again.")
+                }
+                else -> throw Exception("Bad response: ${resp.code} ${body}")
+            }
+        }
+    }
+
+    /** Add or edit preference */suspend fun addOrEditPreference(
+        clientActivityId: String,
+        preferenceText: String,
+        id: Int? = null
+    ): PreferenceValidationResult = withContext(Dispatchers.IO) {
+        val token = currentToken() ?: throw Exception("Not authenticated")
+        val url = if (id != null) {
+            "$functionsBaseUrl/${SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT_ITEMS.format(id.toString())}"
+        } else {
+            "$functionsBaseUrl/${SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT.format()}"
+        }
+        Log.d("PreferenceRepo", "Making request to: $url")
+
+        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("clientActivityId", clientActivityId)
+            .addFormDataPart("preference", preferenceText)
+            .build()
+
+        val reqBuilder = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", anonKey)
+
+        val request = if (id != null) reqBuilder.put(multipart).build()
+        else reqBuilder.post(multipart).build()
+
+        Log.d("PreferenceRepo", "Request headers: Authorization=Bearer $token, apikey=$anonKey")
+        Log.d("PreferenceRepo", "Request body: clientActivityId=$clientActivityId, preference=$preferenceText")
+
+        client.newCall(request).execute().use { resp ->
+            val code = resp.code
+            val body = resp.body?.string().orEmpty()
+            Log.d("PreferenceRepo", "Response code: $code, body: $body")
+
+            if (code !in listOf(200, 201, 204, 422)) throw Exception("Bad response: $code $body")
+
+            if (code == 204) return@withContext PreferenceValidationResult.Success(
+                DietaryPreference(
+                    id = id ?: -1,
+                    text = preferenceText,
+                    annotatedText = "" // or preferenceText
+                )
+            )
+
+            val elem = json.parseToJsonElement(body).jsonObject
+            return@withContext when (elem["result"]?.toString()?.trim('"')) {
+                "success" -> {
+                    val prefElem = elem["preference"] ?: elem
+                    val pref = json.decodeFromJsonElement(DietaryPreference.serializer(), prefElem)
+                    PreferenceValidationResult.Success(pref)
+                }
+                "failure" -> {
+                    val explanation = elem["explanation"]?.toString()?.trim('"') ?: "Validation failed"
+                    PreferenceValidationResult.Failure(explanation)
+                }
+                else -> PreferenceValidationResult.Failure("Unexpected response format")
+            }
+        }
+    }
+
+
+    /** Delete preference */
+    suspend fun deletePreference(id: Int, clientActivityId: String): Boolean = withContext(Dispatchers.IO) {
+        val token = currentToken() ?: throw Exception("Not authenticated")
+        val url = "$functionsBaseUrl/${SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT_ITEMS.format(id.toString())}"
+        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("clientActivityId", clientActivityId)
+            .build()
+        Log.d("PreferenceRepo", "DELETE $url")
+        val req = Request.Builder()
+            .url(url)
+            .delete(multipart)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", anonKey)
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            Log.d("PreferenceRepo", "Delete code: ${resp.code}, body: ${body.take(200)}")
+            resp.code in listOf(200, 204)
+        }
+    }
+ fun currentToken(): String? {
+        try {
+            // First try to get token from Supabase SDK
+            supabaseClient.auth.currentSessionOrNull()?.accessToken?.let { token ->
+                Log.d("PreferenceRepo", "Using SDK token: ${token.take(20)}...")
+                return token
+            }
+        } catch (e: Throwable) {
+            Log.e("PreferenceRepo", "SDK token error", e)
+        }
+        
+        // Fallback: read our stored session until SDK session is wired
+        return try {
+            val raw = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                .getString("session", null)
+            if (raw != null) {
+                val s = Gson().fromJson(raw, SupabaseSession::class.java)
+                Log.d("PreferenceRepo", "Using fallback token: ${s.accessToken.take(20)}...")
+                s.accessToken
+            } else {
+                Log.d("PreferenceRepo", "No stored session found")
+                null
+            }
+        } catch (e: Throwable) {
+            Log.e("PreferenceRepo", "Fallback token error", e)
+            null
+        }
+    }
+}

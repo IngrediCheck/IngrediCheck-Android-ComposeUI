@@ -4,9 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -18,60 +17,56 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+
 @Composable
 fun SplashScreen(
     modifier: Modifier = Modifier,
-    onSplashFinished: (Boolean) -> Unit // Pass login state
+    onSplashFinished: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        delay(2000) // Optional splash delay
-
-        val sharedPref = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-        val sessionString = sharedPref.getString("session", null)
-
-        // Navigate based on session
-        // true = user is already logged in, go to home
-        // false = user needs to login, go to welcome
-        onSplashFinished(sessionString != null)
+        delay(2000)
+        val session = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+            .getString("session", null)
+        onSplashFinished(session != null)
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
+        // Left image
         Image(
             painter = painterResource(id = R.drawable.leftlogo),
             contentDescription = "Left Logo",
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .width(376.dp)
-                .height(427.dp)
+                .size(376.dp)
+                .align(Alignment.TopStart)
                 .offset(x = (-90.79).dp, y = (-10).dp)
-
         )
-        //logo
+
+        // Center logo
         Image(
             painter = painterResource(id = R.drawable.ingredichecklogo),
-            contentDescription = "Logo",
+            contentDescription = "Main Logo",
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .width(206.27.dp)
-                .height(184.76.dp)
-                .offset(x = 84.36.dp, y = 313.62.dp)
+                .size(206.dp)
+                .align(Alignment.Center)
         )
+
+        // Right image
         Image(
             painter = painterResource(id = R.drawable.rightlogo),
-            contentDescription = "Left Logo",
+            contentDescription = "Right Logo",
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .width(376.dp)
-                .height(427.dp).align(Alignment.BottomEnd)
-                .offset(x = (100).dp, y = (-10).dp)
-
+                .size(376.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 100.dp, y = (-10).dp)
         )
-
-
     }
-
 }
+

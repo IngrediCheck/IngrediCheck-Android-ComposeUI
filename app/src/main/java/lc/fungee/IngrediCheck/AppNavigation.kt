@@ -77,8 +77,8 @@ fun AppNavigation(
             HistoryScreen(navController)
         }
 
-        composable("settings") {
-            SettingsScreen(navController)
+        composable("List") {
+            SettingsScreen(navController=navController,viewModel=viewModel)
         }
     }
 }

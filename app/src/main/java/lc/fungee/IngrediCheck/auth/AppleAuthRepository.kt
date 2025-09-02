@@ -13,18 +13,38 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import android.net.Uri
+import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.base.Functions
 import com.google.gson.Gson
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.from
+import lc.fungee.IngrediCheck.data.model.SupabaseSession
 // Add OkHttp imports for anonymous sign-in
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
+
 class AppleAuthRepository(
     private val context: Context,
     private val supabaseUrl: String,
     private val supabaseAnonKey: String
 ) {
+    val supabaseClient: SupabaseClient = createSupabaseClient(
+        supabaseUrl = supabaseUrl,
+        supabaseKey = supabaseAnonKey
+    ) {
+        install(Auth)
+        {
+            sessionManager = SharedPreferencesSessionManager(context)
+        }// Enables authentication
+
+
+        install(Postgrest) // Enables PostgREST database calls
+    }
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
