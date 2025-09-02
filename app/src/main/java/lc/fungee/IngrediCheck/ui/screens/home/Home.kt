@@ -2,6 +2,7 @@
 
     import androidx.compose.animation.AnimatedContent
     import androidx.compose.foundation.background
+    import androidx.compose.foundation.clickable
     import androidx.compose.foundation.interaction.MutableInteractionSource
     import androidx.compose.foundation.layout.*
     import androidx.compose.foundation.rememberScrollState
@@ -75,6 +76,7 @@
 
     import lc.fungee.IngrediCheck.ui.screens.check.CameraPreview
     import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
+    import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
 
     import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
 
@@ -141,21 +143,41 @@
                         .pullRefresh(pullRefreshState)
                 ) {
 
+                   Box(
+                       modifier = Modifier
+                           .fillMaxWidth()
+                           .padding(top = 24.dp, bottom = 16.dp)
+                   ) {
+                       // Title text in the exact center
+                       Text(
+                           text = "Your dietary preference",
+                           modifier = Modifier.align(Alignment.Center),
+                           style = TextStyle(
+                               fontSize = 16.sp,
+                               fontWeight = FontWeight.SemiBold,
+                               textAlign = TextAlign.Center
+                           )
+                       )
 
-                    Text(
-                        text = "Your dietary preference",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp, bottom = 16.dp),
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center
-                        )
-                    )
+                       // Icon at the right end
+                       IconButton(
+                           onClick = {
+                               // 👉 Handle click here
+//                               SettingScreen()
+                           }
+                       ){
+                       Icon(
+                           painter = painterResource(R.drawable.settingicon),
+                           contentDescription = "Setting  Icon",
+                           modifier = Modifier.align(Alignment.CenterEnd).size(25.dp)
+                           ,
+                           tint = PrimaryGreen100,
 
+                           )
+                       }
+                   }
 
-                    // Input Field
+                   // Input Field
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .then(
