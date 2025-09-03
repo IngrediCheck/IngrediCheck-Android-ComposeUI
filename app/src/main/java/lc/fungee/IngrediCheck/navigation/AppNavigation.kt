@@ -22,6 +22,7 @@ import lc.fungee.IngrediCheck.ui.screens.SplashScreen
 //import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.DisclaimerScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeScreen
+import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
 
 @Composable
 fun AppNavigation(
@@ -131,6 +132,9 @@ fun AppNavigation(
                 functionsBaseUrl = functionsBaseUrl,
                 anonKey = anonKey
             )
+        }
+        composable ("setting"){
+            SettingScreen()
         }
     }
 }

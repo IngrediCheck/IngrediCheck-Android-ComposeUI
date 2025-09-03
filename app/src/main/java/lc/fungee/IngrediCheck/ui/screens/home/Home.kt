@@ -79,8 +79,7 @@
     import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
 
     import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
-
-
+    import lc.fungee.IngrediCheck.ui.theme.White
 
 
     @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
@@ -96,7 +95,7 @@
 //        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         // ✅ use the instance (lowercase), not the class name
         val isRefreshing by preferenceViewModel.isRefreshing.collectAsState()
-
+        var showSheetSetting by remember { mutableStateOf(false) }
         var isFocused by remember { mutableStateOf(false) }
         val interactionSource = remember { MutableInteractionSource() }
 
@@ -143,39 +142,54 @@
                         .pullRefresh(pullRefreshState)
                 ) {
 
-                   Box(
+                   Row(
                        modifier = Modifier
                            .fillMaxWidth()
-                           .padding(top = 24.dp, bottom = 16.dp)
+                           .padding(top = 15.dp, bottom = 10.dp)
+                       , verticalAlignment = Alignment.CenterVertically
                    ) {
                        // Title text in the exact center
+                       Spacer(Modifier.weight(1f))
                        Text(
                            text = "Your dietary preference",
-                           modifier = Modifier.align(Alignment.Center),
                            style = TextStyle(
                                fontSize = 16.sp,
                                fontWeight = FontWeight.SemiBold,
                                textAlign = TextAlign.Center
                            )
                        )
+                       Spacer(Modifier.weight(1f))
 
                        // Icon at the right end
                        IconButton(
                            onClick = {
                                // 👉 Handle click here
+                               showSheetSetting = true
 //                               SettingScreen()
                            }
-                       ){
-                       Icon(
-                           painter = painterResource(R.drawable.settingicon),
-                           contentDescription = "Setting  Icon",
-                           modifier = Modifier.align(Alignment.CenterEnd).size(25.dp)
-                           ,
-                           tint = PrimaryGreen100,
+                       ) {
+                           Icon(
+                               painter = painterResource(R.drawable.settingicon),
+                               contentDescription = "Setting  Icon",
+                               modifier = Modifier.size(25.dp),
+                               tint = PrimaryGreen100,
 
-                           )
+                               )
                        }
                    }
+                       if (showSheetSetting) {
+                           ModalBottomSheet(onDismissRequest = { showSheetSetting = false },
+                                   containerColor = Color(0xFFF3F2F9),
+//                               modifier = Modifier.fillMaxHeight(0.94f),
+                               dragHandle = null,
+                               shape = RoundedCornerShape(
+                                   topStart = 10.dp,   // top left corner
+                                   topEnd = 10.dp      // top right corner
+                               )) {
+                               SettingScreen(onDismiss = { showSheetSetting = false })
+                           }
+                       }
+
 
                    // Input Field
                     Box(
