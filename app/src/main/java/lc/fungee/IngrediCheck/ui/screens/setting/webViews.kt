@@ -1,24 +1,103 @@
 package lc.fungee.IngrediCheck.ui.screens.setting
 
+import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.dp
+import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
 
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebViewScreen(url: String) {
-    AndroidView(
-        factory = { context ->
-            WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+    var isLoading by remember { mutableStateOf(true) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White) // Set white background to avoid black flash
+    ) {
+        AndroidView(
+            factory = { context ->
+                WebView(context).apply {
+                    // Set white background to prevent black flash
+                    setBackgroundColor(android.graphics.Color.WHITE)
+
+                    settings.javaScriptEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.builtInZoomControls = false
+                    settings.displayZoomControls = false
+
+                    // Enable scrolling
+                    isVerticalScrollBarEnabled = true
+                    isHorizontalScrollBarEnabled = false
+
+                    // Allow scrolling with gestures
+                    setOnTouchListener { v, event ->
+                        v.parent.requestDisallowInterceptTouchEvent(true)
+                        false
+                    }
+
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+
+                    // Custom WebViewClient to handle loading states
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            isLoading = true
+                        }
+
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            isLoading = false
+                        }
+
+                        override fun onPageCommitVisible(view: WebView?, url: String?) {
+                            super.onPageCommitVisible(view, url)
+                            // This is called when the page becomes visible
+                            isLoading = false
+                        }
+                    }
+
+                    webView = this
+                    loadUrl(url)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Loading indicator
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = PrimaryGreen100,
+                    modifier = Modifier.size(32.dp)
                 )
-                webViewClient = WebViewClient()
-                loadUrl(url)
             }
-        },
-        update = { it.loadUrl(url) }
-    )
+        }
+    }
+
+    // Load URL when it changes
+    LaunchedEffect(url) {
+        webView?.loadUrl(url)
+        isLoading = true
+    }
 }

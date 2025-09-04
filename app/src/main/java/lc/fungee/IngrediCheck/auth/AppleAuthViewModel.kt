@@ -57,6 +57,11 @@ class AppleAuthViewModel(
                         android.util.Log.d("AppleAuthViewModel", "Apple login successful, storing session")
                         try {
                             storeSession(session, context)
+                            // Persist login provider for Settings UI
+                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("login_provider", "apple")
+                                .apply()
                             _sessionStoreFailed.value = false
                         } catch (e: Exception) {
                             android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
@@ -101,6 +106,11 @@ class AppleAuthViewModel(
                         android.util.Log.d("AppleAuthViewModel", "Apple login successful, storing session")
                         try {
                             storeSession(session, context)
+                            // Persist login provider for Settings UI
+                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("login_provider", "apple")
+                                .apply()
                             _sessionStoreFailed.value = false
                         } catch (e: Exception) {
                             android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
@@ -142,6 +152,11 @@ class AppleAuthViewModel(
                         android.util.Log.d("AppleAuthViewModel", "Google login successful, storing session")
                         try {
                             storeSession(session, context)
+                            // Persist login provider for Settings UI
+                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("login_provider", "google")
+                                .apply()
                             _sessionStoreFailed.value = false
                         } catch (e: Exception) {
                             android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
@@ -191,6 +206,11 @@ class AppleAuthViewModel(
                         try {
                             // Store session in SharedPreferences so repo can read it
                             storeSession(session, context)
+                            // Persist login provider for Settings UI
+                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("login_provider", "apple")
+                                .apply()
                             _sessionStoreFailed.value = false
                             // Extract user data
                             userEmail = session.user.email
@@ -238,6 +258,11 @@ class AppleAuthViewModel(
                         android.util.Log.d("AppleAuthViewModel", "Anonymous sign-in successful, storing session")
                         try {
                             storeSession(session, context)
+                            // Persist login provider for Settings UI
+                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                                .edit()
+                                .putString("login_provider", "anonymous")
+                                .apply()
                             _sessionStoreFailed.value = false
                         } catch (e: Exception) {
                             android.util.Log.e("AppleAuthViewModel", "Error storing anonymous session", e)
@@ -325,8 +350,4 @@ class AppleAuthViewModel(
             android.util.Log.e("AppleAuthViewModel", "Error clearing session", e)
         }
     }
-
-
-
-
 }

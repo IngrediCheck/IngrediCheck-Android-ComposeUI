@@ -1,5 +1,4 @@
 package lc.fungee.IngrediCheck.ui.screens.setting
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,15 +9,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -33,17 +40,36 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.*
+import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingScreen(onDismiss: () -> Unit = {}) {
-    var autoScan by remember { mutableStateOf(false) }
+fun SettingScreen(
+    preferenceViewModel: PreferenceViewModel,
+    onDismiss: () -> Unit = {},
+    supabaseClient: SupabaseClient,
+    onRequireReauth: () -> Unit
+) {
+    val autoScan by preferenceViewModel.autoScanFlow.collectAsState(initial = false)
     var selectedUrl by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("user_session", Context.MODE_PRIVATE) }
+    val loginProvider = remember { sharedPrefs.getString("login_provider", null) }
+    val isGuest = loginProvider.isNullOrBlank() || loginProvider == "anonymous"
+    val coroutineScope = rememberCoroutineScope()
+    var showSignOutDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showDeleteGuestDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
-            .fillMaxHeight(0.94f)
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -58,19 +84,40 @@ fun SettingScreen(onDismiss: () -> Unit = {}) {
             SwitchRow(
                 text = "Start Scanning on App Start",
                 checked = autoScan,
-                onCheckedChange = { autoScan = it }
+                onCheckedChange = {
+                    preferenceViewModel.setAutoScan(it)
+                    // Set one-shot pending flag so next app start auto-opens scanner once
+                    preferenceViewModel.setAutoScanPending(it)
+                }
             )
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // 🔹 Section: Account
+
         SettingSection(title = "ACCOUNT") {
-            SwitchRow(
-                text = "Enable Account Sync",
-                checked = autoScan,
-                onCheckedChange = { autoScan = it }
-            )
+            if (isGuest) {
+                // Guest/anonymous flow: only allow clearing local data and restart
+                IconRow(
+                    "Delete & Restart App",
+                    Icons.Default.Warning,
+                    tint = Color(0xFFD03B35),
+                    tint2 = Color(0xFFD03B35)
+                ) { showDeleteGuestDialog = true }
+            } else {
+                // Authenticated user: show Sign Out and Delete Data & Account
+                IconRow(
+                    "Sign Out",
+                    Icons.Default.ExitToApp,
+                    tint = PrimaryGreen100
+                ) { showSignOutDialog = true }
+                IconRow(
+                    "Delete Data & Account",
+                    Icons.Default.Delete,
+                    tint = Color(0xFFD03B35),
+                    tint2 = Color(0xFFD03B35)
+                ) { showDeleteAccountDialog = true }
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -80,43 +127,163 @@ fun SettingScreen(onDismiss: () -> Unit = {}) {
             IconRow(
                 "About me",
                 Icons.Default.AccountCircle,
-                R.drawable.rightbackbutton
+//                R.drawable.rightbackbutton
             ) { selectedUrl = "https://www.ingredicheck.app/about" }
 
-            IconRow(
-                "Tip Jar",
-                Icons.Default.FavoriteBorder,
-                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/tipjar" }
+//            IconRow(
+//                "Tip Jar",
+//                Icons.Default.FavoriteBorder,
+////                R.drawable.rightbackbutton
+//            ) { selectedUrl = "https://www.ingredicheck.app/tipjar" }
 
             IconRow(
                 "Help",
                 Icons.Default.Info,
-                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/help" }
+//                R.drawable.rightbackbutton
+            ) { selectedUrl = "https://www.ingredicheck.app/about" }
 
             IconRow(
                 "Terms of Use",
                 Icons.Default.AddCircle,
-                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/terms" }
+//                R.drawable.rightbackbutton
+            ) { selectedUrl = "https://www.ingredicheck.app/terms-conditions" }
 
             IconRow(
                 "Privacy Policy",
                 Icons.Default.Lock,
-                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/privacy" }
+//                R.drawable.rightbackbutton
+            ) { selectedUrl = "https://www.ingredicheck.app/privacy-policy" }
 
             IconRow(
                 "IngrediCheck for Android 1.0.(38)",
                 Icons.Default.Star,
-                null,
+//                null,
                 showDivider = false
             )
         }
 
     }
 
+    // Confirmation dialogs
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text("Sign out?") },
+            text = { Text("You will be signed out and your local data will be cleared.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSignOutDialog = false
+                    coroutineScope.launch {
+                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+                        preferenceViewModel.clearAllLocalData()
+                        sharedPrefs.edit().clear().apply()
+                        onRequireReauth()
+                    }
+                }) { Text("Sign Out") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            title = { Text("Delete data & sign out?") },
+            text = { Text("This will clear your local data and sign you out.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteAccountDialog = false
+                    coroutineScope.launch {
+                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+                        preferenceViewModel.clearAllLocalData()
+                        sharedPrefs.edit().clear().apply()
+                        onRequireReauth()
+                    }
+                }) { Text("Delete & Sign Out") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showDeleteGuestDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteGuestDialog = false },
+            title = { Text("Delete local data?") },
+            text = { Text("This will clear all local data and restart the app.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteGuestDialog = false
+                    coroutineScope.launch {
+                        // For guests, just clear local data and session prefs
+                        preferenceViewModel.clearAllLocalData()
+                        sharedPrefs.edit().clear().apply()
+                        onRequireReauth()
+                    }
+                }) { Text("Delete & Restart") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteGuestDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    selectedUrl?.let { url ->
+        val sheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true
+        )
+
+        // Add this to preload the WebView content
+        LaunchedEffect(url) {
+            // Small delay to ensure smooth animation
+            kotlinx.coroutines.delay(100)
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { selectedUrl = null },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp),
+            sheetState = sheetState,
+            dragHandle = null, // Remove default drag handle for cleaner look
+//            windowInsets = WindowInsets(0) // Remove default insets
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.94f)
+                    .background(Color.White) // Ensure white background
+            ) {
+                // Header with close button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close, // Use Close icon instead
+                        contentDescription = "Close",
+                        tint = Grey75,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable { selectedUrl = null }
+                    )
+                }
+
+                // WebView content
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White)
+                ) {
+                    WebViewScreen(url = url)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -228,7 +395,8 @@ private fun SwitchRow(
 private fun IconRow(
     text: String,
     leadingVector: ImageVector,
-    trailingIcon: Int?,
+    tint: Color = Color.Black, // 👈 default value
+    tint2: Color =  PrimaryGreen100,
     showDivider: Boolean = true, // 👈 optional
     onClick: (() -> Unit)? = null
 ) {
@@ -247,7 +415,7 @@ private fun IconRow(
             Icon(
                 imageVector = leadingVector,
                 contentDescription = null,
-                tint = PrimaryGreen100
+                tint = tint2
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
@@ -257,17 +425,21 @@ private fun IconRow(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     //   letterSpacing = (-0.41).sp,
-                    color = Color(0xFF1B270C),
+                    color = tint
 //                    lineHeight = 22.sp
                 )
             )
             Spacer(modifier = Modifier.weight(1f))
-            trailingIcon?.let {
+//
+            if(showDivider) {
+
                 Icon(
-                    painter = painterResource(id = it),
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    modifier = Modifier.size(20.dp),
                     contentDescription = null,
-                    tint = Color.Unspecified
+                    tint = Grey75
                 )
+
             }
         }
 

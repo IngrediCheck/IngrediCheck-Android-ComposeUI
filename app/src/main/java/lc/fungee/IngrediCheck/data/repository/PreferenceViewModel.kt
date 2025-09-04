@@ -187,4 +187,35 @@ class PreferenceViewModel(
     }
 
 
+    // --- Settings: Auto-scan on app start (DataStore) ---
+    // Expose the DataStore-backed flow so Composables can observe it.
+    val autoScanFlow = repo.autoScanFlow
+
+    // Update the flag in DataStore via the repository.
+    fun setAutoScan(enabled: Boolean) {
+        viewModelScope.launch {
+            repo.setAutoScan(enabled)
+        }
+    }
+
+    // One-shot pending flag to auto-open scanner once on next app start
+    val autoScanPendingFlow = repo.autoScanPendingFlow
+
+    fun setAutoScanPending(pending: Boolean) {
+        viewModelScope.launch {
+            repo.setAutoScanPending(pending)
+        }
+    }
+
+    suspend fun consumeAutoScanPending(): Boolean {
+        return repo.consumeAutoScanPending()
+    }
+
+    fun clearAllLocalData() {
+        viewModelScope.launch {
+            repo.clearAllLocalData()
+        }
+    }
+
+
 }

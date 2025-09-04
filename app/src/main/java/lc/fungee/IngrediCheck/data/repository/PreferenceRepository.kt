@@ -2,6 +2,7 @@ package lc.fungee.IngrediCheck.data.repository
 
 import android.content.Context
 import android.util.Log
+import androidx.datastore.preferences.core.booleanPreferencesKey
 
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -30,6 +31,13 @@ import java.util.concurrent.TimeUnit
 
 private val Context.dataStore by preferencesDataStore("dietary_prefs")
 
+
+
+object PrefKeys {
+    val AUTO_SCAN = booleanPreferencesKey("auto_scan_on_app_start")
+    // One-shot flag: when true, the app will auto-open the scanner on next launch and then clear it
+    val AUTO_SCAN_PENDING = booleanPreferencesKey("auto_scan_pending")
+}
 class PreferenceRepository(
     private val context: Context,
     private val supabaseClient: SupabaseClient,
@@ -37,6 +45,36 @@ class PreferenceRepository(
     private val anonKey: String
 
 ) {
+
+    val autoScanFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[PrefKeys.AUTO_SCAN] ?: false }
+
+    // One-shot pending flag flow
+    val autoScanPendingFlow: Flow<Boolean> =
+        context.dataStore.data.map { it[PrefKeys.AUTO_SCAN_PENDING] ?: false }
+
+    suspend fun setAutoScan(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[PrefKeys.AUTO_SCAN] = enabled
+        }
+    }
+
+    suspend fun setAutoScanPending(pending: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[PrefKeys.AUTO_SCAN_PENDING] = pending
+        }
+    }
+
+    // Returns current pending value and clears it if it was true
+    suspend fun consumeAutoScanPending(): Boolean {
+        val wasPending = context.dataStore.data.first()[PrefKeys.AUTO_SCAN_PENDING] ?: false
+        if (wasPending) {
+            context.dataStore.edit { prefs ->
+                prefs[PrefKeys.AUTO_SCAN_PENDING] = false
+            }
+        }
+        return wasPending
+    }
     companion object {
         private val PREFS_KEY = stringPreferencesKey("preferences_json")
         private val GRANDFATHERED_KEY = stringPreferencesKey("grandfathered_prefs")
@@ -217,6 +255,11 @@ class PreferenceRepository(
             val body = resp.body?.string().orEmpty()
             Log.d("PreferenceRepo", "Delete code: ${resp.code}, body: ${body.take(200)}")
             resp.code in listOf(200, 204)
+        }
+    }
+    suspend fun clearAllLocalData() {
+        context.dataStore.edit { prefs ->
+            prefs.clear()
         }
     }
  fun currentToken(): String? {

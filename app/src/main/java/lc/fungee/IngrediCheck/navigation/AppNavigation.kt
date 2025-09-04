@@ -134,11 +134,18 @@ fun AppNavigation(
             )
         }
         composable ("setting"){
-            SettingScreen()
+            if (preferenceViewModel != null) {
+                SettingScreen(
+                    preferenceViewModel = preferenceViewModel,
+                    onDismiss = { navController.popBackStack() },
+                    supabaseClient = supabaseClient,
+                    onRequireReauth = {
+                        navController.navigate("welcome") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
     }
 }
-
-
-
-
