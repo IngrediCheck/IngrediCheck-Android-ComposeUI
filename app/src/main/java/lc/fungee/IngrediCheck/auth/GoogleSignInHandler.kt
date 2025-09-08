@@ -10,10 +10,11 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 
 @Composable
-fun rememberGoogleSignInLauncher(
+fun rememberGoogleSignInLauncherUnused(
     activity: Activity,
     viewModel: AppleAuthViewModel
-) = rememberLauncherForActivityResult(
+)
+= rememberLauncherForActivityResult(
     contract = ActivityResultContracts.StartActivityForResult()
 ) { result ->
     val data = result.data
@@ -22,7 +23,7 @@ fun rememberGoogleSignInLauncher(
         val account = task.getResult(ApiException::class.java)
         val idToken = account.idToken
         if (idToken != null) {
-            viewModel.signInWithGoogleIdToken(idToken)
+            viewModel.signInWithGoogleIdToken(idToken, activity)
         }
     } catch (e: Exception) {
         Log.e("GoogleSignIn", "Sign-in failed", e)

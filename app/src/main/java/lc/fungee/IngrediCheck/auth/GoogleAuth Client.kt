@@ -5,7 +5,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 
-object GoogleAuthClient {
+@Deprecated("Use GoogleAuthClient in GoogleAuthClient.kt")
+object GoogleAuthClientLegacy {
     fun getClient(context: Context): GoogleSignInClient {
         return GoogleSignIn.getClient(
             context,

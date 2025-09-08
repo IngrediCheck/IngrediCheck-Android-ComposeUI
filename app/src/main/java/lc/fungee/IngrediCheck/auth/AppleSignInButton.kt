@@ -29,7 +29,8 @@ fun AppleSignInSection(
         Button(
             onClick = {
                 if (activity != null) {
-                    viewModel.startAppleLogin(activity)
+                    // Launch WebView-based Apple login via ViewModel
+                    viewModel.launchAppleWebViewLogin(activity)
                 }
             },
             modifier = Modifier
@@ -44,19 +45,10 @@ fun AppleSignInSection(
         Button(
             onClick = {
                 if (activity != null) {
-                    // Use the WebView-based Apple login
+                    // Directly use repository to launch WebView-based Apple login
+                    // The repository method does not take clientId/redirectUri here; it's configured internally
                     val repository = viewModel.javaClass.getDeclaredField("repository").apply { isAccessible = true }.get(viewModel) as AppleAuthRepository
-                    repository.launchAppleLoginWebView(
-                        activity = activity,
-                        clientId = "llc.fungee.ingredicheck.web", // Your Apple Service ID
-                        redirectUri = "io.supabase.ingredicheck://login-callback", // Your redirect URI
-                        onSuccess = { token: String ->
-                            Toast.makeText(activity, "Apple WebView Success: $token", Toast.LENGTH_LONG).show()
-                        },
-                        onError = { error: String ->
-                            Toast.makeText(activity, "Apple WebView Error: $error", Toast.LENGTH_LONG).show()
-                        }
-                    )
+                    repository.launchAppleLoginWebView(activity)
                 }
             },
             modifier = Modifier
@@ -67,25 +59,6 @@ fun AppleSignInSection(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = {
-                if (activity != null) {
-                    // Use the device browser for Apple login
-                    val repository = viewModel.javaClass.getDeclaredField("repository").apply { isAccessible = true }.get(viewModel) as AppleAuthRepository
-                    repository.launchAppleLoginInBrowser(
-                        activity = activity,
-                        clientId = "llc.fungee.ingredicheck.web", // Your Apple Service ID
-                        redirectUri = "https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback" // Your redirect URI
-                    )
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("Sign in with Apple (Browser)")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
