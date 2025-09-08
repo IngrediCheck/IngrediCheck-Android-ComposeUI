@@ -41,22 +41,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import android.content.Context
+import android.widget.Toast
+import android.webkit.CookieManager
+import android.webkit.WebStorage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.*
 import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 
-
+enum class ConfirmAction {
+    NONE, DELETE_ACCOUNT, RESET_GUEST
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreen(
     preferenceViewModel: PreferenceViewModel,
     onDismiss: () -> Unit = {},
     supabaseClient: SupabaseClient,
-    onRequireReauth: () -> Unit
+    onRequireReauth: () -> Unit,
+    viewModel: AppleAuthViewModel,
+    googleSignInClient: GoogleSignInClient
 ) {
+
     val autoScan by preferenceViewModel.autoScanFlow.collectAsState(initial = false)
     var selectedUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -67,6 +77,28 @@ fun SettingScreen(
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteGuestDialog by remember { mutableStateOf(false) }
+    var confirmAction by remember { mutableStateOf(ConfirmAction.NONE) }
+    fun clearWebCookies() {
+        try {
+            CookieManager.getInstance().removeAllCookies(null)
+            CookieManager.getInstance().flush()
+            WebStorage.getInstance().deleteAllData()
+        } catch (_: Throwable) {}
+    }
+    fun clearAllSession()
+    {
+        coroutineScope.launch {
+            try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+            try { googleSignInClient.signOut() } catch (_: Exception) {}
+            try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
+            try { viewModel.clearSession(context) } catch (_: Exception) {}
+            try { viewModel.resetState() } catch (_: Exception) {}
+            clearWebCookies()
+            preferenceViewModel.clearAllLocalData()
+            sharedPrefs.edit().clear().apply()
+            onRequireReauth()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -103,20 +135,20 @@ fun SettingScreen(
                     Icons.Default.Warning,
                     tint = Color(0xFFD03B35),
                     tint2 = Color(0xFFD03B35)
-                ) { showDeleteGuestDialog = true }
+                ) { confirmAction = ConfirmAction.RESET_GUEST }
             } else {
                 // Authenticated user: show Sign Out and Delete Data & Account
                 IconRow(
                     "Sign Out",
                     Icons.Default.ExitToApp,
                     tint = PrimaryGreen100
-                ) { showSignOutDialog = true }
+                ) { clearAllSession()}
                 IconRow(
                     "Delete Data & Account",
                     Icons.Default.Delete,
                     tint = Color(0xFFD03B35),
                     tint2 = Color(0xFFD03B35)
-                ) { showDeleteAccountDialog = true }
+                ) { confirmAction = ConfirmAction.DELETE_ACCOUNT }
             }
         }
 
@@ -164,72 +196,148 @@ fun SettingScreen(
 
     }
 
-    // Confirmation dialogs
-    if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignOutDialog = false },
-            title = { Text("Sign out?") },
-            text = { Text("You will be signed out and your local data will be cleared.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showSignOutDialog = false
+
+    if (confirmAction != ConfirmAction.NONE) {
+        var title = ""
+        var confirmText = ""
+        var onConfirm: () -> Unit = {}
+
+        when (confirmAction) {
+            ConfirmAction.DELETE_ACCOUNT -> {
+                title = "Your Data Cannot Be Recovered"
+                confirmText = "I Understand"
+                onConfirm = {
                     coroutineScope.launch {
-                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+                        // Try remote delete first; ignore failure here, UI shows toast elsewhere if desired
+                        runCatching { preferenceViewModel.deleteAccountRemote() }
+                        clearAllSession()
+                    }
+                }
+            }
+            ConfirmAction.RESET_GUEST -> {
+                title = "Your Data Cannot Be Recovered"
+                confirmText = "I Understand"
+                onConfirm = {
+                    coroutineScope.launch {
                         preferenceViewModel.clearAllLocalData()
                         sharedPrefs.edit().clear().apply()
+                        clearWebCookies()
+                        runCatching { viewModel.resetState() }
                         onRequireReauth()
                     }
-                }) { Text("Sign Out") }
+                }
+            }
+            else -> { /* no-op */ }
+        }
+
+        AlertDialog(
+            onDismissRequest = { confirmAction = ConfirmAction.NONE },
+            title = { Text(title) },
+
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmAction = ConfirmAction.NONE
+                    onConfirm()
+                }) {
+                    Text(confirmText,color = PrimaryGreen100)
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmAction = ConfirmAction.NONE }) {
+                    Text("Cancel",color =PrimaryGreen100
+                    )
+                }
             }
+            ,  containerColor = Color(0xFFF3F2F8),
+            textContentColor = Color.Black// 👈 your custom background
         )
     }
 
-    if (showDeleteAccountDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteAccountDialog = false },
-            title = { Text("Delete data & sign out?") },
-            text = { Text("This will clear your local data and sign you out.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteAccountDialog = false
-                    coroutineScope.launch {
-                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
-                        preferenceViewModel.clearAllLocalData()
-                        sharedPrefs.edit().clear().apply()
-                        onRequireReauth()
-                    }
-                }) { Text("Delete & Sign Out") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteAccountDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
 
-    if (showDeleteGuestDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteGuestDialog = false },
-            title = { Text("Delete local data?") },
-            text = { Text("This will clear all local data and restart the app.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteGuestDialog = false
-                    coroutineScope.launch {
-                        // For guests, just clear local data and session prefs
-                        preferenceViewModel.clearAllLocalData()
-                        sharedPrefs.edit().clear().apply()
-                        onRequireReauth()
-                    }
-                }) { Text("Delete & Restart") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteGuestDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
+//    // Confirmation dialogs
+//    if (showSignOutDialog) {
+//        AlertDialog(
+//            onDismissRequest = { showSignOutDialog = false },
+//            title = { Text("Sign out?") },
+//            text = { Text("You will be signed out and your local data will be cleared.") },
+//            confirmButton = {
+//                TextButton(onClick = {
+//                    showSignOutDialog = false
+//                    coroutineScope.launch {
+//                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+//                        try { googleSignInClient.signOut() } catch (_: Exception) {}
+//                        try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
+//                        try { viewModel.clearSession(context) } catch (_: Exception) {}
+//                        try { viewModel.resetState() } catch (_: Exception) {}
+//                        clearWebCookies()
+//                        preferenceViewModel.clearAllLocalData()
+//                        sharedPrefs.edit().clear().apply()
+//                        onRequireReauth()
+//                    }
+//                }) { Text("Sign Out") }
+//            },
+//            dismissButton = {
+//                TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+//            }
+//        )
+//    }
+
+//    if (showDeleteAccountDialog) {
+//        AlertDialog(
+//            onDismissRequest = { showDeleteAccountDialog = false },
+//            title = { Text("Your Data Cannot Be recovered") },
+////            text = { Text("This will clear your local data and sign you out.") },
+//            confirmButton = {
+//                TextButton(onClick = {
+//                    showDeleteAccountDialog = false
+//                    coroutineScope.launch {
+//                        // First: try remote account deletion (Edge Function must be deployed server-side)
+//                        val remoteDeleted = try {
+//                            preferenceViewModel.deleteAccountRemote()
+//                        } catch (_: Exception) { false }
+//
+//                        // Then: proceed with provider sign-outs and local wipe
+//                        try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+//                        try { googleSignInClient.signOut() } catch (_: Exception) {}
+//                        try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
+//                        try { viewModel.clearSession(context) } catch (_: Exception) {}
+//                        try { viewModel.resetState() } catch (_: Exception) {}
+//                        clearWebCookies()
+//                        preferenceViewModel.clearAllLocalData()
+//                        sharedPrefs.edit().clear().apply()
+//                        onRequireReauth()
+//                    }
+//                }) { Text("i Understand") }
+//            },
+//            dismissButton = {
+//                TextButton(onClick = { showDeleteAccountDialog = false }) { Text("Cancel") }
+//            }
+//        )
+//    }
+//
+//    if (showDeleteGuestDialog) {
+//        AlertDialog(
+//            onDismissRequest = { showDeleteGuestDialog = false },
+//            title = { Text("Delete local data?") },
+//            text = { Text("This will clear all local data and restart the app.") },
+//            confirmButton = {
+//                TextButton(onClick = {
+//                    showDeleteGuestDialog = false
+//                    coroutineScope.launch {
+//                        // For guests, just clear local data and session prefs
+//                        preferenceViewModel.clearAllLocalData()
+//                        sharedPrefs.edit().clear().apply()
+//                        clearWebCookies()
+//                        try { viewModel.resetState() } catch (_: Exception) {}
+//                        onRequireReauth()
+//                    }
+//                }) { Text("Delete & Restart") }
+//            },
+//            dismissButton = {
+//                TextButton(onClick = { showDeleteGuestDialog = false }) { Text("Cancel") }
+//            }
+//        )
+//    }
 
     selectedUrl?.let { url ->
         val sheetState = rememberModalBottomSheetState(

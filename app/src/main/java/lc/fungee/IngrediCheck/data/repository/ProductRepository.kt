@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import lc.fungee.IngrediCheck.data.model.IngredientRecommendation
 import lc.fungee.IngrediCheck.data.model.Product
 import lc.fungee.IngrediCheck.data.model.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.data.model.ImageInfo
 import lc.fungee.IngrediCheck.data.model.calculateMatch
 import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
 import okhttp3.MultipartBody
@@ -109,6 +111,72 @@ class AnalysisViewModel(
         }
     }
 
+    private suspend fun fetchProductFromImages(
+        images: List<ImageInfo>,
+        clientActivityId: String
+    ): Product = withContext(Dispatchers.IO) {
+        val token = repo.currentToken() ?: throw Exception("Not authenticated")
+        val url = "$functionsBaseUrl/${SafeEatsEndpoint.EXTRACT.format()}"
+        Log.d("AnalysisVM", "POST $url (extract)")
+
+        val imagesJson = Json.encodeToString(ListSerializer(ImageInfo.serializer()), images)
+        val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("clientActivityId", clientActivityId)
+            .addFormDataPart("productImages", imagesJson)
+            .build()
+
+        val req = Request.Builder()
+            .url(url)
+            .post(multipart)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", anonKey)
+            .build()
+
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            Log.d("AnalysisVM", "Extract code=${resp.code}, body=${body.take(200)}")
+            if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
+            if (!resp.isSuccessful) throw Exception("Failed to extract product: ${resp.code}")
+            Json.decodeFromString(Product.serializer(), body)
+        }
+    }
+
+    /**
+     * New flow: analyze a set of label images (uploaded separately) using /extract first,
+     * then fetch ingredient recommendations via /analyze with optional barcode (if available).
+     */
+    fun analyzeImages(clientActivityId: String, images: List<ImageInfo>) {
+        viewModelScope.launch {
+            phase = AnalysisPhase.LoadingProduct
+            error = null
+            recommendations = emptyList()
+            try {
+                Log.d("AnalysisVM", "Start analyzeImages, images count=${images.size}")
+                // 1) Extract product details from label images
+                val prod = fetchProductFromImages(images, clientActivityId)
+                product = prod
+
+                // 2) Switch to analyzing while backend computes recommendations
+                phase = AnalysisPhase.Analyzing
+
+                // 3) Load user preferences
+                val freshPrefs = runCatching { repo.fetchAndStore() }.getOrNull()
+                val prefs = freshPrefs ?: repo.getLocal().first()
+                val prefsText = if (prefs.isEmpty()) "" else prefs.joinToString("\n") { it.text }
+
+                // 4) Fetch ingredient recommendations; barcode might be absent
+                val recs = fetchRecommendations(clientActivityId, prefsText, product?.barcode)
+
+                recommendations = recs
+                phase = AnalysisPhase.Done
+            } catch (e: Exception) {
+                Log.e("AnalysisVM", "AnalyzeImages error", e)
+                error = e.message
+                phase = AnalysisPhase.Error
+            }
+        }
+    }
+
     private suspend fun fetchProduct(barcode: String, clientActivityId: String): Product =
         withContext(Dispatchers.IO) {
             val token = repo.currentToken() ?: throw Exception("Not authenticated")
@@ -126,6 +194,7 @@ class AnalysisViewModel(
                 val body = resp.body?.string().orEmpty()
                 Log.d("AnalysisVM","Json response =$body")
                 Log.d("AnalysisVM", "Product code=${resp.code}, body=${body.take(200)}")
+                if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
                 if (!resp.isSuccessful) throw Exception("Failed to fetch product: ${resp.code}")
                 Json.decodeFromString(Product.serializer(), body)
             }
@@ -134,7 +203,7 @@ class AnalysisViewModel(
     private suspend fun fetchRecommendations(
         clientActivityId: String,
         prefs: String,
-        barcode: String
+        barcode: String? = null
     ): List<IngredientRecommendation> = withContext(Dispatchers.IO) {
         val token = repo.currentToken() ?: throw Exception("Not authenticated")
         val url = "$functionsBaseUrl/${SafeEatsEndpoint.ANALYZE.format()}"
@@ -142,7 +211,11 @@ class AnalysisViewModel(
 
         val multipartBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("clientActivityId", clientActivityId)
-            .addFormDataPart("barcode", barcode)
+            .apply {
+                if (!barcode.isNullOrBlank()) {
+                    addFormDataPart("barcode", barcode)
+                }
+            }
         
         // Only send userPreferenceText if we have actual preferences
         if (prefs.isNotBlank()) {
@@ -166,6 +239,7 @@ class AnalysisViewModel(
                 val code = resp.code
                 val body = resp.body?.string().orEmpty()
                 Log.d("AnalysisVM", "Analyze code=$code, body=${body.take(200)}")
+                if (code == 401) throw Exception("Authentication failed. Please log in again.")
                 if (code !in listOf(200, 204)) throw Exception("Analyze failed: $code")
                 if (body.isBlank()) emptyList()
                 else Json.decodeFromString(ListSerializer(IngredientRecommendation.serializer()), body)

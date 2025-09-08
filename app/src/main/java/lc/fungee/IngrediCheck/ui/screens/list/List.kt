@@ -1,4 +1,4 @@
-// Updated: app/src/main/java/lc/fungee/IngrediCheck/PreferenceList/Setting.kt
+// Updated: app/src/main/java/lc/fungee/IngrediCheck/PreferenceList/List.kt
 
 package lc.fungee.IngrediCheck.ui.screens.list
 
@@ -7,6 +7,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,8 +33,9 @@ import lc.fungee.IngrediCheck.data.model.SupabaseSession
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White
-import java.time.format.TextStyle
 import lc.fungee.IngrediCheck.R
+import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+
 @Composable
 fun ListScreen(
     navController: NavController,
@@ -83,7 +87,7 @@ fun ListScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+
             ){
                 Text(
                     text = "My List",
@@ -96,27 +100,39 @@ fun ListScreen(
                         lineHeight = 22.sp
                     )
                 )
+                Spacer(modifier = Modifier.weight(1f))
                 // Right text
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    "",
+                    tint = PrimaryGreen100,
+
+                )
+
                 Text(
-                    text = "+ New List", // you can make this dynamic later
+                    text = " New List", // you can make this dynamic later
 
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 17.sp,
-                        color = Color(0xFF4B6A0A),
+                        color = PrimaryGreen100,
                         lineHeight = 22.sp
                     )
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             // 3. Empty Activity Image
-            Image(
-                painter = painterResource(id = R.drawable.foodemptylist), // put your drawable
-                contentDescription = "Empty List",
-                modifier = Modifier
-                    .size(width = 160.dp, height = 170.dp).align(Alignment.Start)
-            )
+            LazyRow (){
+                item {
+                    Image(
+                        painter = painterResource(id = R.drawable.foodemptylist), // put your drawable
+                        contentDescription = "Empty List",
+                        modifier = Modifier
+                            .size(width = 160.dp, height = 170.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(40.dp))
             // 4. Recent Scan
             Text(

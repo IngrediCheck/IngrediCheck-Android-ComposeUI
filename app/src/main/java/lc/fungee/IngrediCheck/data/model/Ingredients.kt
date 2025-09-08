@@ -24,14 +24,10 @@ data class IngredientRecommendation(
 )
 
 @Serializable
-data class  ImageLocationInfo(
-    val url: String
+data class ImageLocationInfo(
+    val url: String? = null,
+    val imageFileHash: String? = null
 )
-//@Serializable
-//data class ImageLocationInfo(
-//    val url: String? = null,
-//    val imageFileHash: String? = null
-//)
 
 @Serializable
 data class Product(

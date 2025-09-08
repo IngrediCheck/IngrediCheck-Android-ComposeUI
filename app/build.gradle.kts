@@ -97,6 +97,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:supabase-kt:3.2.2")
     implementation("io.github.jan-tennert.supabase:auth-kt:3.2.2")
     implementation("io.github.jan-tennert.supabase:postgrest-kt:3.2.2")
+    implementation("io.github.jan-tennert.supabase:storage-kt:3.2.2")
 
     // AndroidX ViewModel + Activity KTX
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
@@ -106,6 +107,7 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.1")
     //cameraa
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
@@ -115,5 +117,5 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.0")
     implementation(libs.mlkit.barcode)
 
-
+    implementation(libs.mlkit.text.recognition)
 }

@@ -1,5 +1,5 @@
-//package lc.fungee.IngrediCheck.ui.screens.check
-//
+package lc.fungee.IngrediCheck.ui.screens.check
+
 //import androidx.compose.foundation.layout.Column
 //import androidx.compose.material3.CircularProgressIndicator
 //import androidx.compose.material3.Text
@@ -13,6 +13,11 @@
 //import lc.fungee.IngrediCheck.data.model.decoratedIngredientsList
 //import lc.fungee.IngrediCheck.data.repository.AnalysisViewModel
 //import java.util.UUID
+
+
+
+
+
 //@Composable
 //fun AnalysisScreen(
 //    barcode: String,
@@ -54,3 +59,4 @@
 //        }
 //    }
 //}
+

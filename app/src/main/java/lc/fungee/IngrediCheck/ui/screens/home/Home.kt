@@ -79,7 +79,9 @@ import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
 
 import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
-
+import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import lc.fungee.IngrediCheck.ui.util.AutoScanGate
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +90,9 @@ fun HomeScreen(
     preferenceViewModel: PreferenceViewModel,
     supabaseClient: io.github.jan.supabase.SupabaseClient,
     functionsBaseUrl: String,
-    anonKey: String
+    anonKey: String,
+    viewModel: AppleAuthViewModel,
+    googleSignInClient: GoogleSignInClient
 ) {
     var showSheet by remember { mutableStateOf(false) }
 //        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -101,13 +105,11 @@ fun HomeScreen(
 
     // One-shot auto-open on app start using pending flag
     var didAutoOpen by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!didAutoOpen) {
-            val shouldOpen = preferenceViewModel.consumeAutoScanPending()
-            if (shouldOpen) {
-                didAutoOpen = true
-                showSheet = true
-            }
+    val autoScanEnabled by preferenceViewModel.autoScanFlow.collectAsState(initial = false)
+    LaunchedEffect(autoScanEnabled) {
+        if (autoScanEnabled && !AutoScanGate.openedOnceInProcess) {
+            AutoScanGate.openedOnceInProcess = true
+            showSheet = true
         }
     }
 
@@ -171,7 +173,9 @@ fun HomeScreen(
                                 navController.navigate("welcome") {
                                     popUpTo("home") { inclusive = true }
                                 }
-                            }
+                            },
+                            viewModel = viewModel,
+                            googleSignInClient = googleSignInClient
                         )
                     }
                 }

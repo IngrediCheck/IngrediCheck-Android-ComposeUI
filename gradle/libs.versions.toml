@@ -47,6 +47,8 @@ camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax"
 mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 material-icons = { module = "androidx.compose.material:material-icons-extended", version = "1.7.5" } # add this
+mlkit-text-recognition = "com.google.mlkit:text-recognition:16.0.0"
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

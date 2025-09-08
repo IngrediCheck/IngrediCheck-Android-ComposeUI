@@ -19,6 +19,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 import io.github.jan.supabase.postgrest.from
 import lc.fungee.IngrediCheck.data.model.SupabaseSession
 // Add OkHttp imports for anonymous sign-in
@@ -44,6 +45,7 @@ class AppleAuthRepository(
 
 
         install(Postgrest) // Enables PostgREST database calls
+        install(Storage) // Enables Storage for image uploads
     }
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {

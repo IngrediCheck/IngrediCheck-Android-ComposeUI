@@ -43,8 +43,13 @@ class PreferenceViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
 
+    // Process-scoped flag to avoid reopening scanner when navigating back to Home in the same app run
+    private val _autoOpenedThisProcess = MutableStateFlow(false)
+    val autoOpenedThisProcess: StateFlow<Boolean> = _autoOpenedThisProcess
+    fun markAutoOpenedThisProcess() { _autoOpenedThisProcess.value = true }
+
 //    init {
-//        monitorInternet() // 👈 start once when ViewModel is created
+//        monitorInternet() // 
 //    }
 //    fun monitorInternet() {
 //        viewModelScope.launch {
@@ -218,4 +223,13 @@ class PreferenceViewModel(
     }
 
 
+    // --- Account deletion (remote) ---
+    suspend fun deleteAccountRemote(): Boolean {
+        return try {
+            repo.deleteAccountRemote()
+        } catch (e: Exception) {
+            Log.e("PreferenceVM", "deleteAccountRemote failed", e)
+            false
+        }
+    }
 }

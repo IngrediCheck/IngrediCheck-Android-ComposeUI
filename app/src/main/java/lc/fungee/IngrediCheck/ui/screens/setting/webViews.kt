@@ -20,6 +20,8 @@ import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
 fun WebViewScreen(url: String) {
     var isLoading by remember { mutableStateOf(true) }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var  haserror by remember { mutableStateOf(false)}
+
 
     Box(
         modifier = Modifier
@@ -58,11 +60,29 @@ fun WebViewScreen(url: String) {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                             super.onPageStarted(view, url, favicon)
                             isLoading = true
+                            haserror = false
                         }
 
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             isLoading = false
+                        }
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?,
+                            error: android.webkit.WebResourceError?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            haserror = true   // 👈 mark error
+                        }
+
+                        override fun onReceivedHttpError(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?,
+                            errorResponse: android.webkit.WebResourceResponse?
+                        ) {
+                            super.onReceivedHttpError(view, request, errorResponse)
+                            haserror = true   // 👈 mark error
                         }
 
                         override fun onPageCommitVisible(view: WebView?, url: String?) {
@@ -78,6 +98,28 @@ fun WebViewScreen(url: String) {
             },
             modifier = Modifier.fillMaxSize()
         )
+        if (haserror) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Black & white error message
+                    androidx.compose.material3.Text(
+                        text = "No Internet Connection",
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.Text(
+                        text = "This page could not be loaded.",
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
 
         // Loading indicator
         if (isLoading) {

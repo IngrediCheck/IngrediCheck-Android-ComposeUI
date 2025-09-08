@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import io.github.jan.supabase.SupabaseClient
 //import lc.fungee.IngrediCheck.ui.screens.check.CameraScreen
@@ -85,7 +86,9 @@ fun AppNavigation(
                     preferenceViewModel = preferenceViewModel,
                     supabaseClient = supabaseClient,
                     functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey
+                    anonKey = anonKey,
+                    viewModel = viewModel,
+                    googleSignInClient = googleSignInClient
                 )
             } else {
                 // Show a loading or error screen, or redirect to login
@@ -141,9 +144,12 @@ fun AppNavigation(
                     supabaseClient = supabaseClient,
                     onRequireReauth = {
                         navController.navigate("welcome") {
-                            popUpTo("home") { inclusive = true }
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            launchSingleTop = true
                         }
-                    }
+                    },
+                    viewModel = viewModel,
+                    googleSignInClient = googleSignInClient
                 )
             }
         }

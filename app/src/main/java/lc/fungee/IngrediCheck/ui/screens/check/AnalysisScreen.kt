@@ -42,6 +42,7 @@ import com.google.accompanist.pager.rememberPagerState
 import lc.fungee.IngrediCheck.R
 
 import lc.fungee.IngrediCheck.data.model.IngredientRecommendation
+import lc.fungee.IngrediCheck.data.model.ImageInfo
 import lc.fungee.IngrediCheck.data.source.hapticSuccess
 import lc.fungee.IngrediCheck.ui.theme.Greyscale600
 import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
@@ -57,6 +58,9 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.ui.geometry.Offset
@@ -69,11 +73,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import io.github.jan.supabase.storage.storage
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisScreen(
-    barcode: String,
+    barcode: String?,
+    images: List<ImageInfo>? = null,
     supabaseClient: io.github.jan.supabase.SupabaseClient,
     functionsBaseUrl: String,
     anonKey: String
@@ -88,11 +95,13 @@ fun AnalysisScreen(
     val viewModel = remember {
         AnalysisViewModel(preferenceRepository, functionsBaseUrl, anonKey)
     }
-    LaunchedEffect(barcode) {
-        if (barcode.isNotEmpty()) {
-            viewModel.analyzeBarcode(UUID.randomUUID().toString(), barcode)
+    LaunchedEffect(barcode, images) {
+        val id = UUID.randomUUID().toString()
+        if (!images.isNullOrEmpty()) {
+            viewModel.analyzeImages(id, images)
+        } else if (!barcode.isNullOrBlank()) {
+            viewModel.analyzeBarcode(id, barcode!!)
         }
-
     }
 
     LazyColumn(
@@ -104,8 +113,11 @@ fun AnalysisScreen(
     ) {
         // Top section: loading/error/product header
         item {
+            val loadingLabel = if (!images.isNullOrEmpty()) "label images" else (barcode ?: "")
             when {
-                viewModel.phase == AnalysisPhase.LoadingProduct && viewModel.product == null -> LoadingContent(barcode)
+                viewModel.phase == AnalysisPhase.LoadingProduct && viewModel.product == null -> LoadingContent(
+                    loadingLabel
+                )
 
                 viewModel.product != null -> {
                     hapticSuccess(context)
@@ -114,17 +126,25 @@ fun AnalysisScreen(
                         viewModel.product!!,
                         result,
                         viewModel.phase,
-                        viewModel.recommendations
+                        viewModel.recommendations,
+                        supabaseClient
                     )
                     Spacer(Modifier.height(16.dp))
                 }
 
                 viewModel.error != null -> ErrorContent(
                     message = viewModel.error!!,
-                    onRetry = { viewModel.analyzeBarcode(UUID.randomUUID().toString(), barcode) }
+                    onRetry = {
+                        val idRetry = UUID.randomUUID().toString()
+                        if (!images.isNullOrEmpty()) {
+                            viewModel.analyzeImages(idRetry, images)
+                        } else if (!barcode.isNullOrBlank()) {
+                            viewModel.analyzeBarcode(idRetry, barcode!!)
+                        }
+                    }
                 )
 
-                else -> LoadingContent(barcode)
+                else -> LoadingContent(loadingLabel)
             }
         }
 
@@ -153,7 +173,13 @@ fun AnalysisScreen(
 }
 
 @Composable
-fun ProductHeader(product: Product, result: ProductRecommendation, phase: AnalysisPhase, recommendations: List<IngredientRecommendation>) {
+fun ProductHeader(
+    product: Product,
+    result: ProductRecommendation,
+    phase: AnalysisPhase,
+    recommendations: List<IngredientRecommendation>,
+    supabaseClient: io.github.jan.supabase.SupabaseClient
+) {
 
     Column(
         modifier = Modifier
@@ -162,26 +188,31 @@ fun ProductHeader(product: Product, result: ProductRecommendation, phase: Analys
     ) {
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val actionIconModifier = Modifier.size(24.dp)
             Icon(
-                painter = painterResource(id = R.drawable.backbutton), contentDescription = "back button"
-                , modifier = actionIconModifier.clickable { /*TODO*/ }
-                , tint = Color.Unspecified
+//                painter = painterResource(id = R.drawable.backbutton),
+                imageVector = Icons.Default.KeyboardArrowLeft,
+                contentDescription = "back button",
+                modifier = actionIconModifier.clickable { /*TODO*/ },
+                tint = PrimaryGreen100
             )
             Spacer(modifier = Modifier.weight(0.9f)) // pushes the next items to the end
             var isLike by remember { mutableStateOf(false) }
             Icon(
-                painter = if (isLike) painterResource(id = R.drawable.heartfilled)
-                else painterResource(id = R.drawable.heartoutline),
+                imageVector = if (isLike) Icons.Default.Favorite
+                else Icons.Default.FavoriteBorder,
+//
                 contentDescription = "Heart logo",
                 modifier = actionIconModifier.clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) { isLike = !isLike },
-                tint = Color.Unspecified
+                tint = if (isLike) Color.Red else PrimaryGreen100
             )
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -239,16 +270,47 @@ fun ProductHeader(product: Product, result: ProductRecommendation, phase: Analys
                 count = totalPages,
                 state = pagerState,
                 modifier = Modifier
-                    .fillMaxWidth().background(Greyscale50)
+                    .fillMaxWidth()
+                    .background(Greyscale50)
                     .height(350.dp) // fixed frame height
             ) { page ->
                 if (page < product.images.size) {
-                    AsyncImage(
-                        model = product.images[page].url,
-                        contentDescription = product.name,
-                        modifier = Modifier.fillMaxSize(0.8f),
-                        contentScale = ContentScale.Fit // This will fit the entire image without cropping
-                    )
+                    val img = product.images[page]
+                    // Resolve URL for either direct URL or a Supabase Storage hash
+                    val imageUrl by produceState<String?>(initialValue = img.url, key1 = img) {
+                        if (img.url == null && img.imageFileHash != null) {
+                            val bucket = supabaseClient.storage.from("productimages")
+                            // Try public URL first; if bucket isn't public, fall back to signed URL
+                            value = try {
+                                bucket.publicUrl(img.imageFileHash)
+                            } catch (e: Exception) {
+                                null
+                            }
+                            if (value.isNullOrBlank()) {
+                                value = try {
+                                    bucket.createSignedUrl(img.imageFileHash, 3600.seconds)
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                    }
+
+                    if (!imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = product.name,
+                            modifier = Modifier.fillMaxSize(0.8f),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        // Placeholder when image URL cannot be resolved
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.LightGray)
+                        )
+                    }
                 } else {
                     // Last page: blank gray background
                     Box(
@@ -257,11 +319,12 @@ fun ProductHeader(product: Product, result: ProductRecommendation, phase: Analys
                             .background(Color.LightGray)
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.clickimageplaceholder)
-                            , contentDescription = "click image",
+                            painter = painterResource(id = R.drawable.clickimageplaceholder),
+                            contentDescription = "click image",
                             modifier = Modifier
                                 .width(220.dp) // set custom width
-                                .height(220.dp).align(alignment = Alignment.Center) // set custom height
+                                .height(220.dp)
+                                .align(alignment = Alignment.Center) // set custom height
                         )
                     }
                 }
@@ -374,9 +437,26 @@ fun AnalysisStatusChip(
 
     if (result != null) {
         val (bg, fg, label, icons) = when (result) {
-            ProductRecommendation.Match -> StatusUi(Color(0xFFF3FFF7), Color(0xFF047D4B), "Matched", R.drawable.matched)
-            ProductRecommendation.NeedsReview -> StatusUi(Color(0xFFFFFBF0), Color(0xFF955102), "Uncertain", R.drawable.uncertian)
-            ProductRecommendation.NotMatch -> StatusUi(Color(0xFFFFF5F4), Color(0xFF972D26), "Unmatched", R.drawable.unmatched)
+            ProductRecommendation.Match -> StatusUi(
+                Color(0xFFF3FFF7),
+                Color(0xFF047D4B),
+                "Matched",
+                R.drawable.matched
+            )
+
+            ProductRecommendation.NeedsReview -> StatusUi(
+                Color(0xFFFFFBF0),
+                Color(0xFF955102),
+                "Uncertain",
+                R.drawable.uncertian
+            )
+
+            ProductRecommendation.NotMatch -> StatusUi(
+                Color(0xFFFFF5F4),
+                Color(0xFF972D26),
+                "Unmatched",
+                R.drawable.unmatched
+            )
         }
 
         Box(
@@ -427,12 +507,26 @@ fun DecoratedIngredientsText(
             val isUnmatched = f.preference.isNullOrBlank()
             val style = when {
                 f.safetyRecommendation == SafetyRecommendation.DefinitelyUnsafe ->
-                    SpanStyle(background = Color(0xFFFFF5F4), color = Color(0xFF972D26), fontWeight = FontWeight.SemiBold)
+                    SpanStyle(
+                        background = Color(0xFFFFF5F4),
+                        color = Color(0xFF972D26),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 // If API says MaybeUnsafe but user preference didn't match this ingredient, escalate to red style
                 f.safetyRecommendation == SafetyRecommendation.MaybeUnsafe && isUnmatched ->
-                    SpanStyle(background = Color(0xFFFFF5F4), color = Color(0xFF972D26), fontWeight = FontWeight.SemiBold)
+                    SpanStyle(
+                        background = Color(0xFFFFF5F4),
+                        color = Color(0xFF972D26),
+                        fontWeight = FontWeight.SemiBold
+                    )
+
                 f.safetyRecommendation == SafetyRecommendation.MaybeUnsafe ->
-                    SpanStyle(background = Color(0xFFFFF9EA), color = Color(0xFF955102), fontWeight = FontWeight.SemiBold)
+                    SpanStyle(
+                        background = Color(0xFFFFF9EA),
+                        color = Color(0xFF955102),
+                        fontWeight = FontWeight.SemiBold
+                    )
+
                 else ->
                     SpanStyle(color = Greyscale600)
             }
@@ -532,7 +626,10 @@ fun DecoratedIngredientsText(
                         // Clamp horizontally
                         x = x.coerceIn(padding, windowSize.width - popupContentSize.width - padding)
                         // Final vertical clamp
-                        y = y.coerceIn(padding, windowSize.height - popupContentSize.height - padding)
+                        y = y.coerceIn(
+                            padding,
+                            windowSize.height - popupContentSize.height - padding
+                        )
 
                         return IntOffset(x, y)
                     }

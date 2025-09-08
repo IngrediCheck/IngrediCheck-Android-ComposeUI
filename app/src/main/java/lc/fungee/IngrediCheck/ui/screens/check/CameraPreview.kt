@@ -90,7 +90,7 @@ fun CameraPreview(
     // Show hint once after 4s if scan hasn't happened (only in Scan mode)
     LaunchedEffect(barcodeDetected, mode) {
         if (mode == CameraMode.Scan && !barcodeDetected) {
-            delay(4000)
+//            delay(4000)
             if (!barcodeDetected) {
                 showMessage = true
                 Toast.makeText(context, "Please scan the code", Toast.LENGTH_SHORT).show()
@@ -239,10 +239,17 @@ object CameraCaptureManager {
         this.callback = cb
     }
 
+    fun isReady(): Boolean = imageCapture != null && context != null
+
     fun takePhoto() {
         val capture = imageCapture ?: return
+        val ctx = context
+        if (ctx == null) {
+            Log.w("CameraCaptureManager", "Context is null; camera not ready")
+            return
+        }
         val photoFile = File(
-            context?.cacheDir,
+            ctx.cacheDir,
             "captured-${System.currentTimeMillis()}.jpg"
         )
 
@@ -250,7 +257,7 @@ object CameraCaptureManager {
 
         capture.takePicture(
             outputOptions,
-            ContextCompat.getMainExecutor(context!!),
+            ContextCompat.getMainExecutor(ctx),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     callback?.invoke(photoFile) // send file back

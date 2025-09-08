@@ -262,6 +262,23 @@ class PreferenceRepository(
             prefs.clear()
         }
     }
+    /** Delete account and all remote data for the current user via Edge Function (requires service role on server). */
+    suspend fun deleteAccountRemote(): Boolean = withContext(Dispatchers.IO) {
+        val token = currentToken() ?: throw Exception("Not authenticated")
+        val url = "$functionsBaseUrl/${SafeEatsEndpoint.DELETEME.format()}"
+        Log.d("PreferenceRepo", "POST $url (delete account)")
+        val req = Request.Builder()
+            .url(url)
+            .post(okhttp3.RequestBody.create("application/json".toMediaTypeOrNull(), "{}"))
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("apikey", anonKey)
+            .build()
+        client.newCall(req).execute().use { resp ->
+            val body = resp.body?.string().orEmpty()
+            Log.d("PreferenceRepo", "Delete account code: ${resp.code}, body: ${body.take(200)}")
+            resp.code in listOf(200, 204)
+        }
+    }
  fun currentToken(): String? {
         try {
             // First try to get token from Supabase SDK
