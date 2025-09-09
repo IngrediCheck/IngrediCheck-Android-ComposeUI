@@ -7,11 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
-import android.widget.Toast
 
 @Composable
 fun AppleSignInSection(
@@ -28,64 +25,16 @@ fun AppleSignInSection(
     ) {
         Button(
             onClick = {
-                if (activity != null) {
-                    viewModel.startAppleLogin(activity)
-                }
+                activity?.let { viewModel.launchAppleWebViewLogin(it) }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
         ) {
-            Text("Sign in with Apple (AppAuth)")
+            Text("Sign in with Apple")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = {
-                if (activity != null) {
-                    // Use the WebView-based Apple login
-                    val repository = viewModel.javaClass.getDeclaredField("repository").apply { isAccessible = true }.get(viewModel) as AppleAuthRepository
-                    repository.launchAppleLoginWebView(
-                        activity = activity,
-                        clientId = "llc.fungee.ingredicheck.web", // Your Apple Service ID
-                        redirectUri = "io.supabase.ingredicheck://login-callback", // Your redirect URI
-                        onSuccess = { token: String ->
-                            Toast.makeText(activity, "Apple WebView Success: $token", Toast.LENGTH_LONG).show()
-                        },
-                        onError = { error: String ->
-                            Toast.makeText(activity, "Apple WebView Error: $error", Toast.LENGTH_LONG).show()
-                        }
-                    )
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("Sign in with Apple (WebView)")
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(
-            onClick = {
-                if (activity != null) {
-                    // Use the device browser for Apple login
-                    val repository = viewModel.javaClass.getDeclaredField("repository").apply { isAccessible = true }.get(viewModel) as AppleAuthRepository
-                    repository.launchAppleLoginInBrowser(
-                        activity = activity,
-                        clientId = "llc.fungee.ingredicheck.web", // Your Apple Service ID
-                        redirectUri = "https://wqidjkpfdrvomfkmefqc.supabase.co/auth/v1/callback" // Your redirect URI
-                    )
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("Sign in with Apple (Browser)")
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -108,4 +57,4 @@ fun AppleSignInSection(
             else -> {}
         }
     }
-} 
+}
