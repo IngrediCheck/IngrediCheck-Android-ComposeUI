@@ -299,10 +299,13 @@ fun FavoriteItemDetailScreen(
         Column(modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
+
             .padding(16.dp)) {
             Text(item?.name ?: "Unknown Name", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             if (!item?.brand.isNullOrBlank()) Text(
                 item!!.brand!!,
+
+
                 fontSize = 15.sp,
                 color = Color.Gray
             )
