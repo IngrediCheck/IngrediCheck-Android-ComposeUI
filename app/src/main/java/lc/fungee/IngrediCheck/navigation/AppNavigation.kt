@@ -15,6 +15,10 @@ import io.github.jan.supabase.SupabaseClient
 //import lc.fungee.IngrediCheck.ui.screens.check.CameraScreen
 import lc.fungee.IngrediCheck.ui.screens.home.HomeScreen
 import lc.fungee.IngrediCheck.ui.screens.list.ListScreen
+import lc.fungee.IngrediCheck.ui.screens.list.FavoritesPageScreen
+import lc.fungee.IngrediCheck.ui.screens.list.RecentScansPageScreen
+import lc.fungee.IngrediCheck.ui.screens.list.HistoryItemDetailScreen
+import lc.fungee.IngrediCheck.ui.screens.list.FavoriteItemDetailScreen
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.component.NetworkStatusOverlay
@@ -24,6 +28,7 @@ import lc.fungee.IngrediCheck.ui.screens.SplashScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.DisclaimerScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeScreen
 import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
+import java.net.URLDecoder
 
 @Composable
 fun AppNavigation(
@@ -134,6 +139,41 @@ fun AppNavigation(
                 supabaseClient = supabaseClient,
                 functionsBaseUrl = functionsBaseUrl,
                 anonKey = anonKey
+            )
+        }
+        composable("favoritesAll") {
+            FavoritesPageScreen(
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey,
+                navController = navController
+            )
+        }
+        composable("recentScansAll") {
+            RecentScansPageScreen(
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey,
+                navController = navController
+            )
+        }
+        composable("historyItem?item={item}") { backStackEntry ->
+            val raw = backStackEntry.arguments?.getString("item") ?: ""
+            val itemJson = try { URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+            HistoryItemDetailScreen(
+                itemJson = itemJson,
+                supabaseClient = supabaseClient,
+                navController = navController,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey
+            )
+        }
+        composable("favoriteItem?item={item}") { backStackEntry ->
+            val raw = backStackEntry.arguments?.getString("item") ?: ""
+            val itemJson = try { URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+            FavoriteItemDetailScreen(
+                itemJson = itemJson,
+                supabaseClient = supabaseClient
             )
         }
         composable ("setting"){

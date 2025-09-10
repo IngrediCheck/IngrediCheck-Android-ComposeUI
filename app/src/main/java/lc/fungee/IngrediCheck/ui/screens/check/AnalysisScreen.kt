@@ -75,6 +75,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.jan.supabase.storage.storage
 import kotlin.time.Duration.Companion.seconds
+import lc.fungee.IngrediCheck.ui.screens.analysis.AnalysisResultSection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,7 +167,7 @@ fun AnalysisScreen(
 //                    IngredientSafetyItem(recommendation)
                 }
             } else {
-                item { Text("No issues found for your preferences.", color = Color.Gray) }
+              ""
             }
         }
     }
@@ -337,44 +338,16 @@ fun ProductHeader(
                 modifier = Modifier.padding(10.dp)
             )
 
-            // Overall analysis result chip
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.Center
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                AnalysisStatusChip(phase, result)
-            }
-        }
-
-        if (product.ingredients.isNotEmpty()) {
-            Column(Modifier.padding(16.dp)) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Ingredients",
-                    fontSize = 17.sp, // font-size: 17px
-                    fontWeight = FontWeight.SemiBold, // closest to 590
-                    lineHeight = 22.sp, // line-height: 22px
-                    letterSpacing = (-0.41).sp, // letter-spacing: -0.41px
-                    color = Color.Black, // black color
-                    textAlign = TextAlign.Start, // center align
-                    modifier = Modifier.fillMaxWidth()
+                AnalysisResultSection(
+                    product = product,
+                    recommendations = recommendations,
+                    phase = phase
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val fragments = decoratedIngredientsList(product.ingredients, recommendations)
-                if (fragments.isNotEmpty()) {
-                    DecoratedIngredientsText(fragments, recommendations)
-                } else {
-                    Text(
-                        "No ingredient details available",
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                }
             }
         }
     }

@@ -62,7 +62,7 @@ val items = listOf(
     ),
     BottomNavigationItem(
         title = "list",
-        route = "list",
+        route = "List",
         selectedIcon = R.drawable.listlogo)
     // Add more items as needed
 )

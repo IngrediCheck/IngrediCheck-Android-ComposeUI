@@ -26,7 +26,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
 
-import androidx.compose.material3.CircularProgressIndicator
+ 
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -297,15 +297,7 @@ fun HomeScreen(
                 // Validation feedback
                 when (val state = preferenceViewModel.validationState) {
                     is ValidationState.Validating -> {
-                        Row() {
-                            Text("Thinking  ", color = PrimaryGreen100, fontSize = 14.sp)
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(14.dp).align(Alignment.CenterVertically),
-                                color = PrimaryGreen100
-
-                            )
-                        }
+                        Text("Thinking...", color = PrimaryGreen100, fontSize = 14.sp)
                     }
 
                     is ValidationState.Failure -> {
