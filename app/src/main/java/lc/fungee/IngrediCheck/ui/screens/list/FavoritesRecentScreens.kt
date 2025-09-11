@@ -306,6 +306,7 @@ fun FavoriteItemDetailScreen(
                 item!!.brand!!,
 
 
+
                 fontSize = 15.sp,
                 color = Color.Gray
             )
