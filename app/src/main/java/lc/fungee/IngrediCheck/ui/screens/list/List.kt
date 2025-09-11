@@ -154,6 +154,7 @@ fun ListScreen(
                         )
                     )
 
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Favorites section
