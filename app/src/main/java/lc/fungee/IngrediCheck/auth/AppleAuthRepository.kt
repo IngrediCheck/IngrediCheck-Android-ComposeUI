@@ -8,6 +8,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,6 +17,7 @@ import android.net.Uri
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.base.Functions
 import com.google.gson.Gson
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.annotations.SupabaseInternal
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -27,13 +29,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-
+import okhttp3.Protocol
 
 class AppleAuthRepository(
     private val context: Context,
     private val supabaseUrl: String,
     private val supabaseAnonKey: String
 ) {
+    @OptIn(SupabaseInternal::class)
     val supabaseClient: SupabaseClient = createSupabaseClient(
         supabaseUrl = supabaseUrl,
         supabaseKey = supabaseAnonKey
@@ -46,6 +49,20 @@ class AppleAuthRepository(
 
         install(Postgrest) // Enables PostgREST database calls
         install(Storage) // Enables Storage for image uploads
+        // Configure HTTP client to be more resilient on flaky networks
+        httpEngine = OkHttp.create {
+            config {
+                // Force HTTP/1.1 to avoid certain HTTP/2 edge cases on some networks/ISPs
+                protocols(java.util.Arrays.asList(Protocol.HTTP_1_1))
+            }
+        }
+        httpConfig {
+            install(HttpTimeout) {
+                requestTimeoutMillis = 60_000
+                connectTimeoutMillis = 30_000
+                socketTimeoutMillis = 60_000
+            }
+        }
     }
     private val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {

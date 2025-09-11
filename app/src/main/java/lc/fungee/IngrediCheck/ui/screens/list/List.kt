@@ -267,31 +267,31 @@ private fun FavoritesSection(
         when {
             isLoading && favorites == null -> {
                 // Use the screen-level PullRefreshIndicator; keep space without inline spinner
-                Box(Modifier.fillMaxWidth().height(130.dp)) { }
+                Box(Modifier.fillMaxWidth().height(150.dp)) { }
             }
             favorites == null -> {
                 // Initial load state
-                Box(Modifier.fillMaxWidth().height(130.dp)) {}
+                Box(Modifier.fillMaxWidth().height(150.dp)) {}
             }
             favorites.isEmpty() -> {
                 // Empty state
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp), // force some height
-                    contentAlignment = Alignment.Center
+                        .height(150.dp), // force some height
+
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.foodemptylist),
+                        painter = painterResource(id = R.drawable.emptyfavimg),
                         contentDescription = "Empty Favorites",
                         modifier = Modifier
                             .size(width = 120.dp, height = 120.dp)
                     )
-                    Spacer(Modifier.width(12.dp))
-//                    Text(
-//                        "No Favorite products yet",
-//                        style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Gray)
-//                    )
+
+                    Text(
+                        "No Favorite products yet",
+                        style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Gray)
+                    )
                 }
             }
             else -> {
@@ -415,11 +415,17 @@ private fun FavoriteItemBirdsEyeCard(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
-            Image(
-                painter = painterResource(id = R.drawable.foodemptylist),
-                contentDescription = "Placeholder",
-                modifier = Modifier.fillMaxSize()
-            )
+            Column {
+                Image(
+                    painter = painterResource(id = R.drawable.emptyfavimg),
+                    contentDescription = "Placeholder",
+                    modifier = Modifier.fillMaxSize()
+                )
+                Text("NO Favorite products yet"
+                    , color = PrimaryGreen100
+                )
+            }
+
         }
     }
 }

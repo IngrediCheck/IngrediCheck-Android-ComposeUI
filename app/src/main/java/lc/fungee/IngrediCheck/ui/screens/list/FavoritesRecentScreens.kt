@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,6 +56,7 @@ import com.google.accompanist.pager.rememberPagerState
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import lc.fungee.IngrediCheck.ui.screens.check.DynamicPagerIndicator
@@ -62,6 +64,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
+import lc.fungee.IngrediCheck.data.model.imageFileHash
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White
@@ -93,57 +96,71 @@ fun FavoritesPageScreen(
                 onCheckClick = { showSheet = true })
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(White)
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
                 .pullRefresh(pull)
         ) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "Favorites",
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
-                color = Color(0xFF1B270C)
-            )
-            Spacer(Modifier.height(12.dp))
-
-            when {
-                ui.favorites == null && ui.isLoadingFavorites ->
-                    Box(
-                        Modifier.fillMaxSize()
-                    ) { }
-
-                ui.favorites == null -> Box(Modifier.fillMaxSize())
-                ui.favorites!!.isEmpty() -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painterResource(id = R.drawable.foodemptylist),
-                            contentDescription = null,
-                            modifier = Modifier.size(120.dp)
-                        )
-//                    Spacer(Modifier.width(12.dp))
-//                    Text("No Favorite products yet", color = Color.Gray)
-                    }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pullRefresh(pull),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    Text(
+                        text = "Favorites",
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 17.sp,
+                        color = Color(0xFF1B270C),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(ui.favorites!!) { item ->
-                            FavoriteItemListCard(
-                                item = item, supabaseClient = supabaseClient,
-                                modifier = Modifier.clickable {
-                                    val json = java.net.URLEncoder.encode(
-                                        Json.encodeToString(FavoriteItem.serializer(), item),
-                                        "UTF-8"
-                                    )
-                                    navController?.navigate("favoriteItem?item=$json")
-                                }
+                if (ui.favorites == null && ui.isLoadingFavorites) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) { }
+                    }
+                } else if (ui.favorites == null) {
+                    item { Box(Modifier.fillMaxSize()) }
+                } else if (ui.favorites!!.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+
+                        ) {
+                            Image(
+                                painterResource(id = R.drawable.emptyfavimg),
+                                contentDescription = null,
+                                modifier = Modifier.size(150.dp)
                             )
-                            Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
+                            Text("No favorite products yet", color = Color.Gray)
                         }
+                    }
+                } else {
+                    items(ui.favorites!!) { item ->
+                        FavoriteItemListCard(
+                            item = item, supabaseClient = supabaseClient,
+                            modifier = Modifier.clickable {
+                                val json = java.net.URLEncoder.encode(
+                                    Json.encodeToString(FavoriteItem.serializer(), item),
+                                    "UTF-8"
+                                )
+                                navController?.navigate("favoriteItem?item=$json")
+                            }
+                        )
+                        Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
                     }
                 }
             }
@@ -151,7 +168,7 @@ fun FavoritesPageScreen(
             PullRefreshIndicator(
                 refreshing = ui.isLoadingFavorites,
                 state = pull,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                modifier = Modifier.align(Alignment.TopCenter)
             )
         }
         if (showSheet) {
@@ -162,6 +179,10 @@ fun FavoritesPageScreen(
                 anonKey = anonKey
             )
         }
+    }
+    // Auto refresh first time Favorites screen opens
+    LaunchedEffect(Unit) {
+        vm.refreshFavorites()
     }
 }
 
@@ -318,7 +339,10 @@ fun RecentScansPageScreen(
 @Composable
 fun FavoriteItemDetailScreen(
     itemJson: String,
-    supabaseClient: io.github.jan.supabase.SupabaseClient
+    supabaseClient: io.github.jan.supabase.SupabaseClient,
+    navController: NavController? = null,
+    functionsBaseUrl: String = "",
+    anonKey: String = ""
 ) {
     val item = remember(itemJson) {
         runCatching {
@@ -328,45 +352,179 @@ fun FavoriteItemDetailScreen(
             )
         }.getOrNull()
     }
-    Scaffold { paddingValues ->
-        Column(
+    val context = LocalContext.current
+    val prefRepo = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
+    val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var showSheet by remember { mutableStateOf(false) }
+    Scaffold(
+        bottomBar = {
+            if (navController != null) BottomBar(
+                navController = navController,
+                onCheckClick = { showSheet = true })
+        }
+    ) { paddingValues ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(White)
                 .padding(paddingValues)
-
-                .padding(16.dp)
+                .padding(top = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(item?.name ?: "Unknown Name", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            if (!item?.brand.isNullOrBlank()) Text(
-                item!!.brand!!,
+            item {
+                // Header actions
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val actionIconModifier = Modifier.size(24.dp)
+                    Row(
+                        modifier = Modifier
+                            .clickable { navController?.popBackStack() }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowLeft,
+                            contentDescription = "Back",
+                            tint = Color(0xFF2B7A0B)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Lists",
+                            color = Color(0xFF2B7A0B),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
+                    Spacer(modifier = Modifier.weight(0.9f))
+                    var isLike by remember { mutableStateOf(true) }
+                    Icon(
+                        imageVector = if (isLike) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Heart logo",
+                        modifier = actionIconModifier.clickable {
+                            val newVal = !isLike
+                            isLike = newVal
+                            val listItemId = item?.listItemId
+                            if (listItemId != null && !newVal) {
+                                scope.launch {
+                                    val ok = runCatching { listRepo.removeFavoriteListItem(listItemId) }.getOrDefault(false)
+                                    if (!ok) {
+                                        isLike = !newVal
+                                    } else {
+                                        // After removal, go back to the list
+                                        navController?.popBackStack()
+                                    }
+                                }
+                            }
+                        },
+                        tint = if (isLike) Color.Red else Color(0xFF2B7A0B)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
 
-                fontSize = 15.sp,
-                color = Color.Gray
-            )
-            Spacer(Modifier.height(12.dp))
-            val first = item?.images?.firstOrNull()
-            val imageUrl by rememberResolvedImageUrl(first, supabaseClient)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color(0xFFF3F2F9))
-            ) {
-                if (!imageUrl.isNullOrBlank()) AsyncImage(
-                    model = imageUrl,
-                    contentDescription = item?.name,
-                    modifier = Modifier.fillMaxSize()
+                // Title and brand
+                Text(
+                    text = item?.name ?: "Unknown Product",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 22.sp,
+                    letterSpacing = (-0.41).sp,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+                item?.brand?.let { brand ->
+                    Text(
+                        text = brand,
+                        fontSize = 15.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Images pager (same pattern as HistoryItemDetailScreen)
+                val pagerState = rememberPagerState()
+                val totalPages = (item?.images?.size ?: 0) + 1
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    HorizontalPager(
+                        count = totalPages,
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF3F2F9))
+                            .height(350.dp)
+                    ) { page ->
+                        val imgs = item?.images ?: emptyList()
+                        if (page < imgs.size) {
+                            val img = imgs[page]
+                            val imageUrl by rememberResolvedImageUrl(img, supabaseClient)
+                            if (!imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = item?.name,
+                                    modifier = Modifier.fillMaxSize(0.8f),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.LightGray)
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.LightGray)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.clickimageplaceholder),
+                                    contentDescription = "click image",
+                                    modifier = Modifier
+                                        .width(220.dp)
+                                        .height(220.dp)
+                                        .align(Alignment.Center)
+                                )
+                            }
+                        }
+                    }
+                    // Dots indicator
+                    DynamicPagerIndicator(
+                        currentPage = pagerState.currentPage,
+                        totalPages = totalPages,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+
+                // Ingredients
+                Text("Ingredients", fontWeight = FontWeight.SemiBold)
+                val ingredientsText = remember(item) {
+                    item?.ingredients?.flatMap { flattenNames(it) }?.joinToString(", ") ?: ""
+                }
+                if (ingredientsText.isNotBlank()) Text(ingredientsText) else Text(
+                    "No ingredient details available",
+                    color = Color.Gray
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Text("Ingredients", fontWeight = FontWeight.SemiBold)
-            val ingredientsText = remember(item) {
-                item?.ingredients?.flatMap { flattenNames(it) }?.joinToString(", ") ?: ""
-            }
-            if (ingredientsText.isNotBlank()) Text(ingredientsText) else Text(
-                "No ingredient details available",
-                color = Color.Gray
+        }
+        if (showSheet) {
+            CheckBottomSheet(
+                onDismiss = { showSheet = false },
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey
             )
         }
     }
@@ -388,6 +546,10 @@ fun HistoryItemDetailScreen(
             )
         }.getOrNull()
     }
+    val context = LocalContext.current
+    val prefRepo = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
+    val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
+    val scope = rememberCoroutineScope()
     val product = remember(item) {
         item?.let {
             Product(
@@ -451,16 +613,23 @@ fun HistoryItemDetailScreen(
                     Icon(
                         imageVector = if (isLike) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Heart logo",
-                        modifier = actionIconModifier.clickable { isLike = !isLike },
+                        modifier = actionIconModifier.clickable {
+                            val newVal = !isLike
+                            isLike = newVal
+                            val caid = item?.clientActivityId
+                            if (!caid.isNullOrBlank()) {
+                                scope.launch {
+                                    val ok = runCatching {
+                                        if (newVal) listRepo.addToFavorites(caid) else listRepo.removeFromFavoritesByClientActivity(caid)
+                                    }.getOrDefault(false)
+                                    if (!ok) isLike = !newVal
+                                }
+                            }
+                        },
                         tint = if (isLike) Color.Red else Color(0xFF2B7A0B)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    Icon(
-                        painter = painterResource(id = R.drawable.flaglogo),
-                        contentDescription = "Flag logo",
-                        modifier = actionIconModifier.clickable { /* TODO: Feedback flow */ },
-                        tint = Color.Unspecified
-                    )
+                    // No flag icon per requirements
                 }
 
                 // Title and brand
@@ -596,7 +765,7 @@ fun FavoriteItemListCard(
                 )
             } else {
                 Image(
-                    painter = painterResource(id = R.drawable.foodemptylist),
+                    painter = painterResource(id = R.drawable.emptyfavimg),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -606,12 +775,16 @@ fun FavoriteItemListCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(item.brand ?: "Unknown Brand", fontSize = 14.sp)
             Text(item.name ?: "Unknown Name", fontSize = 13.sp, color = Color.Gray)
-            val date = item.createdAt ?: ""
-            if (date.isNotBlank()) Text(
-                date.replace('T', ' ').take(19),
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
+            val rawDate = item.createdAt ?: ""
+            val date = if (rawDate.isNotBlank()) {
+                try {
+                    val parsed = LocalDateTime.parse(rawDate, DateTimeFormatter.ISO_DATE_TIME)
+                    parsed.format(DateTimeFormatter.ofPattern("MMM dd yyyy"))
+                } catch (e: Exception) {
+                    rawDate
+                }
+            } else ""
+            if (date.isNotBlank()) Text(date, fontSize = 12.sp, color = Color.Gray)
         }
     }
 }
@@ -639,7 +812,7 @@ fun HistoryItemCard(
                 )
             } else {
                 Image(
-                    painter = painterResource(id = R.drawable.foodemptylist),
+                    painter = painterResource(id = R.drawable.emptyfavimg),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -652,20 +825,14 @@ fun HistoryItemCard(
             val rawDate = item.createdAt ?: ""
             val date = if (rawDate.isNotBlank()) {
                 try {
-
                     val parsed = LocalDateTime.parse(rawDate, DateTimeFormatter.ISO_DATE_TIME)
                     parsed.format(DateTimeFormatter.ofPattern("MMM dd yyyy"))
-
                 } catch (e: Exception) {
                     rawDate
                 }
-            } else " "
+            } else ""
 
-            if (date.isNotBlank()) Text(
-                date.replace('T', ' ').take(19),
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
+            if (date.isNotBlank()) Text(date, fontSize = 12.sp, color = Color.Gray)
         }
     }
 }
@@ -675,17 +842,19 @@ fun rememberResolvedImageUrl(
     first: ImageLocationInfo?,
     supabaseClient: io.github.jan.supabase.SupabaseClient
 ): State<String?> {
-    return produceState<String?>(initialValue = first?.url) {
+    return produceState<String?>(initialValue = first?.url ?: first?.imageUrl) {
         if (value.isNullOrBlank() && first?.imageFileHash != null) {
             val bucket = supabaseClient.storage.from("productimages")
+            // Prefer signed URL to work with private buckets
             value = try {
-                bucket.publicUrl(first.imageFileHash!!)
+                bucket.createSignedUrl(first.imageFileHash!!, 3600.seconds)
             } catch (e: Exception) {
                 null
             }
+            // Fallback to public URL only if bucket is public
             if (value.isNullOrBlank()) {
                 value = try {
-                    bucket.createSignedUrl(first.imageFileHash!!, 3600.seconds)
+                    bucket.publicUrl(first.imageFileHash!!)
                 } catch (e: Exception) {
                     null
                 }

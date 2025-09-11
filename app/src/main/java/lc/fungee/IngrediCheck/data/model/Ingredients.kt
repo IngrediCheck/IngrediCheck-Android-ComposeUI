@@ -25,9 +25,20 @@ data class IngredientRecommendation(
 
 @Serializable
 data class ImageLocationInfo(
-    val url: String? = null,
-    val imageFileHash: String? = null
+    @SerialName("url") val url: String? = null,
+    @SerialName("image_url") val imageUrl: String? = null,
+    // Support multiple server shapes:
+    // - image_file_hash (snake_case)
+    // - imageFileHash (camelCase)
+    // - "image File Hash" (spaced; seen in some payloads)
+    @SerialName("image_file_hash") val imageFileHashSnake: String? = null,
+    @SerialName("imageFileHash") val imageFileHashCamel: String? = null,
+    @SerialName("image File Hash") val imageFileHashSpaced: String? = null
 )
+
+// Unified accessor used across UI code
+val ImageLocationInfo.imageFileHash: String?
+    get() = imageFileHashSnake ?: imageFileHashCamel ?: imageFileHashSpaced
 
 @Serializable
 data class Product(

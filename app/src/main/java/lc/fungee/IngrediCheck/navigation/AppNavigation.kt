@@ -173,7 +173,10 @@ fun AppNavigation(
             val itemJson = try { URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
             FavoriteItemDetailScreen(
                 itemJson = itemJson,
-                supabaseClient = supabaseClient
+                supabaseClient = supabaseClient,
+                navController = navController,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey
             )
         }
         composable ("setting"){

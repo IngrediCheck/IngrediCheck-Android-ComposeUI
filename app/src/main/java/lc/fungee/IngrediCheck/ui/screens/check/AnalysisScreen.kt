@@ -21,6 +21,7 @@ import lc.fungee.IngrediCheck.data.model.*
 import lc.fungee.IngrediCheck.data.repository.AnalysisViewModel
 import lc.fungee.IngrediCheck.data.repository.AnalysisPhase
 import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
+import lc.fungee.IngrediCheck.data.repository.ListTabRepository
 import java.util.UUID
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -51,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.font.FontFamily
 import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import java.nio.file.WatchEvent
@@ -74,6 +76,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 import lc.fungee.IngrediCheck.ui.screens.analysis.AnalysisResultSection
 
@@ -90,18 +93,16 @@ fun AnalysisScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
 
     // Use the existing authenticated Supabase client
-    val preferenceRepository = remember {
-        PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey)
-    }
-    val viewModel = remember {
-        AnalysisViewModel(preferenceRepository, functionsBaseUrl, anonKey)
-    }
+    val preferenceRepository = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
+    val listRepo = remember { ListTabRepository(preferenceRepository, functionsBaseUrl, anonKey) }
+    val viewModel = remember { AnalysisViewModel(preferenceRepository, functionsBaseUrl, anonKey) }
+    val scope = rememberCoroutineScope()
+    val clientActivityId = remember(barcode, images) { UUID.randomUUID().toString() }
     LaunchedEffect(barcode, images) {
-        val id = UUID.randomUUID().toString()
         if (!images.isNullOrEmpty()) {
-            viewModel.analyzeImages(id, images)
+            viewModel.analyzeImages(clientActivityId, images)
         } else if (!barcode.isNullOrBlank()) {
-            viewModel.analyzeBarcode(id, barcode!!)
+            viewModel.analyzeBarcode(clientActivityId, barcode!!)
         }
     }
 
@@ -128,7 +129,16 @@ fun AnalysisScreen(
                         result,
                         viewModel.phase,
                         viewModel.recommendations,
-                        supabaseClient
+                        supabaseClient,
+                        onToggleFavorite = { newValue ->
+                            val caid = clientActivityId
+                            scope.launch {
+                                val ok = runCatching {
+                                    if (newValue) listRepo.addToFavorites(caid) else listRepo.removeFromFavoritesByClientActivity(caid)
+                                }.getOrDefault(false)
+                                // no-op on failure; UI will flip back inside header
+                            }
+                        }
                     )
                     Spacer(Modifier.height(16.dp))
                 }
@@ -179,7 +189,8 @@ fun ProductHeader(
     result: ProductRecommendation,
     phase: AnalysisPhase,
     recommendations: List<IngredientRecommendation>,
-    supabaseClient: io.github.jan.supabase.SupabaseClient
+    supabaseClient: io.github.jan.supabase.SupabaseClient,
+    onToggleFavorite: (Boolean) -> Unit = {}
 ) {
 
     Column(
@@ -212,7 +223,11 @@ fun ProductHeader(
                 modifier = actionIconModifier.clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
-                ) { isLike = !isLike },
+                ) {
+                    val newVal = !isLike
+                    isLike = newVal
+                    onToggleFavorite(newVal)
+                },
                 tint = if (isLike) Color.Red else PrimaryGreen100
             )
 
@@ -278,18 +293,19 @@ fun ProductHeader(
                 if (page < product.images.size) {
                     val img = product.images[page]
                     // Resolve URL for either direct URL or a Supabase Storage hash
-                    val imageUrl by produceState<String?>(initialValue = img.url, key1 = img) {
-                        if (img.url == null && img.imageFileHash != null) {
+                    val imageUrl by produceState<String?>(initialValue = img.url ?: img.imageUrl, key1 = img) {
+                        if ((value.isNullOrBlank()) && img.imageFileHash != null) {
                             val bucket = supabaseClient.storage.from("productimages")
-                            // Try public URL first; if bucket isn't public, fall back to signed URL
+                            // Prefer a signed URL to work with private buckets
                             value = try {
-                                bucket.publicUrl(img.imageFileHash)
+                                bucket.createSignedUrl(img.imageFileHash!!, 3600.seconds)
                             } catch (e: Exception) {
                                 null
                             }
+                            // Fallback to public URL only if bucket is public
                             if (value.isNullOrBlank()) {
                                 value = try {
-                                    bucket.createSignedUrl(img.imageFileHash, 3600.seconds)
+                                    bucket.publicUrl(img.imageFileHash!!)
                                 } catch (e: Exception) {
                                     null
                                 }
