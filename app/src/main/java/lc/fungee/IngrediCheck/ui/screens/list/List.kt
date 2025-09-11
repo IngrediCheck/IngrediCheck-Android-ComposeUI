@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,22 +30,24 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import androidx.compose.foundation.clickable
+import androidx.compose.material.pullrefresh.*
 
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.ExperimentalMaterialApi
-import kotlinx.serialization.encodeToString
+import androidx.compose.runtime.LaunchedEffect
+
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 import com.google.gson.Gson
-// storage and seconds only used by helpers in FavoritesRecentScreens.kt
+
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.data.model.SupabaseSession
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.data.repository.FavoriteItem
 import lc.fungee.IngrediCheck.data.repository.HistoryItem
-// removed wrong import of ImageLocationInfo from repository; using shared helper
+
 import lc.fungee.IngrediCheck.data.repository.ListTabRepository
 import lc.fungee.IngrediCheck.data.repository.ListTabViewModel
 import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
@@ -72,6 +72,7 @@ fun ListScreen(
             .getString("session", null)
     }
 
+
     val session = remember {
         sessionJson?.let {
             Gson().fromJson(it, SupabaseSession::class.java)
@@ -83,11 +84,22 @@ fun ListScreen(
     val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
     val listVm = remember { ListTabViewModel(listRepo) }
     val ui by listVm.uiState.collectAsState()
+    LaunchedEffect(Unit) {
+        { listVm.refreshAll() }
+    }
+//    val isRefreshing = ui.isLoadingFavorites || ui.isLoadingHistory
+//    val pullRefreshState = rememberPullRefreshState(
+//        refreshing = isRefreshing,
+//        onRefresh = { listVm.refreshAll() }
+//    )
+    val favoritesRefreshState = rememberPullRefreshState(
+        refreshing = ui.isLoadingFavorites,
+        onRefresh = { listVm.refreshFavorites() }
+    )
 
-    val isRefreshing = ui.isLoadingFavorites || ui.isLoadingHistory
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = isRefreshing,
-        onRefresh = { listVm.refreshAll() }
+    val historyRefreshState = rememberPullRefreshState(
+        refreshing = ui.isLoadingHistory,
+        onRefresh = { listVm.refreshHistory() }
     )
 
     Scaffold(
@@ -97,7 +109,7 @@ fun ListScreen(
             modifier = Modifier
                 .background(White)
                 .fillMaxSize()
-                .pullRefresh(pullRefreshState)
+//                .pullRefresh(pullRefreshState)
         ) {
             if (ui.isSearching) {
                 // Search screen overlay
@@ -145,23 +157,38 @@ fun ListScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Favorites section
-                    FavoritesSection(
-                        favorites = ui.favorites,
-                        isLoading = ui.isLoadingFavorites,
-                        onViewAll = { navController.navigate("favoritesAll") },
-                        onItemClick = { item ->
-                            val json = URLEncoder.encode(
-                                Json.encodeToString(FavoriteItem.serializer(), item),
-                                "UTF-8"
-                            )
-                            navController.navigate("favoriteItem?item=$json")
-                        },
-                        supabaseClient = supabaseClient
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pullRefresh(favoritesRefreshState)
+                    ) {
+                        FavoritesSection(
+                            favorites = ui.favorites,
+                            isLoading = ui.isLoadingFavorites,
+                            onViewAll = { navController.navigate("favoritesAll") },
+                            onItemClick = { item ->
+                                val json = URLEncoder.encode(
+                                    Json.encodeToString(FavoriteItem.serializer(), item),
+                                    "UTF-8"
+                                )
+                                navController.navigate("favoriteItem?item=$json")
+                            },
+                            supabaseClient = supabaseClient
+                        )
+                        PullRefreshIndicator(
+                            refreshing = ui.isLoadingFavorites,
+                            state = favoritesRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                        Spacer(modifier = Modifier.height(24.dp))
 
                     // Recent Scans section
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pullRefresh(historyRefreshState)
+                    ) {
                     RecentScansSection(
                         history = ui.history,
                         isLoading = ui.isLoadingHistory,
@@ -176,16 +203,22 @@ fun ListScreen(
                         },
                         supabaseClient = supabaseClient
                     )
+                        PullRefreshIndicator(
+                            refreshing = ui.isLoadingHistory,
+                            state = historyRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
-            PullRefreshIndicator(
-                refreshing = isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+//            PullRefreshIndicator(
+////                refreshing = isRefreshing,
+////                state = pullRefreshState,
+//                modifier = Modifier.align(Alignment.TopCenter)
+//            )
         }
     }
 

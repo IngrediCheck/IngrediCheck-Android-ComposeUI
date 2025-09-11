@@ -59,7 +59,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import lc.fungee.IngrediCheck.ui.screens.check.DynamicPagerIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White
@@ -199,66 +201,91 @@ fun RecentScansPageScreen(
         return
     }
 
-    val pull = rememberPullRefreshState(
+    // ✅ Pull-to-refresh state
+    val pullRefreshState = rememberPullRefreshState(
         refreshing = ui.isLoadingHistory,
         onRefresh = { vm.refreshHistory() }
     )
+
     var showSheet by remember { mutableStateOf(false) }
+
     Scaffold(
         bottomBar = {
-            if (navController != null) BottomBar(
-                navController = navController,
-                onCheckClick = { showSheet = true })
+            if (navController != null) {
+                BottomBar(
+                    navController = navController,
+                    onCheckClick = { showSheet = true }
+                )
+            }
         }
     ) { paddingValues ->
-        Column(
+        // ✅ Box for pull-to-refresh
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(White)
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .pullRefresh(pull)
+                .pullRefresh(pullRefreshState)
         ) {
-            Spacer(Modifier.height(12.dp))
 
-            Text(
-                text = "Recent Scans",
-                fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
-                color = Color(0xFF1B270C), modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-//            Spacer(Modifier.weight(1f))
-//            IconButton(onClick = { isSearching = true }) { Icon(Icons.Default.Search, contentDescription = null) }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pullRefresh(pullRefreshState),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
 
-        Spacer(Modifier.height(12.dp))
-
-        when {
-            ui.history == null && ui.isLoadingHistory ->
-                Box(
-                    Modifier.fillMaxSize()
-                ) { }
-
-            ui.history == null -> Box(Modifier.fillMaxSize())
-            ui.history!!.isEmpty() -> {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(
-                        painterResource(id = R.drawable.emptyrecentscan),
-                        contentDescription = null,
-                        modifier = Modifier.size(width = 174.dp, height = 134.dp)
+                // Header
+                item {
+                    Text(
+                        text = "Recent Scans",
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 17.sp,
+                        color = Color(0xFF1B270C),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
                     )
-                    Text("No products scanned yet", color = Color.Gray)
-                }
-            }
 
-            else -> {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // Loading state
+                if (ui.history == null && ui.isLoadingHistory) {
+                    item {
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+
+                        }
+                    }
+                }
+                // Empty state
+                else if (ui.history?.isEmpty() == true) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Image(
+                                painterResource(id = R.drawable.emptyrecentscan),
+                                contentDescription = null,
+                                modifier = Modifier.size(width = 174.dp, height = 134.dp)
+                            )
+                            Text("No products scanned yet", color = Color.Gray)
+                        }
+                    }
+                }
+                // History items
+                else if (!ui.history.isNullOrEmpty()) {
                     items(ui.history!!) { item ->
                         HistoryItemCard(
-                            item = item, supabaseClient = supabaseClient,
+                            item = item,
+                            supabaseClient = supabaseClient,
                             modifier = Modifier.clickable {
                                 val json = java.net.URLEncoder.encode(
                                     Json.encodeToString(HistoryItem.serializer(), item),
@@ -271,16 +298,22 @@ fun RecentScansPageScreen(
                     }
                 }
             }
-        }
 
-        PullRefreshIndicator(
-            refreshing = ui.isLoadingHistory,
-            state = pull,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
+            // ✅ Pull-to-refresh indicator (always overlayed at top)
+            PullRefreshIndicator(
+                refreshing = ui.isLoadingHistory,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
+    }
+
+    // ✅ Auto refresh first time screen opens
+    LaunchedEffect(Unit) {
+        vm.refreshHistory()
     }
 }
-}
+
 
 @Composable
 fun FavoriteItemDetailScreen(
@@ -296,15 +329,16 @@ fun FavoriteItemDetailScreen(
         }.getOrNull()
     }
     Scaffold { paddingValues ->
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
 
-            .padding(16.dp)) {
+                .padding(16.dp)
+        ) {
             Text(item?.name ?: "Unknown Name", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             if (!item?.brand.isNullOrBlank()) Text(
                 item!!.brand!!,
-
 
 
                 fontSize = 15.sp,
@@ -313,10 +347,12 @@ fun FavoriteItemDetailScreen(
             Spacer(Modifier.height(12.dp))
             val first = item?.images?.firstOrNull()
             val imageUrl by rememberResolvedImageUrl(first, supabaseClient)
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-                .background(Color(0xFFF3F2F9))) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .background(Color(0xFFF3F2F9))
+            ) {
                 if (!imageUrl.isNullOrBlank()) AsyncImage(
                     model = imageUrl,
                     contentDescription = item?.name,
