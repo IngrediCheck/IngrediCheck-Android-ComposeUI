@@ -21,7 +21,7 @@
         android:theme="@style/Theme.IngrediCheck.Starting"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name="lc.fungee.IngrediCheck.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.IngrediCheck.Starting">
@@ -36,12 +36,12 @@
                 <data android:scheme="https" android:host="wqidjkpfdrvomfkmefqc.supabase.co" android:pathPrefix="/auth/v1/callback" />
             </intent-filter>
         </activity>
-        <activity android:name=".auth.AppleLoginWebViewActivity" />
+        <activity android:name="lc.fungee.IngrediCheck.auth.AppleLoginWebViewActivity" />
 
         <!-- 🔹 FileProvider (needed for camera) -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="llc.fungee.IngrediCheck.provider"
+            android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
