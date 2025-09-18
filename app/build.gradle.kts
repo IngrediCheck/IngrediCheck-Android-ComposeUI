@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
+//    implementation("androidx.compose.ui:ui:1.7.5")
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
@@ -67,6 +68,7 @@ dependencies {
 
     // OAuth for Apple Sign-In
     implementation("net.openid:appauth:0.11.1")
+    implementation("androidx.compose.ui:ui:1.8.0")
 
     // Ktor client for HTTP + Serialization
     implementation("io.ktor:ktor-client-okhttp:2.3.4")

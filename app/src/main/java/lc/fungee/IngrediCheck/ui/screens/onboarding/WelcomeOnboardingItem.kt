@@ -1,6 +1,7 @@
-package lc.fungee.IngrediCheck.data.model
+package lc.fungee.IngrediCheck.ui.screens.onboarding
 
 import lc.fungee.IngrediCheck.R
+
 class WelcomeOnboardingItem (
     val heading:String, val description:String,val imageResId:Int
 )
@@ -29,11 +30,11 @@ object WelcomeScreenItemsManager {
     }
 
 
-    fun getOnboardingItemsCount(): Int = getOnboardingItems().size
-
-
-    fun getOnboardingItem(index: Int): WelcomeOnboardingItem? {
-        val items = getOnboardingItems()
-        return if (index in items.indices) items[index] else null
-    }
+//    fun getOnboardingItemsCount(): Int = getOnboardingItems().size
+//
+//
+//    fun getOnboardingItem(index: Int): WelcomeOnboardingItem? {
+//        val items = getOnboardingItems()
+//        return if (index in items.indices) items[index] else null
+//    }
 }

@@ -20,39 +20,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
-import lc.fungee.IngrediCheck.data.model.CheckSheetState
 import io.github.jan.supabase.SupabaseClient
-import kotlinx.coroutines.coroutineScope
 import java.io.File
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import com.google.mlkit.vision.common.InputImage
-import kotlinx.coroutines.tasks.await
-import android.util.Log
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
 import android.widget.Toast
-import android.content.Context
-import android.net.Uri
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import java.io.ByteArrayOutputStream
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import lc.fungee.IngrediCheck.data.model.ImageInfo
-import io.github.jan.supabase.storage.storage
-import java.security.MessageDigest
-import io.ktor.http.ContentType
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.delay
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
+import lc.fungee.IngrediCheck.IngrediCheckApp
+import lc.fungee.IngrediCheck.ui.screens.check.CheckEvent
+import lc.fungee.IngrediCheck.ui.screens.check.CheckViewModel
+import lc.fungee.IngrediCheck.ui.screens.check.CheckViewModelFactory
 
 //@SuppressLint("UnrememberedMutableInteractionSource")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,9 +43,66 @@ fun CheckBottomSheet(
     var sheetContent by remember { mutableStateOf<CheckSheetState>(CheckSheetState.Scanner) }
     
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+
+    // ViewModel wiring via factory (manual DI)
+    val app = IngrediCheckApp.appInstance
+    val checkViewModel: CheckViewModel = viewModel(
+        factory = CheckViewModelFactory(
+            container = app.container,
+            supabaseClient = supabaseClient,
+            functionsBaseUrl = functionsBaseUrl,
+            anonKey = anonKey,
+            appContext = context.applicationContext
+        )
+    )
+
+    // Also observe uiState as a safety net to drive navigation and errors
+    val checkUiState by checkViewModel.uiState.collectAsState()
+    LaunchedEffect(checkUiState) {
+        when (val s = checkUiState) {
+            is CheckUiState.AnalysisReady -> {
+                sheetContent = CheckSheetState.Analysis(
+                    barcode = s.barcode,
+                    images = s.images
+                )
+            }
+            is CheckUiState.Error -> {
+                Toast.makeText(context, s.message, Toast.LENGTH_LONG).show()
+            }
+            else -> Unit
+        }
+    }
+
+    // Collect one-off events for navigation/toasts; bind to current VM instance
+    LaunchedEffect(checkViewModel) {
+        checkViewModel.events.collect { event ->
+            when (event) {
+                is CheckEvent.ShowToast -> Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                is CheckEvent.NavigateToAnalysis -> {
+                    sheetContent = CheckSheetState.Analysis(
+                        barcode = event.barcode,
+                        images = event.images
+                    )
+                }
+            }
+        }
+    }
+
+    // Reset VM and local content when sheet is dismissed/hidden
+    LaunchedEffect(sheetState.currentValue) {
+        if (sheetState.currentValue == SheetValue.Hidden) {
+            sheetContent = CheckSheetState.Scanner
+            checkViewModel.reset()
+        }
+    }
+
     ModalBottomSheet(
-        onDismissRequest = { onDismiss() },
+        onDismissRequest = {
+            // Ensure reset on explicit dismiss
+            sheetContent = CheckSheetState.Scanner
+            checkViewModel.reset()
+            onDismiss()
+        },
         sheetState = sheetState,
         containerColor = White,
         dragHandle = null,
@@ -136,52 +169,53 @@ fun CheckBottomSheet(
                     var capturedImage by remember { mutableStateOf<File?>(null) }
                     var scannedCode by remember { mutableStateOf<String?>(null) }
 
+                    // Clear transient previews when switching tabs to avoid stale UI
+                    LaunchedEffect(selectedItemIndex) {
+                        capturedImage = null
+                        scannedCode = null
+                    }
+
+                    // Action bar for Photo mode: Clear (left) and Check (right)
+                    if (selectedItemIndex == 1 && capturedImage != null) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = { capturedImage = null }) {
+                                Text("Clear")
+                            }
+                            val isProcessing = checkUiState is CheckUiState.Processing
+                            Button(
+                                onClick = { capturedImage?.let { checkViewModel.onPhotoCaptured(it) } },
+                                enabled = !isProcessing
+                            ) {
+                                if (isProcessing) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text("Check")
+                            }
+                        }
+                    }
+
                     CameraPreview(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 30.dp)
+                            .padding(top = 12.dp)
                             .height(435.dp)
                             .clip(RoundedCornerShape(8.dp)),
                         mode = if (selectedItemIndex == 0) CameraMode.Scan else CameraMode.Photo,
                         onPhotoCaptured = { file ->
+                            // In Photo mode, only show preview first; processing happens on 'Check'
                             capturedImage = file
-                            // Run OCR, still-image barcode, and upload in parallel; then navigate to image-based Analysis
-                            scope.launch {
-                                val ocrDeferred = async { runTextRecognition(file, context) }
-                                val barcodeDeferred = async { detectBarcodeFromImage(file, context) }
-                                // Get an access token to pass RLS for Storage upload
-                                val prefRepo = PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey)
-                                val accessToken = runCatching { prefRepo.currentToken() }.getOrNull()
-                                val uploadDeferred = async {
-                                    uploadImageToSupabase(
-                                        file = file,
-                                        supabaseClient = supabaseClient,
-                                        functionsBaseUrl = functionsBaseUrl,
-                                        anonKey = anonKey,
-                                        accessToken = accessToken
-                                    )
-                                }
-
-                                val ocrText = runCatching { ocrDeferred.await() }.getOrElse { "" }
-                                val barcode = runCatching { barcodeDeferred.await() }.getOrNull()
-                                val imageHash = runCatching { uploadDeferred.await() }.getOrNull()
-
-                                if (imageHash != null) {
-                                    val imageInfo = ImageInfo(
-                                        imageFileHash = imageHash,
-                                        imageOCRText = ocrText,
-                                        barcode = barcode
-                                    )
-                                    sheetContent = CheckSheetState.Analysis(images = listOf(imageInfo))
-                                } else {
-                                    Toast.makeText(context, "Image upload failed. Please sign in and try again.", Toast.LENGTH_LONG).show()
-                                }
-                            }
                         }, onBarcodeScanned = { value ->
                             scannedCode = value
                             if (!value.isNullOrEmpty()) {
-                                // Switch to Analysis inside the same bottom sheet
-                                sheetContent = CheckSheetState.Analysis(barcode = value)
+                                // Delegate navigation to ViewModel event (Scan mode flow)
+                                checkViewModel.onBarcodeScanned(value)
                             }
                         }
                     )
@@ -232,123 +266,4 @@ fun CheckBottomSheet(
             }
         }
     }
-}
-
-// MLKit OCR on a captured file
-suspend fun runTextRecognition(file: File, context: Context): String {
-    return try {
-        val image = InputImage.fromFilePath(context, Uri.fromFile(file))
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val result = recognizer.process(image).await()
-        result.text
-    } catch (e: Exception) {
-        Log.e("OCR", "Error during text recognition", e)
-        ""
-    }
-}
-
-// MLKit barcode detection on a captured file
-suspend fun detectBarcodeFromImage(file: File, context: Context): String? {
-    return try {
-        val image = InputImage.fromFilePath(context, Uri.fromFile(file))
-        val scanner = BarcodeScanning.getClient()
-        val barcodes = scanner.process(image).await()
-        barcodes.firstOrNull { it.rawValue?.isNotBlank() == true &&
-            (it.format == Barcode.FORMAT_EAN_8 || it.format == Barcode.FORMAT_EAN_13)
-        }?.rawValue
-    } catch (e: Exception) {
-        Log.e("Barcode", "Error detecting barcode from image", e)
-        null
-    }
-}
-
-// Supabase image upload using SHA-256 filename into bucket "productimages"
-suspend fun uploadImageToSupabase(
-    file: File,
-    supabaseClient: SupabaseClient,
-    functionsBaseUrl: String,
-    anonKey: String,
-    accessToken: String?
-): String? {
-    // Hash original JPEG bytes for deterministic filename (same as iOS)
-    val bytes = withContext(Dispatchers.IO) { file.readBytes() }
-    val hash = sha256Hex(bytes)
-
-    // Require an access token to satisfy RLS when writing to Storage
-    if (accessToken.isNullOrBlank()) {
-        Log.e("Upload", "No access token; cannot upload to Storage due to RLS")
-        return null
-    }
-
-    val baseUrl = functionsBaseUrl.substringBefore("/functions/")
-    val url = "$baseUrl/storage/v1/object/productimages/$hash"
-    return withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-        try {
-            val mediaType = "image/jpeg".toMediaTypeOrNull() ?: run {
-                Log.e("Upload", "Invalid media type")
-                return@withContext null
-            }
-            
-            val requestBody = RequestBody.create(mediaType, bytes)
-            val request = Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .addHeader("Authorization", "Bearer $accessToken")
-                .addHeader("apikey", anonKey)
-                .addHeader("x-upsert", "true")
-                .build()
-                
-            client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string()
-                if (!response.isSuccessful) {
-                    Log.e("Upload", "Storage upload failed: code=${'$'}{response.code}, body=${'$'}{responseBody?.take(200)}")
-                    return@withContext null
-                }
-                Log.d("Upload", "Upload successful, hash: $hash")
-                hash
-            }
-        } catch (e: Exception) {
-            Log.e("Upload", "Exception during upload", e)
-            null
-        } finally {
-            try {
-                client.dispatcher.executorService.shutdown()
-            } catch (e: Exception) {
-                Log.e("Upload", "Error shutting down client", e)
-            }
-        }
-    }
-}
-
-// No JWT parsing needed in this file
-
-private fun compressJpeg(file: File, maxDimension: Int, quality: Int): ByteArray {
-    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, options)
-    val (w, h) = options.outWidth to options.outHeight
-    var inSampleSize = 1
-    if (w > maxDimension || h > maxDimension) {
-        val halfW = w / 2
-        val halfH = h / 2
-        while ((halfW / inSampleSize) >= maxDimension || (halfH / inSampleSize) >= maxDimension) {
-            inSampleSize *= 2
-        }
-    }
-    val decodeOpts = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
-    val bmp = BitmapFactory.decodeFile(file.absolutePath, decodeOpts)
-        ?: return file.readBytes()
-    val bos = ByteArrayOutputStream()
-    bmp.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(50, 95), bos)
-    return bos.toByteArray()
-}
-
-private fun sha256Hex(data: ByteArray): String {
-    val md = MessageDigest.getInstance("SHA-256")
-    val digest = md.digest(data)
-    val sb = StringBuilder()
-    for (b in digest) {
-        sb.append(String.format("%02x", b))
-    }
-    return sb.toString()
 }

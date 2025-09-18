@@ -17,7 +17,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.google.gson.Gson
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
-import lc.fungee.IngrediCheck.auth.SupabaseSession
+import lc.fungee.IngrediCheck.data.model.SupabaseSession
 
 @Composable
 fun HomeScreen(navController: NavController, viewModel: AppleAuthViewModel) {

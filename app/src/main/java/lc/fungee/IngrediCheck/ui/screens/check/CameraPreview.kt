@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -54,6 +55,7 @@ fun CameraPreview(
     onPhotoCaptured: (File) -> Unit,
     onBarcodeScanned: (String?) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     var barcodeDetected by remember { mutableStateOf(false) }
     var showMessage by remember { mutableStateOf(false) }
     var didVibrate by remember { mutableStateOf(false) }
@@ -142,7 +144,7 @@ fun CameraPreview(
                             if (!rawValue.isNullOrEmpty() && !didVibrate) {
                                 didVibrate = true
                                 barcodeDetected = true
-                                hapticSuccess(context)
+                                hapticSuccess(haptic )
                                 onBarcodeScanned(rawValue)
                             }
                         }

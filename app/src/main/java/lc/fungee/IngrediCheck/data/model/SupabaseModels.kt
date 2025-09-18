@@ -1,11 +1,11 @@
 package lc.fungee.IngrediCheck.data.model
 import com.google.gson.annotations.SerializedName
-import kotlinx.serialization.Serializable
 
 data class SupabaseSession(
     @SerializedName("access_token") val accessToken: String,
     @SerializedName("token_type") val tokenType: String,
     @SerializedName("expires_in") val expiresIn: Int,
+    @SerializedName("expires_at") val expiresAt: Long? = null,
     @SerializedName("refresh_token") val refreshToken: String,
     val user: SupabaseUser
 )
@@ -13,9 +13,18 @@ data class SupabaseSession(
 data class SupabaseUser(
     val id: String,
     val aud: String,
+    val role: String,
     val email: String,
-    @SerializedName("created_at") val createdAt: String,
-    val role: String
+    @SerializedName("email_confirmed_at") val emailConfirmedAt: String? = null,
+    val phone: String? = null,
+    @SerializedName("confirmed_at") val confirmedAt: String? = null,
+    @SerializedName("last_sign_in_at") val lastSignInAt: String? = null,
+    @SerializedName("app_metadata") val appMetadata: AppMetadata? = null,
+    @SerializedName("user_metadata") val userMetadata: UserMetadata? = null,
+    val identities: List<Identity>? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("is_anonymous") val isAnonymous: Boolean? = null
 )
 
 data class AppMetadata(

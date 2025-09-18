@@ -8,8 +8,10 @@ import java.util.Locale
 @Serializable
 data class Ingredient(
     val name: String? = null,
-    val vegan: String? = null,       // <- was Boolean, change to String
-    val vegetarian: String ? = null,  // <- was Boolean, change to String
+    /** Backend returns categorical values (e.g., yes/maybe/no) so keep String */
+    val vegan: String? = null,
+    /** Backend returns categorical values (e.g., yes/maybe/no) so keep String */
+    val vegetarian: String ? = null,
     val ingredients: List<Ingredient> = emptyList()
 )
 enum class SafetyRecommendation { MaybeUnsafe, DefinitelyUnsafe, Safe, None }
@@ -36,7 +38,7 @@ data class ImageLocationInfo(
     @SerialName("image File Hash") val imageFileHashSpaced: String? = null
 )
 
-// Unified accessor used across UI code
+/** Unified accessor used across UI code for different backend shapes */
 val ImageLocationInfo.imageFileHash: String?
     get() = imageFileHashSnake ?: imageFileHashCamel ?: imageFileHashSpaced
 
@@ -46,15 +48,8 @@ data class Product(
     val name: String ? = null,
     val brand: String? = null,
 
-//    @SerialName("image_file_hash")
-//    val imageFileHash: String? = null,
     val ingredients: List<Ingredient>,
     val images: List<ImageLocationInfo> = emptyList()
-//    @SerialName("ingredients")
-//    val ingredients: List<Ingredient> = emptyList(),
-
-    // if backend sends objects instead of strings
-//    val images: List<ImageLocationInfo> = emptyList()
 )
 
 
@@ -101,7 +96,8 @@ data class DecoratedIngredientListFragment(
 )
 
 /**
- * Core logic: decorate ingredient list with highlights (mirrors iOS).
+ * Decorate ingredient list with highlights for unsafe/maybe-unsafe ingredients.
+ * This mirrors the iOS logic so UI can render colored spans reliably.
  */
 fun decoratedIngredientsList(
     ingredients: List<Ingredient>,
@@ -205,8 +201,3 @@ fun decoratedIngredientsList(
     val decorated = decoratedFragmentsFromAnnotated(annotated)
     return splitDecoratedFragmentsIfNeeded(decorated)
 }
-//
-//
-//
-//
-//

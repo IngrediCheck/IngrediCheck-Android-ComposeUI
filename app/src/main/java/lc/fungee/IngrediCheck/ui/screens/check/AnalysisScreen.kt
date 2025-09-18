@@ -68,6 +68,7 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextLayoutResult
@@ -89,6 +90,7 @@ fun AnalysisScreen(
     functionsBaseUrl: String,
     anonKey: String
 ) {
+    val haptic = LocalHapticFeedback.current
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -122,7 +124,7 @@ fun AnalysisScreen(
                 )
 
                 viewModel.product != null -> {
-                    hapticSuccess(context)
+                    hapticSuccess(haptic)
                     val result = viewModel.product!!.calculateMatch(viewModel.recommendations)
                     ProductHeader(
                         viewModel.product!!,
@@ -192,6 +194,7 @@ fun ProductHeader(
     supabaseClient: io.github.jan.supabase.SupabaseClient,
     onToggleFavorite: (Boolean) -> Unit = {}
 ) {
+    val haptic = LocalHapticFeedback.current
 
     Column(
         modifier = Modifier
@@ -276,6 +279,7 @@ fun ProductHeader(
 
         val pagerState = rememberPagerState()
         val totalPages = product.images.size + 1 // extra blank page
+        val ctx = LocalContext.current
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -292,41 +296,37 @@ fun ProductHeader(
             ) { page ->
                 if (page < product.images.size) {
                     val img = product.images[page]
-                    // Resolve URL for either direct URL or a Supabase Storage hash
-                    val imageUrl by produceState<String?>(initialValue = img.url ?: img.imageUrl, key1 = img) {
-                        if ((value.isNullOrBlank()) && img.imageFileHash != null) {
-                            val bucket = supabaseClient.storage.from("productimages")
-                            // Prefer a signed URL to work with private buckets
-                            value = try {
-                                bucket.createSignedUrl(img.imageFileHash!!, 3600.seconds)
-                            } catch (e: Exception) {
-                                null
-                            }
-                            // Fallback to public URL only if bucket is public
-                            if (value.isNullOrBlank()) {
-                                value = try {
-                                    bucket.publicUrl(img.imageFileHash!!)
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
-                        }
-                    }
-
-                    if (!imageUrl.isNullOrBlank()) {
+                    // Prefer direct URL if present; else load cached MEDIUM by hash
+                    val directUrl = img.url ?: img.imageUrl
+                    if (!directUrl.isNullOrBlank()) {
                         AsyncImage(
-                            model = imageUrl,
+                            model = directUrl,
                             contentDescription = product.name,
                             modifier = Modifier.fillMaxSize(0.8f),
                             contentScale = ContentScale.Fit
                         )
                     } else {
-                        // Placeholder when image URL cannot be resolved
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.LightGray)
-                        )
+                        var imageFile by remember(img) { mutableStateOf<java.io.File?>(null) }
+                        LaunchedEffect(img) {
+                            imageFile = img.imageFileHash?.let { hash ->
+                                fetchImageFile(ctx, supabaseClient, hash, ImageSize.MEDIUM)
+                            }
+                        }
+                        if (imageFile != null) {
+                            AsyncImage(
+                                model = imageFile!!,
+                                contentDescription = product.name,
+                                modifier = Modifier.fillMaxSize(0.8f),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            // Placeholder when image URL cannot be resolved
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.LightGray)
+                            )
+                        }
                     }
                 } else {
                     // Last page: blank gray background
@@ -828,4 +828,62 @@ fun flattenIngredients(ingredients: List<Ingredient>?): List<String> {
         result.addAll(flattenIngredients(ingredient.ingredients))
     }
     return result
+}
+
+// ---------------- Image cache & fetch helpers ----------------
+private enum class ImageSize(val maxDim: Int) { SMALL(256), MEDIUM(512), LARGE(Int.MAX_VALUE) }
+
+private suspend fun fetchImageFile(
+    context: android.content.Context,
+    supabaseClient: io.github.jan.supabase.SupabaseClient,
+    hash: String,
+    size: ImageSize
+): java.io.File? {
+    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val sizeDir = when (size) {
+                ImageSize.SMALL -> "small"
+                ImageSize.MEDIUM -> "medium"
+                ImageSize.LARGE -> "large"
+            }
+            val dir = java.io.File(context.cacheDir, "images/$sizeDir").apply { mkdirs() }
+            val outFile = java.io.File(dir, "$hash.jpg")
+            if (outFile.exists()) return@withContext outFile
+
+            // Download original bytes from Supabase Storage (bucket: productimages, path: hash)
+            // Use a signed URL to reliably fetch bytes regardless of bucket visibility.
+            val bucket = supabaseClient.storage.from("productimages")
+            val signedUrl = try { bucket.createSignedUrl(hash, 3600.seconds) } catch (e: Exception) { null }
+            if (signedUrl.isNullOrBlank()) return@withContext null
+            val bytes = java.net.URL(signedUrl).openStream().use { it.readBytes() }
+
+            if (size == ImageSize.LARGE) {
+                outFile.outputStream().use { it.write(bytes) }
+                return@withContext outFile
+            }
+
+            val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?: return@withContext null
+            val scaled = scaleToMaxDim(bmp, size.maxDim)
+            outFile.outputStream().use { os ->
+                scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, os)
+            }
+            return@withContext outFile
+        } catch (t: Throwable) {
+            android.util.Log.e("ImageCache", "fetchImageFile failed for $hash@$size", t)
+            null
+        }
+    }
+}
+
+private fun scaleToMaxDim(src: android.graphics.Bitmap, maxDim: Int): android.graphics.Bitmap {
+    if (maxDim == Int.MAX_VALUE) return src
+    val w = src.width
+    val h = src.height
+    val maxSide = if (w > h) w else h
+    if (maxSide <= maxDim) return src
+    val scale = maxSide.toFloat() / maxDim.toFloat()
+    val newW = kotlin.math.max(1, (w / scale).toInt())
+    val newH = kotlin.math.max(1, (h / scale).toInt())
+    return android.graphics.Bitmap.createScaledBitmap(src, newW, newH, true)
 }

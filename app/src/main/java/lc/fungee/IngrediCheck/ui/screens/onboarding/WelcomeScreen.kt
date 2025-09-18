@@ -34,8 +34,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.auth.AppleLoginState
-import lc.fungee.IngrediCheck.data.model.WelcomeOnboardingItem
-import lc.fungee.IngrediCheck.data.model.WelcomeScreenItemsManager
+import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeOnboardingItem
+import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeScreenItemsManager
 import lc.fungee.IngrediCheck.ui.component.AppleSignInSection
 import lc.fungee.IngrediCheck.ui.component.GoogleSignInButton
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200
