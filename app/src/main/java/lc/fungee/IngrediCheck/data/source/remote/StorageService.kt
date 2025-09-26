@@ -20,6 +20,16 @@ interface StorageService {
         functionsBaseUrl: String,
         anonKey: String
     ): String?
+
+    /**
+     * Delete a previously uploaded object by its filename (hash) from the 'productimages' bucket.
+     */
+    suspend fun deleteObject(
+        filename: String,
+        accessToken: String,
+        functionsBaseUrl: String,
+        anonKey: String
+    ): Boolean
 }
 
 class SupabaseStorageService(
@@ -57,6 +67,37 @@ class SupabaseStorageService(
             } catch (e: Exception) {
                 Log.e("StorageService", "Exception during upload", e)
                 null
+            }
+        }
+    }
+
+    override suspend fun deleteObject(
+        filename: String,
+        accessToken: String,
+        functionsBaseUrl: String,
+        anonKey: String
+    ): Boolean {
+        val baseUrl = functionsBaseUrl.substringBefore("/functions/")
+        val url = "$baseUrl/storage/v1/object/productimages/$filename"
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .delete()
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .addHeader("apikey", anonKey)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val body = response.body?.string()
+                        Log.e("StorageService", "Delete failed code=${response.code}, body=${body?.take(200)}")
+                        false
+                    } else true
+                }
+            } catch (e: Exception) {
+                Log.e("StorageService", "Exception during delete", e)
+                false
             }
         }
     }

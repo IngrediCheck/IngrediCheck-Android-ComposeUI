@@ -38,6 +38,7 @@ object PrefKeys {
     // One-shot flag: when true, the app will auto-open the scanner on next launch and then clear it
     val AUTO_SCAN_PENDING = booleanPreferencesKey("auto_scan_pending")
 }
+@OptIn(kotlin.time.ExperimentalTime::class)
 class PreferenceRepository(
     private val context: Context,
     private val supabaseClient: SupabaseClient,
@@ -166,9 +167,12 @@ class PreferenceRepository(
                 }
                 401 -> {
                     Log.e("PreferenceRepo", "Authentication failed - token may be expired")
-                    // Clear stored session to force re-login
-                    context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                        .edit().clear().apply()
+                    // Use Supabase SDK to sign out and clear session
+                    try {
+                        supabaseClient.auth.signOut()
+                    } catch (e: Exception) {
+                        Log.e("PreferenceRepo", "Error signing out", e)
+                    }
                     throw Exception("Authentication failed. Please log in again.")
                 }
                 else -> throw Exception("Bad response: ${resp.code} ${body}")
@@ -279,31 +283,22 @@ class PreferenceRepository(
             resp.code in listOf(200, 204)
         }
     }
- fun currentToken(): String? {
-        try {
-            // First try to get token from Supabase SDK
-            supabaseClient.auth.currentSessionOrNull()?.accessToken?.let { token ->
-                Log.d("PreferenceRepo", "Using SDK token: ${token.take(20)}...")
-                return token
-            }
-        } catch (e: Throwable) {
-            Log.e("PreferenceRepo", "SDK token error", e)
-        }
-        
-        // Fallback: read our stored session until SDK session is wired
+    fun currentToken(): String? {
         return try {
-            val raw = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                .getString("session", null)
-            if (raw != null) {
-                val s = Gson().fromJson(raw, SupabaseSession::class.java)
-                Log.d("PreferenceRepo", "Using fallback token: ${s.accessToken.take(20)}...")
-                s.accessToken
+            // Always use Supabase SDK for token management
+            // SDK handles automatic refresh and session management
+            val session = supabaseClient.auth.currentSessionOrNull()
+            if (session != null) {
+                Log.d("PreferenceRepo", "Using SDK token: ${session.accessToken.take(20)}...")
+                Log.d("PreferenceRepo", "Token expires at: ${session.expiresAt}")
+                Log.d("PreferenceRepo", "User email: ${session.user?.email}")
+                session.accessToken
             } else {
-                Log.d("PreferenceRepo", "No stored session found")
+                Log.d("PreferenceRepo", "No active session found")
                 null
             }
         } catch (e: Throwable) {
-            Log.e("PreferenceRepo", "Fallback token error", e)
+            Log.e("PreferenceRepo", "Error getting token from SDK", e)
             null
         }
     }

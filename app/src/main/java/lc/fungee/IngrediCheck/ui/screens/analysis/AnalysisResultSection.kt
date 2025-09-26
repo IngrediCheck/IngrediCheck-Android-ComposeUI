@@ -3,7 +3,6 @@ package lc.fungee.IngrediCheck.ui.screens.analysis
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,8 +21,6 @@ import lc.fungee.IngrediCheck.data.model.ProductRecommendation
 import lc.fungee.IngrediCheck.data.model.calculateMatch
 import lc.fungee.IngrediCheck.data.model.decoratedIngredientsList
 import lc.fungee.IngrediCheck.data.repository.AnalysisPhase
-import lc.fungee.IngrediCheck.ui.screens.check.AnalysisStatusChip
-import lc.fungee.IngrediCheck.ui.screens.check.DecoratedIngredientsText
 
 class AnalysisResultViewModel : ViewModel() {
     data class UiState(

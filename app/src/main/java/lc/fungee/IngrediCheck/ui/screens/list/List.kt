@@ -53,8 +53,10 @@ import lc.fungee.IngrediCheck.data.repository.ListTabViewModel
 import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.White
+import lc.fungee.IngrediCheck.data.source.image.ImageCache
+import lc.fungee.IngrediCheck.data.source.image.rememberResolvedImageModel
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -101,6 +103,8 @@ fun ListScreen(
         refreshing = ui.isLoadingHistory,
         onRefresh = { listVm.refreshHistory() }
     )
+
+    
 
     Scaffold(
         bottomBar = { BottomBar(navController = navController, onCheckClick = { showSheet = true }) }
@@ -149,7 +153,7 @@ fun ListScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 17.sp,
                             letterSpacing = (-0.41).sp,
-                            color = Color(0xFF1B270C),
+                            color = AppColors.Neutral700,
                             lineHeight = 22.sp
                         )
                     )
@@ -253,13 +257,13 @@ private fun FavoritesSection(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 17.sp,
                     letterSpacing = (-0.41).sp,
-                    color = Color(0xFF1B270C),
+                    color = AppColors.Neutral700,
                     lineHeight = 22.sp
                 )
             )
             Spacer(modifier = Modifier.weight(1f))
             if (!favorites.isNullOrEmpty()) {
-                TextButton(onClick = onViewAll) { Text("View all", color = PrimaryGreen100) }
+                TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -333,14 +337,14 @@ private fun RecentScansSection(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 17.sp,
                     letterSpacing = (-0.41).sp,
-                    color = Color(0xFF1B270C),
+                    color = AppColors.Neutral700,
                     lineHeight = 22.sp
                 )
             )
             Spacer(modifier = Modifier.weight(1f))
             if (!history.isNullOrEmpty() && history.size > 4) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onViewAll) { Text("View all", color = PrimaryGreen100) }
+                    TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
 
 //                    IconButton(onClick = onSearch) {
 //                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
@@ -387,7 +391,7 @@ private fun RecentScansSection(
                             supabaseClient = supabaseClient,
                             modifier = Modifier.clickable { onItemClick(item) }
                         )
-                        Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
+                        Divider(color = AppColors.Divider, thickness = 2.dp)
                     }
                 }
             }
@@ -402,15 +406,16 @@ private fun FavoriteItemBirdsEyeCard(
     modifier: Modifier = Modifier
 ) {
     val firstImage = item.images.firstOrNull()
-    val imageUrl by rememberResolvedImageUrl(firstImage, supabaseClient)
+    val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
+    val model = modelState.value
     Box(
         modifier = modifier
             .size(width = 120.dp, height = 120.dp)
-            .background(Color(0xFFF3F2F9))
+            .background(AppColors.SurfaceMuted)
     ) {
-        if (!imageUrl.isNullOrBlank()) {
+        if (model != null) {
             AsyncImage(
-                model = imageUrl,
+                model = model,
                 contentDescription = item.name,
                 modifier = Modifier.fillMaxSize()
             )
@@ -422,7 +427,7 @@ private fun FavoriteItemBirdsEyeCard(
                     modifier = Modifier.fillMaxSize()
                 )
                 Text("NO Favorite products yet"
-                    , color = PrimaryGreen100
+                    , color = AppColors.Brand
                 )
             }
 

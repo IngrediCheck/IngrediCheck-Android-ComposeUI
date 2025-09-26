@@ -39,7 +39,7 @@ import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeScreenItemsManager
 import lc.fungee.IngrediCheck.ui.component.AppleSignInSection
 import lc.fungee.IngrediCheck.ui.component.GoogleSignInButton
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 
 
@@ -54,8 +54,6 @@ fun WelcomeScreen(
 ) {
     val loginState by viewModel.loginState.collectAsState()
     val context = LocalContext.current
-    // Observe session store failure
-    val sessionStoreFailed by viewModel.sessionStoreFailed.collectAsState()
 
     // Navigation logic moved to LaunchedEffect
     LaunchedEffect(loginState) {
@@ -83,16 +81,7 @@ fun WelcomeScreen(
         }
     }
 
-    // Show a Toast if session storage failed
-    if (sessionStoreFailed) {
-        LaunchedEffect(sessionStoreFailed) {
-            android.widget.Toast.makeText(
-                context,
-                "Session not stored. You may need to log in again.",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
-        }
-    }
+    // Removed sessionStoreFailed handling as it's not exposed by the ViewModel
 
     Column(
         modifier = Modifier
@@ -147,7 +136,7 @@ fun WelcomeScreen(
         Spacer(modifier = Modifier.height(25.dp))
         Text(
             text = "Continue as guest",
-            color = PrimaryGreen100,
+            color = AppColors.Brand,
             fontSize = 17.sp,
             lineHeight = 22.sp,
             fontWeight = FontWeight.Medium,
@@ -282,7 +271,7 @@ fun WelcomePager(
                     modifier = Modifier
                         .size(10.dp)
                         .background(
-                            color = if (currentPage == index) PrimaryGreen100 else Greyscale200,
+                            color = if (currentPage == index) AppColors.Brand else Greyscale200,
                             shape = CircleShape
                         )
                 )

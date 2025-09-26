@@ -53,6 +53,10 @@ class CheckViewModel(
                 Log.d("CheckVM", "onPhotoCaptured: start, fileSize=${file.length()}")
                 _uiState.value = CheckUiState.Processing
 
+                // Navigate immediately to the Analysis sheet to show the white loading screen
+                // We pass empty images/barcode so AnalysisScreen shows LoadingContent right away
+                _events.tryEmit(CheckEvent.NavigateToAnalysis(images = emptyList(), barcode = null))
+
                 val token = preferenceRepository.currentToken()
                 if (token.isNullOrBlank()) {
                     Log.w("CheckVM", "No token found; prompting sign-in")

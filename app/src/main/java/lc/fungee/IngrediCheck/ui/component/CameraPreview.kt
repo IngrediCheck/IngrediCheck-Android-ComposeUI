@@ -1,9 +1,10 @@
-package lc.fungee.IngrediCheck.ui.screens.check
+package lc.fungee.IngrediCheck.ui.component
 
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import android.view.ScaleGestureDetector
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,13 +22,14 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -35,13 +37,19 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
+ 
+import kotlinx.coroutines.delay
+import kotlin.math.hypot
+
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import lc.fungee.IngrediCheck.data.source.hapticSuccess
 import lc.fungee.IngrediCheck.ui.theme.White
-import kotlinx.coroutines.delay
 import java.io.File
 
 // Controls whether the camera is scanning barcodes or capturing photos
@@ -50,7 +58,7 @@ enum class CameraMode { Scan, Photo }
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraPreview(
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     mode: CameraMode,
     onPhotoCaptured: (File) -> Unit,
     onBarcodeScanned: (String?) -> Unit
@@ -59,6 +67,11 @@ fun CameraPreview(
     var barcodeDetected by remember { mutableStateOf(false) }
     var showMessage by remember { mutableStateOf(false) }
     var didVibrate by remember { mutableStateOf(false) }
+    // Guidance state
+    var guidance by remember { mutableStateOf<String?>(null) }
+    var lastCenterX by remember { mutableStateOf<Float?>(null) }
+    var lastCenterY by remember { mutableStateOf<Float?>(null) }
+    var noBarcodeFrames by remember { mutableStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
@@ -138,14 +151,50 @@ fun CameraPreview(
 
                 scanner.process(inputImage)
                     .addOnSuccessListener { barcodes ->
+                        if (barcodes.isEmpty()) {
+                            // No detections this frame
+                            noBarcodeFrames++
+                            if (noBarcodeFrames > 10) {
+                                guidance = "Find nearby barcode"
+                            }
+                        } else {
+                            noBarcodeFrames = 0
+                        }
+
                         for (barcode in barcodes) {
                             val rawValue = barcode.rawValue
                             Log.d("Barcode", "Scanned: $rawValue")
                             if (!rawValue.isNullOrEmpty() && !didVibrate) {
                                 didVibrate = true
                                 barcodeDetected = true
-                                hapticSuccess(haptic )
+                                hapticSuccess(haptic)
                                 onBarcodeScanned(rawValue)
+                            }
+
+                            // Calculate bounding box jitter and size thresholds
+                            val boundingBox = barcode.boundingBox
+                            if (boundingBox != null) {
+                                val centerX = boundingBox.centerX().toFloat()
+                                val centerY = boundingBox.centerY().toFloat()
+                                if (lastCenterX != null && lastCenterY != null) {
+                                    val dx = centerX - lastCenterX!!
+                                    val dy = centerY - lastCenterY!!
+                                    val jitter = hypot(dx, dy)
+                                    if (jitter > 50f) {
+                                        // Box center jumped a lot → likely hand/camera moving fast
+                                        guidance = "Slow down"
+                                    } else if (boundingBox.width() < 100 || boundingBox.height() < 100) {
+                                        // Box too small → move closer
+                                        guidance = "Move closer"
+                                    }
+                                }
+                                lastCenterX = centerX
+                                lastCenterY = centerY
+                            } else {
+                                noBarcodeFrames++
+                                if (noBarcodeFrames > 10) {
+                                    guidance = "Find nearby barcode"
+                                }
                             }
                         }
                     }
@@ -171,62 +220,84 @@ fun CameraPreview(
     val selector = remember { CameraSelector.DEFAULT_BACK_CAMERA }
     val cameraRef = remember { mutableStateOf<Camera?>(null) }
 
-    AndroidView(
-        factory = { ctx ->
-            PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
-        },
-        modifier = modifier.fillMaxSize(),
-        update = { previewView ->
-            val cameraProvider = ProcessCameraProvider.getInstance(previewView.context).get()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
-
-            try {
-                cameraProvider.unbindAll()
-                val useCases = mutableListOf<UseCase>(preview)
-                if (mode == CameraMode.Scan) useCases.add(imageAnalyzer)
-                if (mode == CameraMode.Photo) useCases.add(imageCapture)
-
-                val camera = cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    selector,
-                    *useCases.toTypedArray()
-                )
-                cameraRef.value = camera
-
-                // Pinch-to-zoom
-                val scaleGestureDetector = android.view.ScaleGestureDetector(
-                    previewView.context,
-                    object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                        override fun onScale(detector: android.view.ScaleGestureDetector): Boolean {
-                            val currentZoom = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
-                            val delta = detector.scaleFactor
-                            camera.cameraControl.setZoomRatio(currentZoom * delta)
-                            return true
-                        }
-                    }
-                )
-                previewView.setOnTouchListener { _, event ->
-                    scaleGestureDetector.onTouchEvent(event)
-                    true
+    Box(modifier = modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+            },
+            modifier = Modifier.fillMaxSize(),
+            update = { previewView ->
+                val cameraProvider =
+                    ProcessCameraProvider.Companion.getInstance(previewView.context).get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
                 }
 
-                // Store ImageCapture globally for Photo mode
-                CameraCaptureManager.init(imageCapture, context, onPhotoCaptured)
-            } catch (exc: Exception) {
-                exc.printStackTrace()
+                try {
+                    cameraProvider.unbindAll()
+                    val useCases = mutableListOf<UseCase>(preview)
+                    if (mode == CameraMode.Scan) useCases.add(imageAnalyzer)
+                    if (mode == CameraMode.Photo) useCases.add(imageCapture)
+
+                    val camera = cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        selector,
+                        *useCases.toTypedArray()
+                    )
+                    cameraRef.value = camera
+
+                    // Pinch-to-zoom
+                    val scaleGestureDetector = ScaleGestureDetector(
+                        previewView.context,
+                        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                                val currentZoom = camera.cameraInfo.zoomState.value?.zoomRatio ?: 1f
+                                val delta = detector.scaleFactor
+                                camera.cameraControl.setZoomRatio(currentZoom * delta)
+                                return true
+                            }
+                        }
+                    )
+                    previewView.setOnTouchListener { _, event ->
+                        scaleGestureDetector.onTouchEvent(event)
+                        true
+                    }
+
+                    // Store ImageCapture globally for Photo mode
+                    CameraCaptureManager.init(imageCapture, context, onPhotoCaptured)
+                } catch (exc: Exception) {
+                    exc.printStackTrace()
+                }
+            }
+        )
+
+        // Overlay: permission placeholder or guidance
+        if (!hasPermission) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White)
+            )
+        }
+
+        // Overlay guidance at top-center for 2s after trigger
+        guidance?.let {
+            Text(
+                text = it,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+        LaunchedEffect(guidance) {
+            if (guidance != null) {
+                delay(2000)
+                guidance = null
             }
         }
-    )
-
-    if (!hasPermission) {
-        // PERMISSION PLACEHOLDER
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(White)
-        )
     }
 }
 

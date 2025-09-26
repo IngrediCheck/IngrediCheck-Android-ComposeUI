@@ -8,16 +8,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -31,11 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import io.github.jan.supabase.storage.storage
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.json.Json
 import lc.fungee.IngrediCheck.R
-import lc.fungee.IngrediCheck.data.model.ImageLocationInfo
 import lc.fungee.IngrediCheck.data.repository.FavoriteItem
 import lc.fungee.IngrediCheck.data.repository.HistoryItem
 import lc.fungee.IngrediCheck.data.repository.ListTabRepository
@@ -47,7 +40,6 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.mutableStateOf
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -59,15 +51,18 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import kotlinx.coroutines.launch
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import lc.fungee.IngrediCheck.ui.screens.check.DynamicPagerIndicator
+import lc.fungee.IngrediCheck.ui.screens.analysis.DynamicPagerIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
-import lc.fungee.IngrediCheck.data.model.imageFileHash
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White
+import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.ui.theme.BrandDeepGreen
+import lc.fungee.IngrediCheck.data.source.image.ImageCache
+import lc.fungee.IngrediCheck.data.source.image.rememberResolvedImageModel
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -89,6 +84,7 @@ fun FavoritesPageScreen(
         onRefresh = { vm.refreshFavorites() }
     )
     var showSheet by remember { mutableStateOf(false) }
+    
     Scaffold(
         bottomBar = {
             if (navController != null) BottomBar(
@@ -116,7 +112,7 @@ fun FavoritesPageScreen(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 17.sp,
-                        color = Color(0xFF1B270C),
+                        color = AppColors.Neutral700,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
@@ -160,7 +156,7 @@ fun FavoritesPageScreen(
                                 navController?.navigate("favoriteItem?item=$json")
                             }
                         )
-                        Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
+                        Divider(color = AppColors.Divider, thickness = 2.dp)
                     }
                 }
             }
@@ -264,7 +260,7 @@ fun RecentScansPageScreen(
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 17.sp,
-                        color = Color(0xFF1B270C),
+                        color = AppColors.Neutral700,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
@@ -315,7 +311,7 @@ fun RecentScansPageScreen(
                                 navController?.navigate("historyItem?item=$json")
                             }
                         )
-                        Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
+                        Divider(color = AppColors.Divider, thickness = 2.dp)
                     }
                 }
             }
@@ -390,12 +386,12 @@ fun FavoriteItemDetailScreen(
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowLeft,
                             contentDescription = "Back",
-                            tint = Color(0xFF2B7A0B)
+                            tint = BrandDeepGreen
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "Lists",
-                            color = Color(0xFF2B7A0B),
+                            color = BrandDeepGreen,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -422,7 +418,7 @@ fun FavoriteItemDetailScreen(
                                 }
                             }
                         },
-                        tint = if (isLike) Color.Red else Color(0xFF2B7A0B)
+                        tint = if (isLike) Color.Red else BrandDeepGreen
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                 }
@@ -462,16 +458,17 @@ fun FavoriteItemDetailScreen(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFF3F2F9))
+                            .background(AppColors.SurfaceMuted)
                             .height(350.dp)
                     ) { page ->
                         val imgs = item?.images ?: emptyList()
                         if (page < imgs.size) {
                             val img = imgs[page]
-                            val imageUrl by rememberResolvedImageUrl(img, supabaseClient)
-                            if (!imageUrl.isNullOrBlank()) {
+                            val modelState = rememberResolvedImageModel(img, supabaseClient, ImageCache.Size.MEDIUM)
+                            val model = modelState.value
+                            if (model != null) {
                                 AsyncImage(
-                                    model = imageUrl,
+                                    model = model,
                                     contentDescription = item?.name,
                                     modifier = Modifier.fillMaxSize(0.8f),
                                     contentScale = ContentScale.Fit
@@ -597,12 +594,12 @@ fun HistoryItemDetailScreen(
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowLeft,
                             contentDescription = "Back",
-                            tint = Color(0xFF2B7A0B)
+                            tint = BrandDeepGreen
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "Lists",
-                            color = Color(0xFF2B7A0B),
+                            color = BrandDeepGreen,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -626,7 +623,7 @@ fun HistoryItemDetailScreen(
                                 }
                             }
                         },
-                        tint = if (isLike) Color.Red else Color(0xFF2B7A0B)
+                        tint = if (isLike) Color.Red else BrandDeepGreen
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     // No flag icon per requirements
@@ -667,16 +664,19 @@ fun HistoryItemDetailScreen(
                         state = pagerState,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFFF3F2F9))
+                            .background(AppColors.SurfaceMuted)
                             .height(350.dp)
                     ) { page ->
                         val imgs = item?.images ?: emptyList()
                         if (page < imgs.size) {
                             val img = imgs[page]
-                            val imageUrl by rememberResolvedImageUrl(img, supabaseClient)
-                            if (!imageUrl.isNullOrBlank()) {
+                            val modelState = lc.fungee.IngrediCheck.data.source.image.rememberResolvedImageModel(
+                                img, supabaseClient, lc.fungee.IngrediCheck.data.source.image.ImageCache.Size.MEDIUM
+                            )
+                            val model = modelState.value
+                            if (model != null) {
                                 AsyncImage(
-                                    model = imageUrl,
+                                    model = model,
                                     contentDescription = item?.name,
                                     modifier = Modifier.fillMaxSize(0.8f),
                                     contentScale = ContentScale.Fit
@@ -750,16 +750,17 @@ fun FavoriteItemListCard(
     modifier: Modifier = Modifier
 ) {
     val firstImage = item.images.firstOrNull()
-    val imageUrl by rememberResolvedImageUrl(firstImage, supabaseClient)
+    val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
+    val model = modelState.value
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(80.dp)
-                .background(Color(0xFFF3F2F9))
+                .background(AppColors.SurfaceMuted)
         ) {
-            if (!imageUrl.isNullOrBlank()) {
+            if (model != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = model,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -796,17 +797,18 @@ fun HistoryItemCard(
     modifier: Modifier = Modifier
 ) {
     val firstImage = item.images.firstOrNull()
-    val imageUrl by rememberResolvedImageUrl(firstImage, supabaseClient)
+    val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
+    val model = modelState.value
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(80.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFFF3F2F9))
+                .background(AppColors.SurfaceMuted)
         ) {
-            if (!imageUrl.isNullOrBlank()) {
+            if (model != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = model,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -837,31 +839,7 @@ fun HistoryItemCard(
     }
 }
 
-@Composable
-fun rememberResolvedImageUrl(
-    first: ImageLocationInfo?,
-    supabaseClient: io.github.jan.supabase.SupabaseClient
-): State<String?> {
-    return produceState<String?>(initialValue = first?.url ?: first?.imageUrl) {
-        if (value.isNullOrBlank() && first?.imageFileHash != null) {
-            val bucket = supabaseClient.storage.from("productimages")
-            // Prefer signed URL to work with private buckets
-            value = try {
-                bucket.createSignedUrl(first.imageFileHash!!, 3600.seconds)
-            } catch (e: Exception) {
-                null
-            }
-            // Fallback to public URL only if bucket is public
-            if (value.isNullOrBlank()) {
-                value = try {
-                    bucket.publicUrl(first.imageFileHash!!)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-        }
-    }
-}
+// Deprecated helper removed; use rememberResolvedImageModel from ImageResolver instead.
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -902,7 +880,7 @@ fun SearchHistoryView(
             androidx.compose.material3.TextButton(onClick = onBack) {
                 Text(
                     "Cancel",
-                    color = Color(0xFF2B7A0B)
+                    color = BrandDeepGreen
                 )
             }
         }
@@ -922,7 +900,7 @@ fun SearchHistoryView(
                         item = item,
                         supabaseClient = supabaseClient,
                         modifier = Modifier.clickable { onItemClick(item) })
-                    Divider(color = Color(0xFFF3F2F9), thickness = 2.dp)
+                    Divider(color = AppColors.Divider, thickness = 2.dp)
                 }
             }
         }

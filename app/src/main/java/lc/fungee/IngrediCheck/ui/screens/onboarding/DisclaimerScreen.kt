@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.Greyscale500
 import lc.fungee.IngrediCheck.ui.theme.Greyscale600
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 @Composable
 fun DisclaimerScreen(
@@ -87,7 +87,7 @@ fun DisclaimerScreen(
                 .height(63.76.dp)
                 .clip(RoundedCornerShape(100.dp)),
             colors = ButtonDefaults.buttonColors(
-                containerColor = PrimaryGreen100
+                containerColor = AppColors.Brand
             )
         ) {
             Text(

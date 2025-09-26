@@ -35,7 +35,7 @@ import androidx.navigation.compose.rememberNavController
 
 import lc.fungee.IngrediCheck.ui.theme.Greyscale500
 import lc.fungee.IngrediCheck.ui.theme.PrimarayGreen50
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.White
 
 import lc.fungee.IngrediCheck.R
@@ -116,7 +116,7 @@ fun BottomBar(navController: NavController, onCheckClick: () -> Unit = {}) {
                             modifier = Modifier
                                 .size(56.dp) // width: 56, height: 56
                                 .background(
-                                    color = PrimaryGreen100,
+                                    color = AppColors.Brand,
                                     shape = CircleShape
 
                                 ) // your manual background color
@@ -149,7 +149,7 @@ fun BottomBar(navController: NavController, onCheckClick: () -> Unit = {}) {
                                 ),
                                 contentDescription = item.title,
                                 modifier = Modifier.size(19.5.dp), // icon size
-                                tint = if (selected) PrimaryGreen100 else Greyscale500 // tint when selected or not
+                                tint = if (selected) AppColors.Brand else Greyscale500 // tint when selected or not
                             )
                         }
 
@@ -173,7 +173,7 @@ fun NetworkStatusOverlay(isOnline: Boolean) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0x88000000)) // semi-transparent dark overlay
+                .background(AppColors.Scrim) // semi-transparent dark overlay
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {

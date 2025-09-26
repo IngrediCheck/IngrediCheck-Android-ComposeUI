@@ -1,3 +1,4 @@
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -54,8 +55,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.browser:browser:1.8.0")
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.material3.window.size.class1.android)
+    implementation(libs.androidx.animation.core.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,11 +73,9 @@ dependencies {
     implementation("net.openid:appauth:0.11.1")
     implementation("androidx.compose.ui:ui:1.8.0")
 
-    // Ktor client for HTTP + Serialization
-    implementation("io.ktor:ktor-client-okhttp:2.3.4")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.4")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.4")
-    implementation("io.ktor:ktor-client-logging:2.3.4")
+    // Removed manual Ktor client usage; rely on Supabase SDK HTTP
+    // Add a Ktor 3.x engine so Supabase-kt can initialize its internal client
+    implementation("io.ktor:ktor-client-okhttp:3.0.0")
 
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
@@ -104,8 +105,7 @@ dependencies {
     // AndroidX ViewModel + Activity KTX
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
     implementation("androidx.activity:activity-ktx:1.8.0")
-    implementation("io.ktor:ktor-client-core:3.2.2")
-    implementation("io.ktor:ktor-client-okhttp:3.2.2")
+    // Keep Ktor aligned on 2.x to avoid conflicts with other libs
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
@@ -118,6 +118,6 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("com.google.mlkit:text-recognition:16.0.0")
     implementation(libs.mlkit.barcode)
-
     implementation(libs.mlkit.text.recognition)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 }

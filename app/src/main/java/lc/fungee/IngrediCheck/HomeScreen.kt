@@ -15,23 +15,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import com.google.gson.Gson
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
-import lc.fungee.IngrediCheck.data.model.SupabaseSession
+import lc.fungee.IngrediCheck.debug.SessionDebugHelper
+import io.github.jan.supabase.auth.user.UserSession
 
 @Composable
 fun HomeScreen(navController: NavController, viewModel: AppleAuthViewModel) {
     val context = LocalContext.current
 
-    val sessionJson = remember {
-        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-            .getString("session", null)
-    }
-
+    // Get current session from Supabase SDK
     val session = remember {
-        sessionJson?.let {
-            Gson().fromJson(it, SupabaseSession::class.java)
-        }
+        val currentSession = viewModel.getCurrentSession()
+        // Debug logging
+        SessionDebugHelper.logSessionInfo(currentSession, "HomeScreen")
+        currentSession
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -42,16 +39,13 @@ fun HomeScreen(navController: NavController, viewModel: AppleAuthViewModel) {
             Text("Email: ${user.email}")
         } ?: Text("No user data found.")
 
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 🚪 Logout Button
+        // 🚪 Logout Button - Using Supabase SDK
         Button(
             onClick = {
-                // Clear session
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear().apply()
-                // Reset login state
-                viewModel.resetState()
+                // Use Supabase SDK signOut method
+                viewModel.signOut(context)
                 // Navigate to welcome screen
                 navController.navigate("welcome") {
                     popUpTo("home") { inclusive = true }
