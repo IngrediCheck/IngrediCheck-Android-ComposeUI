@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck
+﻿package lc.fungee.IngrediCheck
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
                 val currentPreferenceViewModel = remember(currentLoginState) {
                     val hasSdkSession = runCatching { repository.supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
                     val hasStoredSession = context.getSharedPreferences("user_session",
-                        MODE_PRIVATE
+                        android.content.Context.MODE_PRIVATE
                     )
                         .getString("session", null) != null
 
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
                                 googleSignInClient = googleSignInClient,
                                 preferenceViewModel = currentPreferenceViewModel,
                                 supabaseClient = repository.supabaseClient,
-                                windowSize = windowSizeClass,  // ✅ Fixed: proper parameter name
+                                windowSize = windowSizeClass,  // âœ… Fixed: proper parameter name
                                 isOnline = networkViewModel.isOnline,
                                 functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
                                 anonKey = supabaseAnonKey
@@ -205,7 +205,7 @@ class MainActivity : ComponentActivity() {
             val session = repository.supabaseClient.auth.currentSessionOrNull()
             if (session != null) {
                 android.util.Log.d("MainActivity", "Supabase session restored from deep link")
-                getSharedPreferences("user_session", MODE_PRIVATE)
+                getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
                     .edit()
                     .putString("login_provider", "google")
                     .apply()

@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+﻿package lc.fungee.IngrediCheck.auth
 
 import android.app.Activity
 import android.util.Log
@@ -9,7 +9,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 
 @Composable
-fun rememberGoogleSignInLauncherUnused(
+fun rememberGoogleSignInLauncher(
     activity: Activity,
     viewModel: AppleAuthViewModel
 )
