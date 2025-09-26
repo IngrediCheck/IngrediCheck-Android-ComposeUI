@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+﻿package lc.fungee.IngrediCheck.auth
 
 import android.app.Activity
 import android.util.Log
@@ -12,7 +12,8 @@ import com.google.android.gms.common.api.ApiException
 fun rememberGoogleSignInLauncher(
     activity: Activity,
     viewModel: AppleAuthViewModel
-) = rememberLauncherForActivityResult(
+)
+= rememberLauncherForActivityResult(
     contract = ActivityResultContracts.StartActivityForResult()
 ) { result ->
     val data = result.data

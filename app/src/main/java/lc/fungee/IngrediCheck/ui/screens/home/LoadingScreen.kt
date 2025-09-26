@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.data.model.DietaryPreference
 import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 
 
@@ -79,13 +79,13 @@ fun PreferencesList(
                         modifier = Modifier
                             .size(8.dp)
                             .offset(y = 8.dp)
-                            .background(Color(0xFF789D0E), CircleShape)
+                            .background(AppColors.Brand, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
 
                     Text(
                         text = viewModel.buildBoldAnnotatedString(preference.annotatedText),
-                        color = Color(0xFF4F5449),
+                        color = AppColors.Neutral600,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         lineHeight = 21.sp,
@@ -146,7 +146,7 @@ fun PreferencesList(
 
             // Divider after each row
             Divider(
-                color = Color(0xFFEBECE9),
+                color = AppColors.Divider,
                 thickness = 2.dp,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,7 +228,7 @@ fun ErrorScreen(
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryGreen100
+                    containerColor = AppColors.Brand
                 )
             ) {
                 Text(

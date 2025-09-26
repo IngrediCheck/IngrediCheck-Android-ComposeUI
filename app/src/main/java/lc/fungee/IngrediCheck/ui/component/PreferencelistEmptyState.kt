@@ -34,7 +34,7 @@ import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200
 import lc.fungee.IngrediCheck.ui.theme.Greyscale500
 import lc.fungee.IngrediCheck.ui.theme.PrimarayGreen50
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.White
 
 @Composable
@@ -131,7 +131,7 @@ fun PreferenceEmptyState() {
                         text = annotatedText,
                         modifier = Modifier.padding(horizontal = 16.dp),
                         fontSize = 15.sp,
-                        color = PrimaryGreen100
+                        color = AppColors.Brand
                     )
                 }
             }
@@ -147,7 +147,7 @@ fun PreferenceEmptyState() {
                             .height(8.dp)
                             .width(8.dp)
                             .background(
-                                color = if (pagerState.currentPage == index) PrimaryGreen100 else Greyscale200,
+                                color = if (pagerState.currentPage == index) AppColors.Brand else Greyscale200,
                                 shape = CircleShape
                             )
                     )

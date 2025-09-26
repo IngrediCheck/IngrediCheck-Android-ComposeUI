@@ -26,7 +26,7 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
 
-import androidx.compose.material3.CircularProgressIndicator
+ 
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
@@ -70,11 +70,12 @@ import lc.fungee.IngrediCheck.ui.component.PreferenceEmptyState
 import lc.fungee.IngrediCheck.ui.component.BottomBar
 import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Greyscale700
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.ui.theme.BrandGlow
 import lc.fungee.IngrediCheck.ui.theme.Statusfail
 import lc.fungee.IngrediCheck.ui.theme.White
 
-import lc.fungee.IngrediCheck.ui.screens.check.CameraPreview
+import lc.fungee.IngrediCheck.ui.component.CameraPreview
 import lc.fungee.IngrediCheck.ui.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
 
@@ -112,6 +113,8 @@ fun HomeScreen(
             showSheet = true
         }
     }
+
+    
 
 
 
@@ -152,7 +155,7 @@ fun HomeScreen(
                 ModalBottomSheet(
                     onDismissRequest = { showSheetSetting = false },
                     sheetState = sheetState,
-                    containerColor = Color(0xFFF3F2F9),
+                    containerColor = AppColors.SurfaceMuted,
                     dragHandle = null,
                     shape = RoundedCornerShape(
                         topStart = 10.dp,
@@ -191,7 +194,7 @@ fun HomeScreen(
                     .background(White)
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
-                    .pullRefresh(pullRefreshState)
+//                    .pullRefresh(pullRefreshState)
             ) {
 
                 Row(
@@ -215,7 +218,7 @@ fun HomeScreen(
                             painter = painterResource(R.drawable.settingicon),
                             contentDescription = "Setting Icon",
                             modifier = Modifier.size(25.dp),
-                            tint = PrimaryGreen100,
+                            tint = AppColors.Brand,
                         )
                     }
                 }
@@ -228,8 +231,8 @@ fun HomeScreen(
                                 Modifier.shadow(
                                     elevation = 16.dp,
                                     shape = RoundedCornerShape(8.dp),
-                                    ambientColor = Color(0xFFCBEB6E),
-                                    spotColor = PrimaryGreen100
+                                    ambientColor = BrandGlow,
+                                    spotColor = AppColors.Brand
                                 )
                             } else {
                                 Modifier
@@ -263,10 +266,10 @@ fun HomeScreen(
                         shape = RoundedCornerShape(8.dp),
                         enabled = !isValidating,
                         colors = TextFieldDefaults.outlinedTextFieldColors(
-                            focusedBorderColor = if (isError) Statusfail else PrimaryGreen100,
+                            focusedBorderColor = if (isError) Statusfail else AppColors.Brand,
                             unfocusedBorderColor = if (isError) Statusfail else Color.Transparent,
                             backgroundColor = Greyscale50,
-                            cursorColor = PrimaryGreen100
+                            cursorColor = AppColors.Brand
                         ),
                         maxLines = 3,
                         interactionSource = interactionSource,
@@ -283,13 +286,19 @@ fun HomeScreen(
                             }
                         }
                     )
-                    PullRefreshIndicator(
-                        refreshing = isRefreshing,
-                        state = pullRefreshState,
-                        modifier = Modifier.align(Alignment.TopCenter) // position correctly
-                    )
+//                    PullRefreshIndicator(
+//                        refreshing = isRefreshing,
+//                        state = pullRefreshState,
+//                        modifier = Modifier.align(Alignment.TopCenter) // position correctly
+//                    )
                     Spacer(modifier = Modifier.height(16.dp))
+//                    PullRefreshIndicator(
+////                        refreshing = isRefreshing,
+////                        state = pullRefreshState,
+////                        modifier = Modifier.align(Alignment.TopCenter)
+////                    )
                 }
+
 
 
 //                    Spacer(modifier = Modifier.height(16.dp))
@@ -297,15 +306,7 @@ fun HomeScreen(
                 // Validation feedback
                 when (val state = preferenceViewModel.validationState) {
                     is ValidationState.Validating -> {
-                        Row() {
-                            Text("Thinking  ", color = PrimaryGreen100, fontSize = 14.sp)
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(14.dp).align(Alignment.CenterVertically),
-                                color = PrimaryGreen100
-
-                            )
-                        }
+                        Text("Thinking...", color = AppColors.Brand, fontSize = 14.sp)
                     }
 
                     is ValidationState.Failure -> {
@@ -324,7 +325,7 @@ fun HomeScreen(
                         if (showSuccess) {
                             Text(
                                 "Preference added successfully...",
-                                color = PrimaryGreen100,
+                                color = AppColors.Brand,
                                 fontSize = 14.sp
                             )
                         }
@@ -352,6 +353,7 @@ fun HomeScreen(
                 }
             }
         }
+
     }
 
     // BottomSheet over Home

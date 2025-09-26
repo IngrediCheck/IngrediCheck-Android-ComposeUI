@@ -1,10 +1,17 @@
 // Updated: app/src/main/java/lc/fungee/IngrediCheck/AppNavigation.kt
 package lc.fungee.IngrediCheck.navigation
 import android.content.Intent
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -12,18 +19,24 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 //import lc.fungee.IngrediCheck.ui.screens.check.CameraScreen
 import lc.fungee.IngrediCheck.ui.screens.home.HomeScreen
 import lc.fungee.IngrediCheck.ui.screens.list.ListScreen
+import lc.fungee.IngrediCheck.ui.screens.list.FavoritesPageScreen
+import lc.fungee.IngrediCheck.ui.screens.list.RecentScansPageScreen
+import lc.fungee.IngrediCheck.ui.screens.list.HistoryItemDetailScreen
+import lc.fungee.IngrediCheck.ui.screens.list.FavoriteItemDetailScreen
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.component.NetworkStatusOverlay
 import lc.fungee.IngrediCheck.ui.screens.SplashScreen
-//import lc.fungee.IngrediCheck.ui.screens.check.AnalysisScreen
+//import lc.fungee.IngrediCheck.ui.screens.analysis.AnalysisScreen
 //import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.DisclaimerScreen
 import lc.fungee.IngrediCheck.ui.screens.onboarding.WelcomeScreen
 import lc.fungee.IngrediCheck.ui.screens.setting.SettingScreen
+import java.net.URLDecoder
 
 @Composable
 fun AppNavigation(
@@ -39,14 +52,25 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     NetworkStatusOverlay(isOnline = isOnline)
+
+    // Decide start destination synchronously to avoid flashing Splash for guest login
+    val ctx = LocalContext.current
+    val prefs = ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
+    val provider = prefs.getString("login_provider", null)
+    val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
+    val isLoggedIn: Boolean = remember(provider, hasSdkSession) {
+        hasSdkSession || (provider == "anonymous")
+    }
+    Log.d("AppNavigation", "start eval: provider=${provider}, hasSdkSession=${hasSdkSession}, isLoggedIn=${isLoggedIn}")
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
         composable("splash") {
             SplashScreen(
-               // windowSize = windowSize,  // ✅ Fixed: proper parameter name
+                // windowSize = windowSize,  // ✅ Fixed: proper parameter name
                 onSplashFinished = { isLoggedIn ->
+                    Log.d("AppNavigation", "Splash finished. isLoggedIn=${isLoggedIn}. Navigating...")
                     navController.navigate(if (isLoggedIn) "home" else "welcome") {
                         popUpTo("splash") { inclusive = true }
                     }
@@ -55,11 +79,12 @@ fun AppNavigation(
         }
 
         composable("welcome") {
+            Log.d("AppNavigation", "Entered 'welcome' route")
+            val ctx = LocalContext.current
             WelcomeScreen(
                 onGoogleSignIn = {
-                    googleSignInClient.signOut().addOnCompleteListener {
-                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                    }
+                    Log.d("AppNavigation", "onGoogleSignIn clicked -> launching web OAuth")
+                    viewModel.launchGoogleOAuth(ctx)
                 },
                 viewModel = viewModel,
                 navController = navController,
@@ -80,6 +105,7 @@ fun AppNavigation(
 
         // ✅ Updated: Pass navController to all screens
         composable("home") {
+            Log.d("AppNavigation", "Entered 'home' route. preferenceViewModel is null? ${preferenceViewModel == null}")
             if (preferenceViewModel != null) {
                 HomeScreen(
                     navController = navController,
@@ -91,9 +117,18 @@ fun AppNavigation(
                     googleSignInClient = googleSignInClient
                 )
             } else {
-                // Show a loading or error screen, or redirect to login
-//        LoadingScreen()
-
+                Log.w("AppNavigation", "preferenceViewModel is null at 'home'. Redirecting to 'welcome'")
+                LaunchedEffect(Unit) {
+                    navController.navigate("welcome") {
+                        popUpTo("home") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.Center)
+                    )
+                }
             }
         }
 
@@ -136,6 +171,44 @@ fun AppNavigation(
                 anonKey = anonKey
             )
         }
+        composable("favoritesAll") {
+            FavoritesPageScreen(
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey,
+                navController = navController
+            )
+        }
+        composable("recentScansAll") {
+            RecentScansPageScreen(
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey,
+                navController = navController
+            )
+        }
+        composable("historyItem?item={item}") { backStackEntry ->
+            val raw = backStackEntry.arguments?.getString("item") ?: ""
+            val itemJson = try { URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+            HistoryItemDetailScreen(
+                itemJson = itemJson,
+                supabaseClient = supabaseClient,
+                navController = navController,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey
+            )
+        }
+        composable("favoriteItem?item={item}") { backStackEntry ->
+            val raw = backStackEntry.arguments?.getString("item") ?: ""
+            val itemJson = try { URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+            FavoriteItemDetailScreen(
+                itemJson = itemJson,
+                supabaseClient = supabaseClient,
+                navController = navController,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey
+            )
+        }
         composable ("setting"){
             if (preferenceViewModel != null) {
                 SettingScreen(
@@ -143,8 +216,9 @@ fun AppNavigation(
                     onDismiss = { navController.popBackStack() },
                     supabaseClient = supabaseClient,
                     onRequireReauth = {
+                        // Make welcome the new root without referencing graph start (splash)
                         navController.navigate("welcome") {
-                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            popUpTo("home") { inclusive = true }
                             launchSingleTop = true
                         }
                     },
@@ -153,5 +227,6 @@ fun AppNavigation(
                 )
             }
         }
+        
     }
 }

@@ -33,6 +33,8 @@ class AnalysisViewModel(
     private val anonKey: String
 ) : ViewModel() {
 
+    private val json = Json { ignoreUnknownKeys = true }
+
     var product by mutableStateOf<Product?>(null)
         private set
 
@@ -137,7 +139,7 @@ class AnalysisViewModel(
             Log.d("AnalysisVM", "Extract code=${resp.code}, body=${body.take(200)}")
             if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
             if (!resp.isSuccessful) throw Exception("Failed to extract product: ${resp.code}")
-            Json.decodeFromString(Product.serializer(), body)
+            json.decodeFromString(Product.serializer(), body)
         }
     }
 
@@ -196,7 +198,7 @@ class AnalysisViewModel(
                 Log.d("AnalysisVM", "Product code=${resp.code}, body=${body.take(200)}")
                 if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
                 if (!resp.isSuccessful) throw Exception("Failed to fetch product: ${resp.code}")
-                Json.decodeFromString(Product.serializer(), body)
+                json.decodeFromString(Product.serializer(), body)
             }
         }
 
@@ -242,7 +244,7 @@ class AnalysisViewModel(
                 if (code == 401) throw Exception("Authentication failed. Please log in again.")
                 if (code !in listOf(200, 204)) throw Exception("Analyze failed: $code")
                 if (body.isBlank()) emptyList()
-                else Json.decodeFromString(ListSerializer(IngredientRecommendation.serializer()), body)
+                else json.decodeFromString(ListSerializer(IngredientRecommendation.serializer()), body)
             } catch (e: Exception) {
                 Log.e("AnalysisVM", "Error reading response", e)
                 throw e

@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -73,7 +73,7 @@ fun WebViewScreen(url: String) {
                             error: android.webkit.WebResourceError?
                         ) {
                             super.onReceivedError(view, request, error)
-                            haserror = true   // 👈 mark error
+                            haserror = true   // mark error
                         }
 
                         override fun onReceivedHttpError(
@@ -82,7 +82,7 @@ fun WebViewScreen(url: String) {
                             errorResponse: android.webkit.WebResourceResponse?
                         ) {
                             super.onReceivedHttpError(view, request, errorResponse)
-                            haserror = true   // 👈 mark error
+                            haserror = true   // mark error
                         }
 
                         override fun onPageCommitVisible(view: WebView?, url: String?) {
@@ -130,7 +130,7 @@ fun WebViewScreen(url: String) {
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    color = PrimaryGreen100,
+                    color = AppColors.Brand,
                     modifier = Modifier.size(32.dp)
                 )
             }

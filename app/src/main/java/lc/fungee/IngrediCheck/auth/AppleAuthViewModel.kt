@@ -10,13 +10,12 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.google.gson.Gson
-import lc.fungee.IngrediCheck.data.model.SupabaseSession
+import io.github.jan.supabase.auth.user.UserSession
 
 sealed class AppleLoginState {
     object Idle : AppleLoginState()
     object Loading : AppleLoginState()
-    data class Success(val session: SupabaseSession) : AppleLoginState()
+    data class Success(val session: UserSession) : AppleLoginState()
     data class Error(val message: String) : AppleLoginState()
     object NavigateToDisclaimer : AppleLoginState()
 }
@@ -24,16 +23,12 @@ sealed class AppleLoginState {
 class AppleAuthViewModel(
     private val repository: AppleAuthRepository
 ) : ViewModel() {
-    // Flag to indicate if session storage failed
-    private val _sessionStoreFailed = MutableStateFlow(false)
-    val sessionStoreFailed: StateFlow<Boolean> = _sessionStoreFailed
     var userEmail by mutableStateOf<String?>(null)
         private set
 
     var userId by mutableStateOf<String?>(null)
         private set
 
-    //already exposing loginState like this so your Composables can observe it.
     private val _loginState = MutableStateFlow<AppleLoginState>(AppleLoginState.Idle)
     val loginState: StateFlow<AppleLoginState> = _loginState
 
@@ -54,21 +49,15 @@ class AppleAuthViewModel(
 
                 val newState = result.fold(
                     onSuccess = { session ->
-                        android.util.Log.d("AppleAuthViewModel", "Apple login successful, storing session")
-                        try {
-                            storeSession(session, context)
-                            // Persist login provider for Settings UI
-                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("login_provider", "apple")
-                                .apply()
-                            _sessionStoreFailed.value = false
-                        } catch (e: Exception) {
-                            android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
-                            _sessionStoreFailed.value = true
-                        }
-                        userEmail = session.user.email
-                        userId = session.user.id
+                        android.util.Log.d("AppleAuthViewModel", "Apple login successful")
+                        // Session is automatically managed by Supabase SDK
+                        // Persist login provider for Settings UI
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("login_provider", "apple")
+                            .apply()
+                        userEmail = session.user?.email
+                        userId = session.user?.id
                         android.util.Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         AppleLoginState.Success(session)
                     },
@@ -103,21 +92,15 @@ class AppleAuthViewModel(
 
                 val newState = result.fold(
                     onSuccess = { session ->
-                        android.util.Log.d("AppleAuthViewModel", "Apple login successful, storing session")
-                        try {
-                            storeSession(session, context)
-                            // Persist login provider for Settings UI
-                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("login_provider", "apple")
-                                .apply()
-                            _sessionStoreFailed.value = false
-                        } catch (e: Exception) {
-                            android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
-                            _sessionStoreFailed.value = true
-                        }
-                        userEmail = session.user.email
-                        userId = session.user.id
+                        android.util.Log.d("AppleAuthViewModel", "Apple login successful")
+                        // Session is automatically managed by Supabase SDK
+                        // Persist login provider for Settings UI
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("login_provider", "apple")
+                            .apply()
+                        userEmail = session.user?.email
+                        userId = session.user?.id
                         android.util.Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         AppleLoginState.Success(session)
                     },
@@ -146,29 +129,22 @@ class AppleAuthViewModel(
         _loginState.value = AppleLoginState.Loading
         viewModelScope.launch {
             try {
-                val result = repository.exchangeGoogleIdTokenWithSupabase(idToken)
+                val result = repository.signInWithGoogleIdTokenSdk(idToken)
                 val newState = result.fold(
                     onSuccess = { session ->
-                        android.util.Log.d("AppleAuthViewModel", "Google login successful, storing session")
-                        try {
-                            storeSession(session, context)
-                            // Persist login provider for Settings UI
-                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("login_provider", "google")
-                                .apply()
-                            _sessionStoreFailed.value = false
-                        } catch (e: Exception) {
-                            android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
-                            _sessionStoreFailed.value = true
-                        }
-                        userEmail = session.user.email
-                        userId = session.user.id
+                        android.util.Log.d("AppleAuthViewModel", "Google login successful")
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("login_provider", "google")
+                            .apply()
+                        userEmail = session.user?.email
+                        userId = session.user?.id
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
                         android.util.Log.e("AppleAuthViewModel", "Google login failed", exception)
-                        AppleLoginState.Error(exception.localizedMessage ?: "Supabase error")
+                        // Guide UI to trigger web-based OAuth flow
+                        AppleLoginState.Error("Use Google web OAuth flow. ${exception.localizedMessage ?: ""}")
                     }
                 )
                 _loginState.value = newState
@@ -179,74 +155,7 @@ class AppleAuthViewModel(
         }
     }
 
-    fun signInWithAppleAccessToken(accessToken: String, context: Context) {
-        android.util.Log.d(
-            "AppleAuthViewModel",
-            "signInWithAppleAccessToken called with token: ${accessToken.take(10)}..."
-        )
-        _loginState.value = AppleLoginState.Loading
-        viewModelScope.launch {
-            try {
-                android.util.Log.d(
-                    "AppleAuthViewModel",
-                    "Calling repository.exchangeAppleAccessTokenWithSupabase"
-                )
-                val result = repository.exchangeAppleAccessTokenWithSupabase(accessToken)
-                android.util.Log.d(
-                    "AppleAuthViewModel",
-                    "Apple access token exchange result: $result"
-                )
-
-                _loginState.value = result.fold(
-                    onSuccess = { session ->
-                        android.util.Log.d(
-                            "AppleAuthViewModel",
-                            "Apple login successful, storing session"
-                        )
-                        try {
-                            // Store session in SharedPreferences so repo can read it
-                            storeSession(session, context)
-                            // Persist login provider for Settings UI
-                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("login_provider", "apple")
-                                .apply()
-                            _sessionStoreFailed.value = false
-                            // Extract user data
-                            userEmail = session.user.email
-                            userId = session.user.id
-                            android.util.Log.d(
-                                "AppleAuthViewModel",
-                                "User data extracted - Email: $userEmail, ID: $userId"
-                            )
-                            AppleLoginState.Success(session)
-                        } catch (e: Exception) {
-                            android.util.Log.e("AppleAuthViewModel", "Error storing session", e)
-                            _sessionStoreFailed.value = true
-                            AppleLoginState.Error("Failed to store session: ${e.message}")
-                        }
-                    },
-                    onFailure = { exception ->
-                        android.util.Log.e("AppleAuthViewModel", "Apple login failed", exception)
-                        val errorMessage = when {
-                            exception.message?.contains("401") == true -> "Unauthorized - Check Supabase configuration"
-                            exception.message?.contains("400") == true -> "Bad request - Invalid access token"
-                            exception.message?.contains("500") == true -> "Server error - Try again later"
-                            exception.message?.contains("404") == true -> "Apple Sign-In not configured in Supabase"
-                            else -> exception.localizedMessage
-                                ?: "Supabase error: ${exception.message}"
-                        }
-                        AppleLoginState.Error(errorMessage)
-                    }
-                )
-            } catch (e: Exception) {
-                android.util.Log.e("AppleAuthViewModel", "Exception during Apple login", e)
-                _loginState.value = AppleLoginState.Error("Login failed: ${e.message}")
-            }
-        }
-    }
-
-    // ✅ Anonymous Sign-In Method - Moved to class level
+    // ✅ Anonymous Sign-In Method - Using Supabase SDK
     fun signInAnonymously(context: Context) {
         android.util.Log.d("AppleAuthViewModel", "Starting anonymous sign-in")
         _loginState.value = AppleLoginState.Loading
@@ -255,19 +164,13 @@ class AppleAuthViewModel(
                 val result = repository.signInAnonymously()
                 val newState = result.fold(
                     onSuccess = { session ->
-                        android.util.Log.d("AppleAuthViewModel", "Anonymous sign-in successful, storing session")
-                        try {
-                            storeSession(session, context)
-                            // Persist login provider for Settings UI
-                            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                                .edit()
-                                .putString("login_provider", "anonymous")
-                                .apply()
-                            _sessionStoreFailed.value = false
-                        } catch (e: Exception) {
-                            android.util.Log.e("AppleAuthViewModel", "Error storing anonymous session", e)
-                            _sessionStoreFailed.value = true
-                        }
+                        android.util.Log.d("AppleAuthViewModel", "Anonymous sign-in successful")
+                        // Session is automatically managed by Supabase SDK
+                        // Persist login provider for Settings UI
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("login_provider", "anonymous")
+                            .apply()
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         android.util.Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
@@ -299,34 +202,6 @@ class AppleAuthViewModel(
         _loginState.value = AppleLoginState.NavigateToDisclaimer
     }
 
-    // Make storeSession public so MainActivity can call it
-    fun storeSession(session: SupabaseSession, context: Context) {
-        try {
-            val sessionJson = Gson().toJson(session)
-            android.util.Log.d("AppleAuthViewModel", "Session JSON: $sessionJson")
-            android.util.Log.d("AppleAuthViewModel", "Session JSON length: ${sessionJson.length}")
-            
-            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                .edit()
-                .putString("session", sessionJson)
-                .apply()
-            
-            // Debug logging
-            android.util.Log.d("AppleAuthViewModel", "Session stored successfully")
-            
-            // Add null safety for user object
-            if (session.user != null) {
-                android.util.Log.d("AppleAuthViewModel", "User email: ${session.user.email}")
-                android.util.Log.d("AppleAuthViewModel", "User ID: ${session.user.id}")
-            } else {
-                android.util.Log.w("AppleAuthViewModel", "User object is null in session")
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("AppleAuthViewModel", "Error storing session to SharedPreferences", e)
-            throw e
-        }
-    }
-
     fun setError(message: String) {
         android.util.Log.e("AppleAuthViewModel", "Setting error: $message")
         _loginState.value = AppleLoginState.Error(message)
@@ -339,15 +214,65 @@ class AppleAuthViewModel(
         userId = null
     }
 
-    fun clearSession(context: Context) {
-        try {
-            context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply()
-            android.util.Log.d("AppleAuthViewModel", "Session cleared successfully")
-        } catch (e: Exception) {
-            android.util.Log.e("AppleAuthViewModel", "Error clearing session", e)
+    // ✅ Sign Out Method - Using Supabase SDK
+    fun signOut(context: Context) {
+        android.util.Log.d("AppleAuthViewModel", "Starting sign out")
+        viewModelScope.launch {
+            try {
+                val result = repository.signOut()
+                result.fold(
+                    onSuccess = {
+                        android.util.Log.d("AppleAuthViewModel", "Sign out successful")
+                        // Clear local state
+                        userEmail = null
+                        userId = null
+                        _loginState.value = AppleLoginState.Idle
+                        // Clear login provider
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .clear()
+                            .apply()
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e("AppleAuthViewModel", "Sign out failed", exception)
+                        // Still clear local state even if sign out fails
+                        userEmail = null
+                        userId = null
+                        _loginState.value = AppleLoginState.Idle
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .clear()
+                            .apply()
+                    }
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("AppleAuthViewModel", "Exception during sign out", e)
+                // Still clear local state even if sign out fails
+                userEmail = null
+                userId = null
+                _loginState.value = AppleLoginState.Idle
+                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                    .edit()
+                    .clear()
+                    .apply()
+            }
+        }
+    }
+
+    // ✅ Get Current Session - Using Supabase SDK
+    fun getCurrentSession(): UserSession? {
+        return repository.getCurrentSession()
+    }
+
+    // ✅ Launch Google OAuth via WebView (SDK-supported flow)
+    fun launchGoogleOAuth(context: Context) {
+        (context as? Activity)?.let { activity ->
+            android.util.Log.d("AppleAuthViewModel", "Launching Google WebView login")
+            _loginState.value = AppleLoginState.Loading
+            repository.launchGoogleLoginWebView(activity)
+        } ?: run {
+            android.util.Log.e("AppleAuthViewModel", "launchGoogleOAuth requires an Activity context")
+            _loginState.value = AppleLoginState.Error("Unable to launch Google login")
         }
     }
 }

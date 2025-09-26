@@ -88,11 +88,12 @@ fun SettingScreen(
     fun clearAllSession()
     {
         coroutineScope.launch {
-            try { supabaseClient.auth.signOut() } catch (_: Exception) {}
+            // Centralize Supabase sign-out via ViewModel
+            try { viewModel.signOut(context) } catch (_: Exception) {}
+            // Google: sign out and revoke if applicable
             try { googleSignInClient.signOut() } catch (_: Exception) {}
             try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
-            try { viewModel.clearSession(context) } catch (_: Exception) {}
-            try { viewModel.resetState() } catch (_: Exception) {}
+            // Web cookies and local data
             clearWebCookies()
             preferenceViewModel.clearAllLocalData()
             sharedPrefs.edit().clear().apply()
@@ -133,21 +134,21 @@ fun SettingScreen(
                 IconRow(
                     "Delete & Restart App",
                     Icons.Default.Warning,
-                    tint = Color(0xFFD03B35),
-                    tint2 = Color(0xFFD03B35)
+                    tint = AppColors.ErrorStrong,
+                    tint2 = AppColors.ErrorStrong
                 ) { confirmAction = ConfirmAction.RESET_GUEST }
             } else {
                 // Authenticated user: show Sign Out and Delete Data & Account
                 IconRow(
                     "Sign Out",
                     Icons.Default.ExitToApp,
-                    tint = PrimaryGreen100
+                    tint = AppColors.Brand
                 ) { clearAllSession()}
                 IconRow(
                     "Delete Data & Account",
                     Icons.Default.Delete,
-                    tint = Color(0xFFD03B35),
-                    tint2 = Color(0xFFD03B35)
+                    tint = AppColors.ErrorStrong,
+                    tint2 = AppColors.ErrorStrong
                 ) { confirmAction = ConfirmAction.DELETE_ACCOUNT }
             }
         }
@@ -208,7 +209,7 @@ fun SettingScreen(
                 confirmText = "I Understand"
                 onConfirm = {
                     coroutineScope.launch {
-                        // Try remote delete first; ignore failure here, UI shows toast elsewhere if desired
+                        // First: try remote account deletion (Edge Function must be deployed server-side)
                         runCatching { preferenceViewModel.deleteAccountRemote() }
                         clearAllSession()
                     }
@@ -219,10 +220,10 @@ fun SettingScreen(
                 confirmText = "I Understand"
                 onConfirm = {
                     coroutineScope.launch {
+                        runCatching { viewModel.signOut(context) }
                         preferenceViewModel.clearAllLocalData()
                         sharedPrefs.edit().clear().apply()
                         clearWebCookies()
-                        runCatching { viewModel.resetState() }
                         onRequireReauth()
                     }
                 }
@@ -239,16 +240,16 @@ fun SettingScreen(
                     confirmAction = ConfirmAction.NONE
                     onConfirm()
                 }) {
-                    Text(confirmText,color = PrimaryGreen100)
+                    Text(confirmText,color = AppColors.Brand)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmAction = ConfirmAction.NONE }) {
-                    Text("Cancel",color =PrimaryGreen100
+                    Text("Cancel",color = AppColors.Brand
                     )
                 }
             }
-            ,  containerColor = Color(0xFFF3F2F8),
+            ,  containerColor = Greyscale100Alt,
             textContentColor = Color.Black// 👈 your custom background
         )
     }
@@ -410,7 +411,7 @@ private fun SettingHeader(onDismiss: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 17.sp,
                 letterSpacing = (-0.41).sp,
-                color = Color(0xFF1B270C),
+                color = AppColors.Neutral700,
                 lineHeight = 22.sp
             )
         )
@@ -475,7 +476,7 @@ private fun SwitchRow(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
                 letterSpacing = (-0.41).sp,
-                color = Color(0xFF1B270C),
+                color = AppColors.Neutral700,
                 lineHeight = 22.sp
             )
         )
@@ -489,9 +490,9 @@ private fun SwitchRow(
                 .width(51.dp),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = PrimaryGreen100,
+                checkedTrackColor = AppColors.Brand,
                 uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = Color(0xFFF3F2F9),
+                uncheckedTrackColor = AppColors.SurfaceMuted,
                 checkedBorderColor = Color.Transparent,
                 uncheckedBorderColor = Color.Transparent
             )
@@ -503,9 +504,9 @@ private fun SwitchRow(
 private fun IconRow(
     text: String,
     leadingVector: ImageVector,
-    tint: Color = Color.Black, // 👈 default value
-    tint2: Color =  PrimaryGreen100,
-    showDivider: Boolean = true, // 👈 optional
+    tint: Color = Color.Black, //
+    tint2: Color =  AppColors.Brand,
+    showDivider: Boolean = true, //
     onClick: (() -> Unit)? = null
 ) {
     Column {
@@ -554,7 +555,7 @@ private fun IconRow(
         // 👇 Divider only if needed
         if (showDivider) {
             Divider(
-                color = Color(0xFFF3F2F9),
+                color = AppColors.Divider,
                 thickness = 2.dp,
                 modifier = Modifier.padding(start = 35.dp)
             )

@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.auth.AppleLoginState
-import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 
     @Composable
@@ -57,7 +57,7 @@ import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
                     }
                 },
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF789D0E)),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.Brand),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -113,7 +113,7 @@ import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
         Button(
             onClick = { onGoogleSignIn?.invoke() },
             shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen100),
+            colors = ButtonDefaults.buttonColors(containerColor = AppColors.Brand),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
