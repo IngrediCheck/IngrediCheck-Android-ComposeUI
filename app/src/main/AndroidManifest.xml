@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+
 
     <application
         android:allowBackup="true"
@@ -27,9 +33,23 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="io.supabase.ingredicheck" android:host="login-callback" />
+                <data android:scheme="https" android:host="wqidjkpfdrvomfkmefqc.supabase.co" android:pathPrefix="/auth/v1/callback" />
             </intent-filter>
         </activity>
+        <activity android:name=".auth.AppleLoginWebViewActivity" />
+
+        <!-- 🔹 FileProvider (needed for camera) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="llc.fungee.IngrediCheck.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/photos_paths" />
+        </provider>
+
+
     </application>
 
 </manifest>
