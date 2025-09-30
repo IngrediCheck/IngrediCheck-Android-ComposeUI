@@ -292,11 +292,6 @@ fun HomeScreen(
 //                        modifier = Modifier.align(Alignment.TopCenter) // position correctly
 //                    )
                     Spacer(modifier = Modifier.height(16.dp))
-//                    PullRefreshIndicator(
-////                        refreshing = isRefreshing,
-////                        state = pullRefreshState,
-////                        modifier = Modifier.align(Alignment.TopCenter)
-////                    )
                 }
 
 
@@ -352,6 +347,15 @@ fun HomeScreen(
                     }
                 }
             }
+            // Place the indicator at the very top of the content so it overlays correctly
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = paddingValues.calculateTopPadding())
+                    .zIndex(1f)
+            )
         }
 
     }

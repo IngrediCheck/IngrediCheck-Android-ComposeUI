@@ -1,7 +1,6 @@
 // Updated: app/src/main/java/lc/fungee/IngrediCheck/AppNavigation.kt
 package lc.fungee.IngrediCheck.navigation
 import android.content.Intent
-import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
@@ -55,13 +54,12 @@ fun AppNavigation(
 
     // Decide start destination synchronously to avoid flashing Splash for guest login
     val ctx = LocalContext.current
-    val prefs = ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
-    val provider = prefs.getString("login_provider", null)
-    val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
-    val isLoggedIn: Boolean = remember(provider, hasSdkSession) {
+    val isLoggedIn: Boolean = remember {
+        val prefs = ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
+        val provider = prefs.getString("login_provider", null)
+        val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
         hasSdkSession || (provider == "anonymous")
     }
-    Log.d("AppNavigation", "start eval: provider=${provider}, hasSdkSession=${hasSdkSession}, isLoggedIn=${isLoggedIn}")
     NavHost(
         navController = navController,
         startDestination = "splash"
@@ -70,7 +68,6 @@ fun AppNavigation(
             SplashScreen(
                 // windowSize = windowSize,  // ✅ Fixed: proper parameter name
                 onSplashFinished = { isLoggedIn ->
-                    Log.d("AppNavigation", "Splash finished. isLoggedIn=${isLoggedIn}. Navigating...")
                     navController.navigate(if (isLoggedIn) "home" else "welcome") {
                         popUpTo("splash") { inclusive = true }
                     }
@@ -79,12 +76,11 @@ fun AppNavigation(
         }
 
         composable("welcome") {
-            Log.d("AppNavigation", "Entered 'welcome' route")
-            val ctx = LocalContext.current
             WelcomeScreen(
                 onGoogleSignIn = {
-                    Log.d("AppNavigation", "onGoogleSignIn clicked -> launching web OAuth")
-                    viewModel.launchGoogleOAuth(ctx)
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    }
                 },
                 viewModel = viewModel,
                 navController = navController,
@@ -105,7 +101,6 @@ fun AppNavigation(
 
         // ✅ Updated: Pass navController to all screens
         composable("home") {
-            Log.d("AppNavigation", "Entered 'home' route. preferenceViewModel is null? ${preferenceViewModel == null}")
             if (preferenceViewModel != null) {
                 HomeScreen(
                     navController = navController,
@@ -117,18 +112,9 @@ fun AppNavigation(
                     googleSignInClient = googleSignInClient
                 )
             } else {
-                Log.w("AppNavigation", "preferenceViewModel is null at 'home'. Redirecting to 'welcome'")
-                LaunchedEffect(Unit) {
-                    navController.navigate("welcome") {
-                        popUpTo("home") { inclusive = true }
-                        launchSingleTop = true
-                    }
-                }
-                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.Center)
-                    )
-                }
+                // Show a loading or error screen, or redirect to login
+//        LoadingScreen()
+
             }
         }
 

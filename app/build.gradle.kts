@@ -18,7 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["appAuthRedirectScheme"] = "io.supabase.ingredicheck"
     }
 
     buildTypes {
@@ -42,6 +41,13 @@ android {
     }
 }
 
+// Enforce a browser version compatible with current AGP (8.8.1)
+configurations.all {
+    resolutionStrategy {
+        force("androidx.browser:browser:1.8.0")
+    }
+}
+
 dependencies {
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
@@ -55,7 +61,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("androidx.browser:browser:1.8.0")
     implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.material3.window.size.class1.android)
     implementation(libs.androidx.animation.core.android)
@@ -69,13 +74,12 @@ dependencies {
     //If you're looking for the latest stable version, it's 1.3.2.
 
 
-    // OAuth for Apple Sign-In
-    implementation("net.openid:appauth:0.11.1")
+    // Using Custom Tabs for Apple Sign-In (no AppAuth dependency)
     implementation("androidx.compose.ui:ui:1.8.0")
+    implementation("androidx.browser:browser:1.8.0")
 
-    // Removed manual Ktor client usage; rely on Supabase SDK HTTP
-    // Add a Ktor 3.x engine so Supabase-kt can initialize its internal client
-    implementation("io.ktor:ktor-client-okhttp:3.0.0")
+    // Ktor engine used by supabase-kt internals
+    implementation("io.ktor:ktor-client-okhttp:3.1.1")
 
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
@@ -96,11 +100,11 @@ dependencies {
     // HTTP Client (OkHttp)
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
 
-    // Supabase Kotlin SDK - aligned versions
-    implementation("io.github.jan-tennert.supabase:supabase-kt:3.2.2")
-    implementation("io.github.jan-tennert.supabase:auth-kt:3.2.2")
-    implementation("io.github.jan-tennert.supabase:postgrest-kt:3.2.2")
-    implementation("io.github.jan-tennert.supabase:storage-kt:3.2.2")
+    // Supabase Kotlin SDK - aligned versions (3.2.4 includes signInWithIdToken)
+    implementation("io.github.jan-tennert.supabase:supabase-kt:3.2.4")
+    implementation("io.github.jan-tennert.supabase:auth-kt:3.2.4")
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:3.2.4")
+    implementation("io.github.jan-tennert.supabase:storage-kt:3.2.4")
 
     // AndroidX ViewModel + Activity KTX
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")

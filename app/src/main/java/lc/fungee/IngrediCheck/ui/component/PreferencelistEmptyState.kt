@@ -70,62 +70,73 @@ fun PreferenceEmptyState() {
             )
         )
         Spacer(modifier = Modifier.height(8.dp))
-        val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
+        // Base pages (real content)
+        val basePages = listOf(
+            buildAnnotatedString {
+                append("Avoid ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("Gluten") }
+                append(".")
+            },
+            buildAnnotatedString {
+                append("I follow a ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("vegetarian") }
+                append(" diet, but I'm okay with eating ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("fish") }
+                append(".")
+            },
+            buildAnnotatedString {
+                append("Scan ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("food ingredients") }
+                append(" easily.")
+            },
+            buildAnnotatedString {
+                append("Get alerts on ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("dietary restrictions") }
+                append(".")
+            }, buildAnnotatedString {
+                append("Avoid ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("Sugar") }
+                append(".")
+            }, buildAnnotatedString {
+                append("Avoid ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append("Sugar") }
+                append(".")
+            }
+
+        )
+        // Add 3 dummy pages after the first real swipe
+        val totalPages = basePages.size + 3
+        val pagerState = rememberPagerState(initialPage = 0, pageCount = { totalPages })
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            HorizontalPager(
-                state = pagerState,
+            // Static container box stays fixed; only the text content inside swipes
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(112.dp)
-            ) { page ->
-                Box(
+                    .padding(horizontal = 8.dp)
+                    .background(
+                        color = PrimarayGreen50,
+                        shape = RoundedCornerShape(
+                            topStart = 4.dp,
+                            topEnd = 8.dp,
+                            bottomEnd = 8.dp,
+                            bottomStart = 8.dp
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                HorizontalPager(
+                    state = pagerState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(112.dp)
-                        .padding(horizontal = 8.dp)
-                        .background(
-                            color = PrimarayGreen50,
-                            shape = RoundedCornerShape(
-                                topStart = 4.dp,
-                                topEnd = 8.dp,
-                                bottomEnd = 8.dp,
-                                bottomStart = 8.dp
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val annotatedText = when (page) {
-                        0 -> buildAnnotatedString {
-                            append("I follow a ")
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append("vegetarian")
-                            }
-                            append(" diet, but I'm okay with eating ")
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append("fish")
-                            }
-                            append(".")
-                        }
-
-                        1 -> buildAnnotatedString {
-                            append("Scan ")
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append("food ingredients")
-                            }
-                            append(" easily.")
-                        }
-
-                        2 -> buildAnnotatedString {
-                            append("Get alerts on ")
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append("dietary restrictions")
-                            }
-                            append(".")
-                        }
-
-                        else -> buildAnnotatedString { append("") }
+                ) { page ->
+                    val annotatedText = if (page < basePages.size) {
+                        basePages[page]
+                    } else {
+                        buildAnnotatedString { append("Prefrences...") }
                     }
                     Text(
                         text = annotatedText,
@@ -138,16 +149,22 @@ fun PreferenceEmptyState() {
             Row(
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(top = 16.dp)
             ) {
+                // Map many pages to 3 dots: first swipe moves to middle dot and stays for next 4 swipes
+                val activeDot = when {
+                    pagerState.currentPage <= 0 -> 0
+                    pagerState.currentPage in 1..4 -> 1
+                    else -> 2
+                }
                 repeat(3) { index ->
                     Box(
                         modifier = Modifier
                             .height(8.dp)
                             .width(8.dp)
                             .background(
-                                color = if (pagerState.currentPage == index) AppColors.Brand else Greyscale200,
+                                color = if (activeDot == index) AppColors.Brand else Greyscale200,
                                 shape = CircleShape
                             )
                     )

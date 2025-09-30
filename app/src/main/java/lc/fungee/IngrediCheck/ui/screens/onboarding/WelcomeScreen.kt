@@ -17,9 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +46,8 @@ import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 
 val fredokaMedium = FontFamily(Font(R.font.fredoka_medium))
-
+val termsTag = "TERMS"
+val privacyTag = "PRIVACY"
 @Composable
 fun WelcomeScreen(
     onGoogleSignIn: (() -> Unit)? = null,
@@ -155,16 +158,16 @@ fun WelcomeScreen(
             pushStyle(
                 SpanStyle(
                     textDecoration = TextDecoration.Underline,
-                    fontFamily = FontFamily(Font(R.font.inter_28pt_regular)), // Make sure Inter font is in res/font
-                    fontWeight = FontWeight.ExtraBold, // 400 weight
-                    fontStyle = FontStyle.Normal,   // Regular style
+                    fontFamily = FontFamily(Font(R.font.inter_28pt_regular)),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Normal,
                     fontSize = 13.sp,
                     letterSpacing = (-0.08).sp,
-
-
-                    )
+                )
             )
+            pushStringAnnotation(tag = termsTag, annotation = "https://www.ingredicheck.app/terms-conditions")
             append("Terms of use")
+            pop()
             pop()
 
             append(" and ")
@@ -179,20 +182,36 @@ fun WelcomeScreen(
                     letterSpacing = (-0.08).sp
                 )
             )
+            pushStringAnnotation(tag = privacyTag, annotation = "https://www.ingredicheck.app/privacy-policy")
             append("Privacy Policy")
+            pop()
             pop()
         }
 
+        val uriHandler = LocalUriHandler.current
 
-        Text(
+        ClickableText(
             text = annotatedText,
-            fontSize = 13.sp,
-            color = Color.Gray,
-            textAlign = TextAlign.Center,
-            lineHeight = 18.sp,
+            style = TextStyle(
+                fontSize = 13.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp,
+            ),
             modifier = Modifier
                 .padding(bottom = 24.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            onClick = { offset ->
+                annotatedText.getStringAnnotations(tag = termsTag, start = offset, end = offset)
+                    .firstOrNull()?.let { sa ->
+                        uriHandler.openUri(sa.item)
+                        return@ClickableText
+                    }
+                annotatedText.getStringAnnotations(tag = privacyTag, start = offset, end = offset)
+                    .firstOrNull()?.let { sa ->
+                        uriHandler.openUri(sa.item)
+                    }
+            }
         )
     }
 }

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.auth.AppleSignInManager
 import lc.fungee.IngrediCheck.auth.AppleLoginState
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 
@@ -52,8 +53,8 @@ import lc.fungee.IngrediCheck.ui.theme.AppColors
             Button(
                 onClick = {
                     if (activity != null) {
-                        Log.d("AppleSignIn", "Apple login button clicked")
-                        viewModel.launchAppleWebViewLogin(activity)
+                        Log.d("AppleSignIn", "Apple login (native) clicked")
+                        AppleSignInManager.startAppleSignIn(activity)
                     }
                 },
                 shape = CircleShape,

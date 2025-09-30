@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -29,13 +30,100 @@ class AppleAuthViewModel(
     var userId by mutableStateOf<String?>(null)
         private set
 
-    private val _loginState = MutableStateFlow<AppleLoginState>(AppleLoginState.Idle)
+    private val _loginState = MutableStateFlow<AppleLoginState>(AppleLoginState.Loading)
     val loginState: StateFlow<AppleLoginState> = _loginState
+
+    @Volatile
+    private var restoring = true
+
+    init {
+        // Restore session on app start and keep loginState in sync with Supabase Auth
+        viewModelScope.launch {
+            // If there is a stored session blob, wait briefly for SDK to restore it
+            if (repository.hasStoredSession()) {
+                // Poll for a short duration until session becomes available
+                repeat(20) { // ~4s total
+                    val s = runCatching { repository.getCurrentSession() }.getOrNull()
+                    if (s != null) {
+                        _loginState.value = AppleLoginState.Success(s)
+                        userEmail = s.user?.email
+                        userId = s.user?.id
+                        restoring = false
+                        return@launch
+                    }
+                    kotlinx.coroutines.delay(200)
+                }
+            }
+            restoring = false
+            // No stored session or not restored in time -> fall back to Idle
+            if (repository.getCurrentSession() == null) {
+                _loginState.value = AppleLoginState.Idle
+            }
+        }
+
+        // Observe status changes; ignore while restoring to avoid flicker
+        viewModelScope.launch {
+            try {
+                repository.supabaseClient.auth.sessionStatus.collect {
+                    if (restoring) return@collect
+                    val current = runCatching { repository.getCurrentSession() }.getOrNull()
+                    if (current != null) {
+                        _loginState.value = AppleLoginState.Success(current)
+                        userEmail = current.user?.email
+                        userId = current.user?.id
+                    } else {
+                        _loginState.value = AppleLoginState.Idle
+                        userEmail = null
+                        userId = null
+                    }
+                }
+            } catch (_: Exception) {
+                if (repository.getCurrentSession() == null) {
+                    _loginState.value = AppleLoginState.Idle
+                }
+            }
+        }
+    }
 
     fun launchAppleWebViewLogin(activity: Activity) {
         android.util.Log.d("AppleAuthViewModel", "Launching Apple WebView login")
         _loginState.value = AppleLoginState.Loading
         repository.launchAppleLoginWebView(activity)
+    }
+
+    fun completeWithSupabaseTokens(
+        accessToken: String,
+        refreshToken: String,
+        expiresInSeconds: Long,
+        tokenType: String,
+        context: Context
+    ) {
+        android.util.Log.d("AppleAuthViewModel", "Completing login with implicit tokens")
+        _loginState.value = AppleLoginState.Loading
+        viewModelScope.launch {
+            try {
+                val result = repository.importSessionFromTokens(accessToken, refreshToken, expiresInSeconds, tokenType)
+                val newState = result.fold(
+                    onSuccess = { session ->
+                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("login_provider", "apple")
+                            .apply()
+                        userEmail = session.user?.email
+                        userId = session.user?.id
+                        AppleLoginState.Success(session)
+                    },
+                    onFailure = { exception ->
+                        android.util.Log.e("AppleAuthViewModel", "Import session failed", exception)
+                        AppleLoginState.Error(exception.localizedMessage ?: "Import session failed")
+                    }
+                )
+                _loginState.value = newState
+            } catch (e: Exception) {
+                android.util.Log.e("AppleAuthViewModel", "Exception during importing tokens", e)
+                _loginState.value = AppleLoginState.Error("Import tokens failed: ${e.message}")
+            }
+        }
     }
 
     fun signInWithAppleIdToken(idToken: String, context: Context) {
@@ -143,8 +231,7 @@ class AppleAuthViewModel(
                     },
                     onFailure = { exception ->
                         android.util.Log.e("AppleAuthViewModel", "Google login failed", exception)
-                        // Guide UI to trigger web-based OAuth flow
-                        AppleLoginState.Error("Use Google web OAuth flow. ${exception.localizedMessage ?: ""}")
+                        AppleLoginState.Error(exception.localizedMessage ?: "Google sign-in failed")
                     }
                 )
                 _loginState.value = newState
@@ -157,7 +244,6 @@ class AppleAuthViewModel(
 
     // ✅ Anonymous Sign-In Method - Using Supabase SDK
     fun signInAnonymously(context: Context) {
-        android.util.Log.d("AppleAuthViewModel", "Starting anonymous sign-in")
         _loginState.value = AppleLoginState.Loading
         viewModelScope.launch {
             try {
@@ -264,15 +350,6 @@ class AppleAuthViewModel(
         return repository.getCurrentSession()
     }
 
-    // ✅ Launch Google OAuth via WebView (SDK-supported flow)
-    fun launchGoogleOAuth(context: Context) {
-        (context as? Activity)?.let { activity ->
-            android.util.Log.d("AppleAuthViewModel", "Launching Google WebView login")
-            _loginState.value = AppleLoginState.Loading
-            repository.launchGoogleLoginWebView(activity)
-        } ?: run {
-            android.util.Log.e("AppleAuthViewModel", "launchGoogleOAuth requires an Activity context")
-            _loginState.value = AppleLoginState.Error("Unable to launch Google login")
-        }
-    }
+    // Google Web OAuth removed. Use native GoogleSignInClient to obtain an ID token,
+    // then call signInWithGoogleIdToken(idToken, context)
 }

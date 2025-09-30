@@ -26,16 +26,10 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.IngrediCheck.Starting"
-            android:launchMode="singleTop">
+            android:configChanges="orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="wqidjkpfdrvomfkmefqc.supabase.co" android:pathPrefix="/auth/v1/callback" />
             </intent-filter>
             <!-- Custom scheme redirect for OAuth return -->
             <intent-filter>
@@ -43,6 +37,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="io.supabase.ingredicheck" android:host="login-callback" />
+            </intent-filter>
+            <!-- Apple HTTPS bounce -> app scheme deeplink -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="io.supabase.ingredicheck" android:host="apple" />
             </intent-filter>
         </activity>
         <activity android:name="lc.fungee.IngrediCheck.auth.AppleLoginWebViewActivity" />
