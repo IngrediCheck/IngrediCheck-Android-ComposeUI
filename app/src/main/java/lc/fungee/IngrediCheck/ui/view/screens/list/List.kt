@@ -1,0 +1,439 @@
+// Updated: app/src/main/java/lc/fungee/IngrediCheck/PreferenceList/List.kt
+package lc.fungee.IngrediCheck.ui.view.screens.list
+import android.content.Context
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+// produceState no longer needed in this file
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import androidx.compose.foundation.clickable
+
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.text.TextStyle
+
+import kotlinx.serialization.json.Json
+import java.net.URLEncoder
+import com.google.gson.Gson
+import io.github.jan.supabase.SupabaseClient
+
+import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.model.model.SupabaseSession
+import lc.fungee.IngrediCheck.R
+import lc.fungee.IngrediCheck.model.repository.FavoriteItem
+import lc.fungee.IngrediCheck.model.repository.HistoryItem
+
+import lc.fungee.IngrediCheck.model.repository.ListTabRepository
+import lc.fungee.IngrediCheck.model.repository.ListTabViewModel
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
+import lc.fungee.IngrediCheck.ui.view.component.BottomBar
+import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
+import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.ui.theme.White
+import lc.fungee.IngrediCheck.model.source.image.ImageCache
+import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun ListScreen(
+    navController: NavController,
+    viewModel: AppleAuthViewModel,
+    supabaseClient: SupabaseClient,
+    functionsBaseUrl: String,
+    anonKey: String
+) {
+    var showSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val sessionJson = remember {
+        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+            .getString("session", null)
+    }
+
+
+    val session = remember {
+        sessionJson?.let {
+            Gson().fromJson(it, SupabaseSession::class.java)
+        }
+    }
+
+    // Repo + VM for Lists tab
+    val prefRepo = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
+    val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
+    val listVm = remember { ListTabViewModel(listRepo) }
+    val ui by listVm.uiState.collectAsState()
+    LaunchedEffect(Unit) {
+        { listVm.refreshAll() }
+    }
+//    val isRefreshing = ui.isLoadingFavorites || ui.isLoadingHistory
+//    val pullRefreshState = rememberPullRefreshState(
+//        refreshing = isRefreshing,
+//        onRefresh = { listVm.refreshAll() }
+//    )
+    val favoritesRefreshState = rememberPullRefreshState(
+        refreshing = ui.isLoadingFavorites,
+        onRefresh = { listVm.refreshFavorites() }
+    )
+
+    val historyRefreshState = rememberPullRefreshState(
+        refreshing = ui.isLoadingHistory,
+        onRefresh = { listVm.refreshHistory() }
+    )
+
+    
+
+    Scaffold(
+        bottomBar = { BottomBar(navController = navController, onCheckClick = { showSheet = true }) }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .background(White)
+                .fillMaxSize()
+//                .pullRefresh(pullRefreshState)
+        ) {
+            if (ui.isSearching) {
+                // Search screen overlay
+                SearchHistoryView(
+                    searchText = ui.searchText,
+                    onSearchTextChange = { listVm.setSearchText(it) },
+                    results = ui.searchResults,
+                    onBack = { listVm.setSearching(false) },
+                    onRefresh = { listVm.refreshSearch() },
+                    onItemClick = { item ->
+                        val json = URLEncoder.encode(
+                            Json.encodeToString(HistoryItem.serializer(), item),
+                            "UTF-8"
+                        )
+                        navController.navigate("historyItem?item=$json")
+                    },
+                    supabaseClient = supabaseClient
+                )
+            } else {
+                // Default Lists tab
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                        .padding(paddingValues),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header
+                    Text(
+                        text = "Lists",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(
+                            fontFamily = FontFamily.SansSerif,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                            letterSpacing = (-0.41).sp,
+                            color = AppColors.Neutral700,
+                            lineHeight = 22.sp
+                        )
+                    )
+
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Favorites section
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pullRefresh(favoritesRefreshState)
+                    ) {
+                        FavoritesSection(
+                            favorites = ui.favorites,
+                            isLoading = ui.isLoadingFavorites,
+                            onViewAll = { navController.navigate("favoritesAll") },
+                            onItemClick = { item ->
+                                val json = URLEncoder.encode(
+                                    Json.encodeToString(FavoriteItem.serializer(), item),
+                                    "UTF-8"
+                                )
+                                navController.navigate("favoriteItem?item=$json")
+                            },
+                            supabaseClient = supabaseClient
+                        )
+                        PullRefreshIndicator(
+                            refreshing = ui.isLoadingFavorites,
+                            state = favoritesRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                    // Recent Scans section
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .pullRefresh(historyRefreshState)
+                    ) {
+                    RecentScansSection(
+                        history = ui.history,
+                        isLoading = ui.isLoadingHistory,
+                        onViewAll = { navController.navigate("recentScansAll") },
+                        onSearch = { listVm.setSearching(true) },
+                        onItemClick = { item ->
+                            val json = URLEncoder.encode(
+                                Json.encodeToString(HistoryItem.serializer(), item),
+                                "UTF-8"
+                            )
+                            navController.navigate("historyItem?item=$json")
+                        },
+                        supabaseClient = supabaseClient
+                    )
+                        PullRefreshIndicator(
+                            refreshing = ui.isLoadingHistory,
+                            state = historyRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+//            PullRefreshIndicator(
+////                refreshing = isRefreshing,
+////                state = pullRefreshState,
+//                modifier = Modifier.align(Alignment.TopCenter)
+//            )
+        }
+    }
+
+    if (showSheet) {
+        CheckBottomSheet(
+            onDismiss = { showSheet = false },
+            supabaseClient = supabaseClient,
+            functionsBaseUrl = functionsBaseUrl,
+            anonKey = anonKey
+        )
+    }
+}
+
+@Composable
+private fun FavoritesSection(
+    favorites: List<FavoriteItem>?,
+    isLoading: Boolean,
+    onViewAll: () -> Unit,
+    onItemClick: (FavoriteItem) -> Unit,
+    supabaseClient: SupabaseClient
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Favorites",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    letterSpacing = (-0.41).sp,
+                    color = AppColors.Neutral700,
+                    lineHeight = 22.sp
+                )
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (!favorites.isNullOrEmpty()) {
+                TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        when {
+            isLoading && favorites == null -> {
+                // Use the screen-level PullRefreshIndicator; keep space without inline spinner
+                Box(Modifier.fillMaxWidth().height(150.dp)) { }
+            }
+            favorites == null -> {
+                // Initial load state
+                Box(Modifier.fillMaxWidth().height(150.dp)) {}
+            }
+            favorites.isEmpty() -> {
+                // Empty state
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp), // force some height
+
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.emptyfavimg),
+                        contentDescription = "Empty Favorites",
+                        modifier = Modifier
+                            .size(width = 120.dp, height = 120.dp)
+                    )
+
+                    Text(
+                        "No Favorite products yet",
+                        style = TextStyle(fontSize = 14.sp, color = Color.Gray)
+                    )
+                }
+            }
+            else -> {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.heightIn(min = 130.dp)
+                ) {
+                    items(favorites) { item ->
+                        FavoriteItemBirdsEyeCard(
+                            item = item,
+                            supabaseClient = supabaseClient,
+                            modifier = Modifier.clickable { onItemClick(item) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentScansSection(
+    history: List<HistoryItem>?,
+    isLoading: Boolean,
+    onViewAll: () -> Unit,
+    onSearch: () -> Unit,
+    onItemClick: (HistoryItem) -> Unit,
+    supabaseClient: SupabaseClient
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Recent Scans",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    letterSpacing = (-0.41).sp,
+                    color = AppColors.Neutral700,
+                    lineHeight = 22.sp
+                )
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (!history.isNullOrEmpty() && history.size > 4) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
+
+//                    IconButton(onClick = onSearch) {
+//                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+//                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        when {
+            isLoading && history == null -> {
+                Box(Modifier.fillMaxWidth().height(130.dp), contentAlignment = Alignment.Center) {
+//                    CircularProgressIndicator()
+                }
+            }
+            history == null -> {
+                Box(Modifier.fillMaxWidth().height(130.dp)) {}
+            }
+            history.isEmpty() -> {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                    ,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.emptyrecentscan),
+                        contentDescription = "No Scans",
+                        modifier = Modifier.size(width = 174.dp, height = 134.dp)
+                    )
+//                    Text(
+//                        "No products scanned yet",
+//                        style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Color.Gray)
+//                    )
+                }
+            }
+            else -> {
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    items(history) { item ->
+                        HistoryItemCard(
+                            item = item,
+                            supabaseClient = supabaseClient,
+                            modifier = Modifier.clickable { onItemClick(item) }
+                        )
+                        Divider(color = AppColors.Divider, thickness = 2.dp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteItemBirdsEyeCard(
+    item: FavoriteItem,
+    supabaseClient: SupabaseClient,
+    modifier: Modifier = Modifier
+) {
+    val firstImage = item.images.firstOrNull()
+    val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
+    val model = modelState.value
+    Box(
+        modifier = modifier
+            .size(width = 120.dp, height = 120.dp)
+            .background(AppColors.SurfaceMuted)
+    ) {
+        if (model != null) {
+            AsyncImage(
+                model = model,
+                contentDescription = item.name,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column {
+                Image(
+                    painter = painterResource(id = R.drawable.emptyfavimg),
+                    contentDescription = "Placeholder",
+                    modifier = Modifier.fillMaxSize()
+                )
+                Text("NO Favorite products yet"
+                    , color = AppColors.Brand
+                )
+            }
+
+        }
+    }
+}
+
+// Use shared HistoryItemCard, SearchHistoryView, rememberResolvedImageUrl from FavoritesRecentScreens.kt

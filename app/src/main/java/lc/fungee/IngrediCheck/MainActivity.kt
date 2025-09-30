@@ -16,18 +16,17 @@ import android.util.Log
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.coroutines.launch
-import lc.fungee.IngrediCheck.data.repository.PreferenceRepository
-import lc.fungee.IngrediCheck.data.repository.PreferenceViewModel
-import lc.fungee.IngrediCheck.navigation.AppNavigation
-import lc.fungee.IngrediCheck.ui.screens.home.ErrorScreen
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
+import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.ui.view.navigation.AppNavigation
+import lc.fungee.IngrediCheck.ui.view.screens.home.ErrorScreen
 //import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
 
 
 import io.github.jan.supabase.auth.auth
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+
 import androidx.compose.runtime.LaunchedEffect
 
 import lc.fungee.IngrediCheck.navigation.NetworkViewmodel

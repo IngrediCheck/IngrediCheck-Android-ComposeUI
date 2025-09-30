@@ -23,14 +23,10 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.storage.Storage
 
 // Local model imports
-import lc.fungee.IngrediCheck.data.model.Identity
 // Local auth imports
-import lc.fungee.IngrediCheck.auth.AppleLoginWebViewActivity
-import lc.fungee.IngrediCheck.auth.SharedPreferencesSessionManager
 
 // Supabase auth models
 import io.github.jan.supabase.auth.user.UserSession as SdkUserSession
-import kotlinx.serialization.decodeFromString
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 class AppleAuthRepository(

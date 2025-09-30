@@ -1,9 +1,6 @@
-/*
-LEGACY - Moved to ui/view/navigation/AppNavigation.kt. Keeping this file only for reference.
-Do not use. It is commented out to prevent duplicate symbol errors.
+package lc.fungee.IngrediCheck.ui.view.navigation
 
-// Updated: app/src/main/java/lc/fungee/IngrediCheck/AppNavigation.kt
-package lc.fungee.IngrediCheck.navigation
+// Updated: app/src/main/java/lc/fungee/IngrediCheck/ui/view/navigation/AppNavigation.kt
 import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +15,6 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-//import lc.fungee.IngrediCheck.ui.screens.check.CameraScreen
 import lc.fungee.IngrediCheck.ui.view.screens.home.HomeScreen
 import lc.fungee.IngrediCheck.ui.view.screens.list.ListScreen
 import lc.fungee.IngrediCheck.ui.view.screens.list.FavoritesPageScreen
@@ -29,8 +25,6 @@ import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
 import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.NetworkStatusOverlay
 import lc.fungee.IngrediCheck.ui.view.screens.SplashScreen
-//import lc.fungee.IngrediCheck.ui.screens.analysis.AnalysisScreen
-//import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
 import lc.fungee.IngrediCheck.ui.view.screens.onboarding.DisclaimerScreen
 import lc.fungee.IngrediCheck.ui.view.screens.onboarding.WelcomeScreen
 import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
@@ -43,7 +37,7 @@ fun AppNavigation(
     googleSignInClient: GoogleSignInClient,
     preferenceViewModel: PreferenceViewModel?,
     supabaseClient: SupabaseClient,
-    windowSize: WindowSizeClass,  // ✅ Fixed: proper type and name
+    windowSize: WindowSizeClass,
     isOnline: Boolean,
     functionsBaseUrl: String,
     anonKey: String
@@ -65,7 +59,6 @@ fun AppNavigation(
     ) {
         composable("splash") {
             SplashScreen(
-                // windowSize = windowSize,  // ✅ Fixed: proper parameter name
                 onSplashFinished = { isLoggedIn ->
                     navController.navigate(if (isLoggedIn) "home" else "welcome") {
                         popUpTo("splash") { inclusive = true }
@@ -98,7 +91,6 @@ fun AppNavigation(
             )
         }
 
-        // ✅ Updated: Pass navController to all screens
         composable("home") {
             if (preferenceViewModel != null) {
                 HomeScreen(
@@ -110,42 +102,8 @@ fun AppNavigation(
                     viewModel = viewModel,
                     googleSignInClient = googleSignInClient
                 )
-            } else {
-                // Show a loading or error screen, or redirect to login
-//        LoadingScreen()
-
             }
         }
-
-//        composable("Check") {
-//            CheckBottomSheet(
-//                navController = navController,
-//                onDismiss = {
-//                    // what should happen when sheet closes?
-//                    navController.popBackStack() // example: go back
-//                }
-//            )
-//        }
-
-
-//        composable("checkTab/{barcode}") { backStackEntry ->
-//            val barcode = backStackEntry.arguments?.getString("barcode")
-//            CheckTabScreen(barcode = barcode)
-//        }
-
-//        composable("analysis/{barcode}") { backStackEntry ->
-//            val barcode = backStackEntry.arguments?.getString("barcode") ?: ""
-//            val supabaseUrl = "https://wqidjkpfdrvomfkmefqc.supabase.co"
-//            val functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck"
-//            val anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI"
-//
-//            AnalysisScreen(
-//                barcode = barcode,
-//                supabaseClient = supabaseClient,
-//                functionsBaseUrl = functionsBaseUrl,
-//                anonKey = anonKey
-//            )
-//        }
 
         composable("List") {
             ListScreen(
@@ -201,7 +159,6 @@ fun AppNavigation(
                     onDismiss = { navController.popBackStack() },
                     supabaseClient = supabaseClient,
                     onRequireReauth = {
-                        // Make welcome the new root without referencing graph start (splash)
                         navController.navigate("welcome") {
                             popUpTo("home") { inclusive = true }
                             launchSingleTop = true
@@ -212,7 +169,5 @@ fun AppNavigation(
                 )
             }
         }
-        
     }
 }
-*/

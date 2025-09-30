@@ -1,3 +1,10 @@
+/*
+LEGACY GOOGLE AUTH - DO NOT USE
+
+This legacy GoogleAuth client is kept only for reference and has been commented out.
+Active implementation is `GoogleAuthClient.kt` and `GoogleSignInHandler.kt`.
+*/
+/*
 package lc.fungee.IngrediCheck.auth
 
 import android.content.Context
@@ -17,3 +24,4 @@ object GoogleAuthClientLegacy {
         )
     }
 }
+*/
