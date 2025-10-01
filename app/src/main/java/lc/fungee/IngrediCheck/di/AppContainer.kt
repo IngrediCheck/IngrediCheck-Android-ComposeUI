@@ -3,12 +3,12 @@ package lc.fungee.IngrediCheck.di
 import android.content.Context
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
-import lc.fungee.IngrediCheck.data.source.mlkit.MlKitTextRecognizer
-import lc.fungee.IngrediCheck.data.source.mlkit.MlKitBarcodeScanner
-import lc.fungee.IngrediCheck.data.source.mlkit.TextRecognizerService
-import lc.fungee.IngrediCheck.data.source.mlkit.BarcodeScannerService
-import lc.fungee.IngrediCheck.data.source.remote.StorageService
-import lc.fungee.IngrediCheck.data.source.remote.SupabaseStorageService
+import lc.fungee.IngrediCheck.model.source.mlkit.MlKitTextRecognizer
+import lc.fungee.IngrediCheck.model.source.mlkit.MlKitBarcodeScanner
+import lc.fungee.IngrediCheck.model.source.mlkit.TextRecognizerService
+import lc.fungee.IngrediCheck.model.source.mlkit.BarcodeScannerService
+import lc.fungee.IngrediCheck.model.source.remote.StorageService
+import lc.fungee.IngrediCheck.model.source.remote.SupabaseStorageService
 
 class AppContainer(context: Context) {
     val okHttpClient: OkHttpClient = OkHttpClient.Builder()

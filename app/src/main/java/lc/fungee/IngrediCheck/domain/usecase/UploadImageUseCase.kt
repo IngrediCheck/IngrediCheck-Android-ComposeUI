@@ -6,7 +6,7 @@ import android.graphics.Matrix
 import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.ByteArrayOutputStream
-import lc.fungee.IngrediCheck.data.source.remote.StorageService
+import lc.fungee.IngrediCheck.model.source.remote.StorageService
 
 class UploadImageUseCase(private val storage: StorageService) {
     suspend operator fun invoke(
