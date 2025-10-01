@@ -54,17 +54,24 @@ class AnalysisViewModel(
 
                 // Switch to analyzing while backend computes recommendations
                 phase = AnalysisPhase.Analyzing
-//{{ ... }}
-                phase = AnalysisPhase.Error
-//            }
-//        }
+                // 3) Load user preferences (fresh from server if possible)
+                val freshPrefs = runCatching { repo.fetchAndStore() }.getOrNull()
+                val prefs = freshPrefs ?: repo.getLocal().first()
+                val prefsText = if (prefs.isEmpty()) "" else prefs.joinToString("\n") { it.text }
 
-        }catch (e: Exception) {
+                // 4) Fetch ingredient recommendations from backend
+                val recs = analysisRepo.fetchRecommendations(clientActivityId, prefsText, barcode)
+                recommendations = recs
+
+                // 5) Done
+                phase = AnalysisPhase.Done
+            } catch (e: Exception) {
                 Log.e("AnalysisVM", "Error analyzing product", e)
                 phase = AnalysisPhase.Error
                 error = e.message
             }
-    }}
+        }
+    }
 
     fun analyzeImages(clientActivityId: String, images: List<ImageInfo>) {
         viewModelScope.launch {

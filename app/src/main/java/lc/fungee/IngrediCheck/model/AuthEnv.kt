@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model
 
 object AuthEnv {
     const val SUPABASE_URL: String = "https://wqidjkpfdrvomfkmefqc.supabase.co"

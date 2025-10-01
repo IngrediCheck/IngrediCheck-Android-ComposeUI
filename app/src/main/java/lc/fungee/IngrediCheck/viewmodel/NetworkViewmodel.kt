@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import lc.fungee.IngrediCheck.auth.isInternetAvailable
+import lc.fungee.IngrediCheck.ui.util.isInternetAvailable
 
 class NetworkViewmodel  : ViewModel() {
         var isOnline by mutableStateOf(true)

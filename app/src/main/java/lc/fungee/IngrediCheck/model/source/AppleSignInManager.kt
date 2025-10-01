@@ -1,9 +1,10 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model.source
 
 import android.app.Activity
 import android.net.Uri
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
+import lc.fungee.IngrediCheck.model.AuthEnv
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 
 object AppleSignInManager {

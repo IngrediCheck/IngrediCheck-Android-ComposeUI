@@ -1,5 +1,6 @@
 package lc.fungee.IngrediCheck.ui.view.screens.onboarding
 import android.util.Log
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,14 +62,20 @@ fun WelcomeScreen(
         Log.d("WelcomeScreen", "Login state changed: $loginState")
         when (loginState) {
             is AppleLoginState.Success -> {
-                Log.d("WelcomeScreen", "Login successful, navigating to disclaimer")
-                navController.navigate("disclaimer") {
+                Log.d("WelcomeScreen", "Login successful, deciding destination based on disclaimer flag")
+                val accepted = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                    .getBoolean("disclaimer_accepted", false)
+                val dest = if (accepted) "home" else "disclaimer"
+                navController.navigate(dest) {
                     popUpTo("welcome") { inclusive = true }
                 }
             }
             is AppleLoginState.NavigateToDisclaimer -> {
-                Log.d("WelcomeScreen", "Navigating to disclaimer from MainActivity")
-                navController.navigate("disclaimer") {
+                Log.d("WelcomeScreen", "NavigateToDisclaimer received; checking disclaimer flag to avoid repeat")
+                val accepted = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                    .getBoolean("disclaimer_accepted", false)
+                val dest = if (accepted) "home" else "disclaimer"
+                navController.navigate(dest) {
                     popUpTo("welcome") { inclusive = true }
                 }
             }

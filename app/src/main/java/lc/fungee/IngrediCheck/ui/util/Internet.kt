@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.ui.util
 
 import android.content.Context
 import android.net.ConnectivityManager

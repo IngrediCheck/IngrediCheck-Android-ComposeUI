@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.model.repository
+package lc.fungee.IngrediCheck.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import lc.fungee.IngrediCheck.model.repository.FavoriteItem
+import lc.fungee.IngrediCheck.model.repository.HistoryItem
+import lc.fungee.IngrediCheck.model.repository.ListTabRepository
 
 class ListTabViewModel(private val repo: ListTabRepository) : ViewModel() {
 

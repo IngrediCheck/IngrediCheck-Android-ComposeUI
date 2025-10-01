@@ -50,7 +50,7 @@ import lc.fungee.IngrediCheck.model.repository.FavoriteItem
 import lc.fungee.IngrediCheck.model.repository.HistoryItem
 
 import lc.fungee.IngrediCheck.model.repository.ListTabRepository
-import lc.fungee.IngrediCheck.model.repository.ListTabViewModel
+import lc.fungee.IngrediCheck.viewmodel.ListTabViewModel
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet

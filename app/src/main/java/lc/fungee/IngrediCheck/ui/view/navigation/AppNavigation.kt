@@ -1,6 +1,7 @@
 package lc.fungee.IngrediCheck.ui.view.navigation
 
 // Updated: app/src/main/java/lc/fungee/IngrediCheck/ui/view/navigation/AppNavigation.kt
+import android.content.Context
 import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,7 +46,7 @@ fun AppNavigation(
     val navController = rememberNavController()
     NetworkStatusOverlay(isOnline = isOnline)
 
-    // Decide start destination synchronously to avoid flashing Splash for guest login
+    // Keep custom splash as start destination; compute where to go after splash delay
     val ctx = LocalContext.current
     val isLoggedIn: Boolean = remember {
         val prefs = ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
@@ -53,15 +54,25 @@ fun AppNavigation(
         val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
         hasSdkSession || (provider == "anonymous")
     }
+    val disclaimerAccepted: Boolean = remember {
+        ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
+            .getBoolean("disclaimer_accepted", false)
+    }
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
         composable("splash") {
             SplashScreen(
-                onSplashFinished = { isLoggedIn ->
-                    navController.navigate(if (isLoggedIn) "home" else "welcome") {
+                onSplashFinished = {
+                    val destination = when {
+                        isLoggedIn && disclaimerAccepted -> "home"
+                        isLoggedIn && !disclaimerAccepted -> "disclaimer"
+                        else -> "welcome"
+                    }
+                    navController.navigate(destination) {
                         popUpTo("splash") { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -84,6 +95,11 @@ fun AppNavigation(
             DisclaimerScreen(
                 modifier = Modifier.fillMaxSize(),
                 onAgree = {
+                    // Persist that the user has accepted the disclaimer so it only shows once
+                    ctx.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("disclaimer_accepted", true)
+                        .apply()
                     navController.navigate("home") {
                         popUpTo("disclaimer") { inclusive = true }
                     }

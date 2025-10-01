@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Keep your custom Compose splash by making the Android 12+ system splash transparent and instant -->
+    <style name="Theme.IngrediCheck.Starting" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Transparent background so the system splash draws nothing -->
+        <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
+        <!-- Transparent icon so no default logo is shown -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/transparent</item>
+        <!-- No branding image -->
+        <item name="android:windowSplashScreenBrandingImage">@null</item>
+        <!-- Handoff to your normal app theme immediately -->
+        <item name="postSplashScreenTheme">@style/Theme.IngrediCheck</item>
+    </style>
+
+</resources>

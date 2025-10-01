@@ -187,31 +187,34 @@ fun HomeScreen(
 //                    .pullRefresh(pullRefreshState)
             ) {
 
-                Row(
-                    modifier = Modifier.Companion
+                Box(
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 15.dp, bottom = 10.dp),
-                    verticalAlignment = Alignment.Companion.CenterVertically
+                        .padding(top = 15.dp, bottom = 10.dp)
                 ) {
-                    Spacer(Modifier.Companion.weight(1f))
                     Text(
                         text = "Your dietary preference",
                         style = TextStyle(
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Companion.SemiBold,
-                            textAlign = TextAlign.Companion.Center
-                        )
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center
+                        ),
+                        modifier = Modifier.align(Alignment.Center) // 🔥 Centered in screen
                     )
-                    Spacer(Modifier.Companion.weight(1f))
-                    IconButton(onClick = { showSheetSetting = true }) {
+
+                    IconButton(
+                        onClick = { showSheetSetting = true },
+                        modifier = Modifier.align(Alignment.CenterEnd) // 🔥 Right aligned
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.settingicon),
                             contentDescription = "Setting Icon",
-                            modifier = Modifier.Companion.size(25.dp),
-                            tint = AppColors.Brand,
+                            modifier = Modifier.size(25.dp),
+                            tint = AppColors.Brand
                         )
                     }
                 }
+
 
                 Box(
                     modifier = Modifier.Companion

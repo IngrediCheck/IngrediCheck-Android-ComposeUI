@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
-import lc.fungee.IngrediCheck.auth.AppleSignInManager
+import lc.fungee.IngrediCheck.model.source.AppleSignInManager
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 

@@ -78,6 +78,9 @@ dependencies {
     implementation("androidx.compose.ui:ui:1.8.0")
     implementation("androidx.browser:browser:1.8.0")
 
+    // Android 12+ SplashScreen compat (provides postSplashScreenTheme attribute)
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // Ktor engine used by supabase-kt internals
     implementation("io.ktor:ktor-client-okhttp:3.1.1")
 
