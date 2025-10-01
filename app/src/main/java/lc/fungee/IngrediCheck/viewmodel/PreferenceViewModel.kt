@@ -1,7 +1,10 @@
-package lc.fungee.IngrediCheck.model.repository
+package lc.fungee.IngrediCheck.viewmodel
 
 import android.util.Log
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -9,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +21,7 @@ import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.model.model.DietaryPreference
 import lc.fungee.IngrediCheck.model.model.PreferenceValidationResult
 import lc.fungee.IngrediCheck.model.model.ValidationState
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import java.util.UUID
 
 class PreferenceViewModel(
@@ -45,7 +50,7 @@ class PreferenceViewModel(
     fun markAutoOpenedThisProcess() { _autoOpenedThisProcess.value = true }
 
 //    init {
-//        monitorInternet() // 
+//        monitorInternet() //
 //    }
 //    fun monitorInternet() {
 //        viewModelScope.launch {
@@ -152,7 +157,7 @@ class PreferenceViewModel(
                         }
                     }
                 } catch (e: Exception) {
-                    if (e !is kotlinx.coroutines.CancellationException) {
+                    if (e !is CancellationException) {
                         Log.e("PreferenceVM", "Exception while adding/editing preference", e)
                         validationState = ValidationState.Failure(
                             e.message ?: "Something went wrong. Please try again later."
@@ -174,7 +179,7 @@ class PreferenceViewModel(
 
                 if (end != -1) {
                     val boldText = remaining.substring(start + 2, end)
-                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) {
                         append(boldText)
                     }
                     remaining = remaining.substring(end + 2)

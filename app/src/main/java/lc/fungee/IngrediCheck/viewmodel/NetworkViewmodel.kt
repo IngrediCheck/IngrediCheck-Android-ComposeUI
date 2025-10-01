@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.navigation
+package lc.fungee.IngrediCheck.viewmodel
 
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -24,4 +24,3 @@ class NetworkViewmodel  : ViewModel() {
             }
         }
     }
-

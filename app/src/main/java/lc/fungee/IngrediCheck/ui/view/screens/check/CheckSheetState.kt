@@ -1,6 +1,6 @@
 package lc.fungee.IngrediCheck.ui.view.screens.check
 
-import lc.fungee.IngrediCheck.model.model.ImageInfo
+import lc.fungee.IngrediCheck.model.entities.ImageInfo
 
 sealed class CheckSheetState {
     object Scanner : CheckSheetState()

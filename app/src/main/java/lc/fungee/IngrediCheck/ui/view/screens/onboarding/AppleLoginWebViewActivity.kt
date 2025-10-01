@@ -1,15 +1,20 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.ui.view.screens.onboarding
 
+import android.R
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.os.Bundle
-import android.os.Message
-import android.webkit.*
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.ComponentActivity
+import android.os.Bundle
+import android.os.Message
 import android.view.ViewGroup
+import android.webkit.CookieManager
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import androidx.activity.ComponentActivity
 
 class AppleLoginWebViewActivity : ComponentActivity() {
 
@@ -40,7 +45,7 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                 }
-                (this@AppleLoginWebViewActivity.findViewById<ViewGroup>(android.R.id.content) as ViewGroup)
+                (this@AppleLoginWebViewActivity.findViewById<ViewGroup>(R.id.content) as ViewGroup)
                     .addView(newWebView)
                 val transport = resultMsg?.obj as? WebView.WebViewTransport
                 transport?.webView = newWebView
@@ -70,7 +75,7 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                     } else if (code != null) {
                         resultIntent.putExtra("code", code)
                     }
-                    setResult(Activity.RESULT_OK, resultIntent)
+                    setResult(RESULT_OK, resultIntent)
                     finish()
                     return true
                 }
@@ -98,7 +103,7 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                     } else if (code != null) {
                         resultIntent.putExtra("code", code)
                     }
-                    setResult(Activity.RESULT_OK, resultIntent)
+                    setResult(RESULT_OK, resultIntent)
                     finish()
                     return true
                 }
@@ -107,7 +112,7 @@ class AppleLoginWebViewActivity : ComponentActivity() {
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
-                setResult(Activity.RESULT_CANCELED)
+                setResult(RESULT_CANCELED)
                 finish()
             }
         }
@@ -115,4 +120,3 @@ class AppleLoginWebViewActivity : ComponentActivity() {
         webView.loadUrl(authUrl)
     }
 }
-

@@ -45,9 +45,13 @@ import lc.fungee.IngrediCheck.ui.view.component.CameraPreview
 import lc.fungee.IngrediCheck.ui.view.screens.analysis.AnalysisScreen
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackScreen
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackMode
-import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackViewModel
+import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModel
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackCaptureSheet
-import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackViewModelFactory
+import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModelFactory
+import lc.fungee.IngrediCheck.viewmodel.CheckEvent
+import lc.fungee.IngrediCheck.viewmodel.CheckUiState
+import lc.fungee.IngrediCheck.viewmodel.CheckViewModel
+import lc.fungee.IngrediCheck.viewmodel.CheckViewModelFactory
 
 //@SuppressLint("UnrememberedMutableInteractionSource")
 @OptIn(ExperimentalMaterial3Api::class)

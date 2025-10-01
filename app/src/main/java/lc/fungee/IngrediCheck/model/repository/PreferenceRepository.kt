@@ -20,7 +20,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import lc.fungee.IngrediCheck.model.model.DietaryPreference
 import lc.fungee.IngrediCheck.model.model.PreferenceValidationResult
-import lc.fungee.IngrediCheck.model.model.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient

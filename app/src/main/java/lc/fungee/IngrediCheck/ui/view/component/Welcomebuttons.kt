@@ -31,9 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.auth.AppleSignInManager
-import lc.fungee.IngrediCheck.auth.AppleLoginState
+import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 

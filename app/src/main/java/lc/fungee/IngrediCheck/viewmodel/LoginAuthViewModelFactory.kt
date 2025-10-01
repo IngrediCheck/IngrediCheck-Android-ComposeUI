@@ -1,10 +1,11 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 
-class AppleAuthViewModelFactory(
-    private val repository: AppleAuthRepository
+class LoginAuthViewModelFactory(
+    private val repository: LoginAuthRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

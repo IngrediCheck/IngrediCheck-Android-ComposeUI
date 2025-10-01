@@ -1,4 +1,4 @@
-﻿package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model.source
 
 import android.app.Activity
 import android.util.Log
@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 
 @Composable
 fun rememberGoogleSignInLauncher(

@@ -1,17 +1,16 @@
-package lc.fungee.IngrediCheck.ui.view.screens.feedback
+package lc.fungee.IngrediCheck.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import io.github.jan.supabase.SupabaseClient
-import lc.fungee.IngrediCheck.model.repository.FeedbackRepository
-import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.di.AppContainer
 import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
 import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
 import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 
-class FeedbackViewModelFactory(
+class CheckViewModelFactory(
     private val container: AppContainer,
     private val supabaseClient: SupabaseClient,
     private val functionsBaseUrl: String,
@@ -20,28 +19,21 @@ class FeedbackViewModelFactory(
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(FeedbackViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(CheckViewModel::class.java)) {
             val prefRepo = PreferenceRepository(
                 context = appContext,
                 supabaseClient = supabaseClient,
                 functionsBaseUrl = functionsBaseUrl,
                 anonKey = anonKey
             )
-            val repo = FeedbackRepository(
-                okHttp = container.okHttpClient,
-                functionsBaseUrl = functionsBaseUrl,
-                anonKey = anonKey
-            )
             val recognizeText = RecognizeTextUseCase(container.textRecognizer)
             val detectBarcode = DetectBarcodeUseCase(container.barcodeScanner)
-            val upload = UploadImageUseCase(container.storageService)
-            return FeedbackViewModel(
+            val uploadImage = UploadImageUseCase(container.storageService)
+            return CheckViewModel(
                 preferenceRepository = prefRepo,
-                feedbackRepository = repo,
                 recognizeText = recognizeText,
                 detectBarcode = detectBarcode,
-                uploadImage = upload,
-                storageService = container.storageService,
+                uploadImage = uploadImage,
                 functionsBaseUrl = functionsBaseUrl,
                 anonKey = anonKey,
                 appContext = appContext

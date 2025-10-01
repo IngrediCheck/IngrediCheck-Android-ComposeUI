@@ -35,7 +35,7 @@ import lc.fungee.IngrediCheck.model.repository.HistoryItem
 import lc.fungee.IngrediCheck.model.repository.ListTabRepository
 import lc.fungee.IngrediCheck.model.repository.ListTabViewModel
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
-import lc.fungee.IngrediCheck.model.model.Product
+import lc.fungee.IngrediCheck.model.entities.Product
 //import lc.fungee.IngrediCheck.ui.view.screens.analysis.AnalysisResultSection
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -60,7 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import io.github.jan.supabase.SupabaseClient
-import lc.fungee.IngrediCheck.model.model.Ingredient
+import lc.fungee.IngrediCheck.model.entities.Ingredient
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White

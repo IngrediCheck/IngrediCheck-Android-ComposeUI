@@ -4,7 +4,7 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import lc.fungee.IngrediCheck.model.model.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
 import lc.fungee.IngrediCheck.model.model.feedback.FeedbackData
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient

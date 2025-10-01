@@ -46,7 +46,7 @@
                 <data android:scheme="io.supabase.ingredicheck" android:host="apple" />
             </intent-filter>
         </activity>
-        <activity android:name="lc.fungee.IngrediCheck.auth.AppleLoginWebViewActivity" />
+        <activity android:name="lc.fungee.IngrediCheck.ui.view.screens.onboarding.AppleLoginWebViewActivity" />
 
         <!-- 🔹 FileProvider (needed for camera) -->
         <provider

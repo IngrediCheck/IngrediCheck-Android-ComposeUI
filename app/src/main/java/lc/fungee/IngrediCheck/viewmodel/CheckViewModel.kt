@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.ui.view.screens.check
+package lc.fungee.IngrediCheck.viewmodel
 
 import android.content.Context
 import android.util.Log
@@ -10,11 +10,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import lc.fungee.IngrediCheck.model.model.ImageInfo
-import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
 import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
 import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
+import lc.fungee.IngrediCheck.model.entities.ImageInfo
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import java.io.File
 

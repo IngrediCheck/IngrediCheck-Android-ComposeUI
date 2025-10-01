@@ -29,6 +29,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.R
+import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

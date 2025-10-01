@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model.entities
 
 object AppleAuthConfig {
     // Apple Services ID (web client identifier), e.g. "com.yourcompany.service"

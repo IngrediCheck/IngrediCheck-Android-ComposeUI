@@ -11,26 +11,34 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import lc.fungee.IngrediCheck.model.model.IngredientRecommendation
-import lc.fungee.IngrediCheck.model.model.Product
-import lc.fungee.IngrediCheck.model.model.SafeEatsEndpoint
-import lc.fungee.IngrediCheck.model.model.calculateMatch
+import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
+import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.model.entities.calculateMatch
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import android.util.Log
-import lc.fungee.IngrediCheck.model.model.ImageInfo
+import lc.fungee.IngrediCheck.model.entities.ImageInfo
+import lc.fungee.IngrediCheck.model.entities.Product
 
-// Two-stage analysis phase indicator for UI
-  enum class AnalysisPhaseLegacy { Idle, LoadingProduct, Analyzing, Done, Error }
-  
-  class AnalysisViewModelLegacy(
+/**
+ * LEGACY: kept temporarily to avoid breaking references during the MVVM refactor.
+ * Use lc.fungee.IngrediCheck.viewmodel.AnalysisPhase instead.
+ */
+@Deprecated("Use lc.fungee.IngrediCheck.viewmodel.AnalysisPhase")
+enum class AnalysisPhaseLegacy { Idle, LoadingProduct, Analyzing, Done, Error }
+
+/**
+ * LEGACY: kept temporarily to avoid breaking references during the MVVM refactor.
+ * Use lc.fungee.IngrediCheck.viewmodel.AnalysisViewModel instead.
+ */
+@Deprecated("Use lc.fungee.IngrediCheck.viewmodel.AnalysisViewModel")
+class AnalysisViewModelLegacy(
     private val repo: PreferenceRepository,
     private val functionsBaseUrl: String,
     private val anonKey: String
-  ) : ViewModel() {
-
+) : ViewModel() {
     private val json = Json { ignoreUnknownKeys = true }
 
     var product by mutableStateOf<Product?>(null)

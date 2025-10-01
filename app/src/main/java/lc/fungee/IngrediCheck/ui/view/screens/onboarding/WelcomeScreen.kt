@@ -34,8 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import lc.fungee.IngrediCheck.R
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
-import lc.fungee.IngrediCheck.auth.AppleLoginState
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.view.component.AppleSignInSection
 import lc.fungee.IngrediCheck.ui.view.component.GoogleSignInButton
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200

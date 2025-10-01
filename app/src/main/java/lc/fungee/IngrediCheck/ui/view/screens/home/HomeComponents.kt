@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.model.model.DietaryPreference
-import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 
 

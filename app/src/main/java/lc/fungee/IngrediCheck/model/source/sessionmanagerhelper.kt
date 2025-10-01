@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model.source
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,6 @@ import io.github.jan.supabase.auth.SessionManager
 import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class SharedPreferencesSessionManager(
@@ -18,7 +17,7 @@ class SharedPreferencesSessionManager(
 
     override suspend fun saveSession(session: UserSession) {
         withContext(Dispatchers.IO) {
-            val jsonSession = Json.encodeToString(session)
+            val jsonSession = Json.Default.encodeToString(session)
             prefs.edit().putString("session", jsonSession).apply()
         }
     }
@@ -26,7 +25,7 @@ class SharedPreferencesSessionManager(
     override suspend fun loadSession(): UserSession? {
         return withContext(Dispatchers.IO) {
             prefs.getString("session", null)?.let {
-                Json.decodeFromString<UserSession>(it)
+                Json.Default.decodeFromString<UserSession>(it)
             }
         }
     }

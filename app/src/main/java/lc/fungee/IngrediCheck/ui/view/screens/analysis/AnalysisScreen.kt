@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -81,14 +82,14 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
-import lc.fungee.IngrediCheck.model.model.DecoratedIngredientListFragment
-import lc.fungee.IngrediCheck.model.model.ImageInfo
-import lc.fungee.IngrediCheck.model.model.Ingredient
-import lc.fungee.IngrediCheck.model.model.IngredientRecommendation
-import lc.fungee.IngrediCheck.model.model.Product
-import lc.fungee.IngrediCheck.model.model.ProductRecommendation
-import lc.fungee.IngrediCheck.model.model.SafetyRecommendation
-import lc.fungee.IngrediCheck.model.model.calculateMatch
+import lc.fungee.IngrediCheck.model.entities.DecoratedIngredientListFragment
+import lc.fungee.IngrediCheck.model.entities.ImageInfo
+import lc.fungee.IngrediCheck.model.entities.Ingredient
+import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
+import lc.fungee.IngrediCheck.model.entities.Product
+import lc.fungee.IngrediCheck.model.entities.ProductRecommendation
+import lc.fungee.IngrediCheck.model.entities.SafetyRecommendation
+import lc.fungee.IngrediCheck.model.entities.calculateMatch
 import lc.fungee.IngrediCheck.viewmodel.AnalysisPhase
 import lc.fungee.IngrediCheck.viewmodel.AnalysisViewModel
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
@@ -276,7 +277,7 @@ fun ProductHeader(
 
             var isLike by remember { mutableStateOf(false) }
             Icon(
-                imageVector = Icons.Default.DateRange,
+                imageVector = Icons.Default.Send,
                 contentDescription = "Check again",
                 modifier = actionIconModifier.clickable { onRetakeRequested() },
                 tint = AppColors.Brand

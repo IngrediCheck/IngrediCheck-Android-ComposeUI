@@ -4,21 +4,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
-import lc.fungee.IngrediCheck.auth.AppleAuthRepository
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
-import lc.fungee.IngrediCheck.auth.AppleLoginState
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModelFactory
+import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
+import lc.fungee.IngrediCheck.viewmodel.LoginAuthViewModelFactory
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
-import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.navigation.AppNavigation
 import lc.fungee.IngrediCheck.ui.view.screens.home.ErrorScreen
 //import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
@@ -29,18 +30,20 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 
 import androidx.compose.runtime.LaunchedEffect
 
-import lc.fungee.IngrediCheck.navigation.NetworkViewmodel
-import lc.fungee.IngrediCheck.auth.GoogleAuthClient
-import lc.fungee.IngrediCheck.auth.rememberGoogleSignInLauncher
+import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
+import lc.fungee.IngrediCheck.model.source.GoogleAuthDataSource
+import lc.fungee.IngrediCheck.model.source.rememberGoogleSignInLauncher
+import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var authViewModel: AppleAuthViewModel
-    private lateinit var repository: AppleAuthRepository
+    private lateinit var repository: LoginAuthRepository
     private var preferenceViewModel: PreferenceViewModel? = null
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -48,12 +51,12 @@ class MainActivity : ComponentActivity() {
         val supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI" // shortened for clarity
 
         // Initialize repository and ViewModel with a Factory at Activity scope
-        repository = AppleAuthRepository(
+        repository = LoginAuthRepository(
             context = this@MainActivity,
             supabaseUrl = supabaseUrl,
             supabaseAnonKey = supabaseAnonKey
         )
-        val vmFactory = AppleAuthViewModelFactory(repository)
+        val vmFactory = LoginAuthViewModelFactory(repository)
         authViewModel = ViewModelProvider(this, vmFactory)
             .get(AppleAuthViewModel::class.java)
 
@@ -66,7 +69,7 @@ class MainActivity : ComponentActivity() {
                     networkViewModel.startMonitoring(context.applicationContext)
                 }
 
-                val googleSignInClient = GoogleAuthClient.getClient(this@MainActivity)
+                val googleSignInClient = GoogleAuthDataSource.getClient(this@MainActivity)
                 val googleSignInLauncher = rememberGoogleSignInLauncher(this@MainActivity, authViewModel)
 
                 val loginState = authViewModel.loginState.collectAsState()
@@ -151,8 +154,8 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAppleDeepLink(intent: Intent?) {
         val data: Uri = intent?.data ?: return
-        if (data.scheme == lc.fungee.IngrediCheck.auth.AppleAuthConfig.APP_SCHEME &&
-            data.host == lc.fungee.IngrediCheck.auth.AppleAuthConfig.APP_HOST) {
+        if (data.scheme == AppleAuthConfig.APP_SCHEME &&
+            data.host == AppleAuthConfig.APP_HOST) {
             Log.d("MainActivity", "Apple deep link raw: $data")
             Log.d("MainActivity", "Apple deep link query=${data.query}, fragment=${data.fragment}")
             var code: String? = data.getQueryParameter("code")

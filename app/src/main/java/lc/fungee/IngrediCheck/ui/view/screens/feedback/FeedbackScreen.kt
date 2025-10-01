@@ -67,6 +67,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.model.repository.FeedbackSubmitResult
+import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModel
+import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

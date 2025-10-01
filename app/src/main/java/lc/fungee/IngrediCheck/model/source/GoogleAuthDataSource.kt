@@ -1,19 +1,11 @@
-/*
-LEGACY GOOGLE AUTH - DO NOT USE
-
-This legacy GoogleAuth client is kept only for reference and has been commented out.
-Active implementation is `GoogleAuthClient.kt` and `GoogleSignInHandler.kt`.
-*/
-/*
-package lc.fungee.IngrediCheck.auth
+package lc.fungee.IngrediCheck.model.source
 
 import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 
-@Deprecated("Use GoogleAuthClient in GoogleAuthClient.kt")
-object GoogleAuthClientLegacy {
+object GoogleAuthDataSource {
     fun getClient(context: Context): GoogleSignInClient {
         return GoogleSignIn.getClient(
             context,
@@ -24,4 +16,3 @@ object GoogleAuthClientLegacy {
         )
     }
 }
-*/

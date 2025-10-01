@@ -14,8 +14,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import lc.fungee.IngrediCheck.model.model.ImageLocationInfo
-import lc.fungee.IngrediCheck.model.model.imageFileHash
+import lc.fungee.IngrediCheck.model.entities.ImageLocationInfo
+import lc.fungee.IngrediCheck.model.entities.imageFileHash
 import java.io.File
 import java.net.URL
 import kotlin.time.Duration.Companion.seconds

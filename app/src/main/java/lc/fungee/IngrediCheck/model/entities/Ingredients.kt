@@ -1,9 +1,8 @@
-package lc.fungee.IngrediCheck.model.model
+package lc.fungee.IngrediCheck.model.entities
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.util.Locale
-
 
 @Serializable
 data class Ingredient(
@@ -14,6 +13,7 @@ data class Ingredient(
     val vegetarian: String ? = null,
     val ingredients: List<Ingredient> = emptyList()
 )
+
 enum class SafetyRecommendation { MaybeUnsafe, DefinitelyUnsafe, Safe, None }
 enum class ProductRecommendation { Match, NeedsReview, NotMatch }
 

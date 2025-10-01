@@ -43,7 +43,7 @@ import java.net.URLEncoder
 import com.google.gson.Gson
 import io.github.jan.supabase.SupabaseClient
 
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.model.model.SupabaseSession
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.model.repository.FavoriteItem

@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.ui.view.screens.feedback
+package lc.fungee.IngrediCheck.viewmodel
 
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -12,6 +12,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
+import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
+import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
 import lc.fungee.IngrediCheck.model.model.feedback.FeedbackData
 import lc.fungee.IngrediCheck.model.model.feedback.FeedbackImageData
 import lc.fungee.IngrediCheck.model.repository.FeedbackRepository
@@ -19,11 +22,9 @@ import lc.fungee.IngrediCheck.model.repository.FeedbackSubmitResult
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.remote.StorageService
-import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
-import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
-import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
 import java.io.File
 import java.util.UUID
+import kotlin.collections.plus
 
 data class FeedbackPhotoUi(
     val tempId: String,                // stable key before upload finishes
@@ -88,9 +89,32 @@ class FeedbackViewModel(
             val token = preferenceRepository.currentToken() ?: return@launch
             try {
                 coroutineScope {
-                    val ocrDef = async<String>(Dispatchers.IO) { runCatching { recognizeText(file, appContext) }.getOrDefault("") }
-                    val barcodeDef = async<String?>(Dispatchers.IO) { runCatching { detectBarcode(file, appContext) }.getOrNull() }
-                    val uploadDef = async<String?>(Dispatchers.IO) { runCatching { uploadImage(file, token, functionsBaseUrl, anonKey) }.getOrNull() }
+                    val ocrDef = async<String>(Dispatchers.IO) {
+                        runCatching {
+                            recognizeText(
+                                file,
+                                appContext
+                            )
+                        }.getOrDefault("")
+                    }
+                    val barcodeDef = async<String?>(Dispatchers.IO) {
+                        runCatching {
+                            detectBarcode(
+                                file,
+                                appContext
+                            )
+                        }.getOrNull()
+                    }
+                    val uploadDef = async<String?>(Dispatchers.IO) {
+                        runCatching {
+                            uploadImage(
+                                file,
+                                token,
+                                functionsBaseUrl,
+                                anonKey
+                            )
+                        }.getOrNull()
+                    }
 
                     val ocr = ocrDef.await()
                     val barcode = barcodeDef.await()
@@ -131,7 +155,13 @@ class FeedbackViewModel(
             jobs.joinAll()
 
             val imagesList = ui.photos.mapNotNull { p ->
-                p.imageFileHash?.let { hash -> FeedbackImageData(hash, p.imageOCRText ?: "", p.barcode) }
+                p.imageFileHash?.let { hash ->
+                    FeedbackImageData(
+                        hash,
+                        p.imageOCRText ?: "",
+                        p.barcode
+                    )
+                }
             }
             val data = FeedbackData(
                 reasons = ui.reasons,

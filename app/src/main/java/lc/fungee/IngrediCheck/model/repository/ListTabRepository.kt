@@ -9,10 +9,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import lc.fungee.IngrediCheck.model.model.ImageLocationInfo
-import lc.fungee.IngrediCheck.model.model.Ingredient
-import lc.fungee.IngrediCheck.model.model.IngredientRecommendation
-import lc.fungee.IngrediCheck.model.model.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.model.entities.ImageLocationInfo
+import lc.fungee.IngrediCheck.model.entities.Ingredient
+import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
+import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.MultipartBody

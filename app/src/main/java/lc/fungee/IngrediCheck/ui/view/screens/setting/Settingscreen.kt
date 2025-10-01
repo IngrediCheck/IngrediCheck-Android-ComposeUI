@@ -47,8 +47,8 @@ import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.*
-import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import kotlinx.coroutines.delay
 

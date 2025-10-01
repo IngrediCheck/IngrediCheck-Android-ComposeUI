@@ -57,9 +57,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.delay
 import lc.fungee.IngrediCheck.R
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.model.model.ValidationState
-import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.BrandGlow

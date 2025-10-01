@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.model.model
+package lc.fungee.IngrediCheck.model.entities
 
 enum class SafeEatsEndpoint(private val pathFormat: String) {
     DELETEME("deleteme"),

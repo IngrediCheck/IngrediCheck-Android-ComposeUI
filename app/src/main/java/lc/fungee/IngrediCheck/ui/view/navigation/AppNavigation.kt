@@ -21,8 +21,8 @@ import lc.fungee.IngrediCheck.ui.view.screens.list.FavoritesPageScreen
 import lc.fungee.IngrediCheck.ui.view.screens.list.RecentScansPageScreen
 import lc.fungee.IngrediCheck.ui.view.screens.list.HistoryItemDetailScreen
 import lc.fungee.IngrediCheck.ui.view.screens.list.FavoriteItemDetailScreen
-import lc.fungee.IngrediCheck.auth.AppleAuthViewModel
-import lc.fungee.IngrediCheck.model.repository.PreferenceViewModel
+import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
+import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.NetworkStatusOverlay
 import lc.fungee.IngrediCheck.ui.view.screens.SplashScreen
 import lc.fungee.IngrediCheck.ui.view.screens.onboarding.DisclaimerScreen
