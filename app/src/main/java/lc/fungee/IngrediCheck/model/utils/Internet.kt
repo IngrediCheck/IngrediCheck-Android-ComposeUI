@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.ui.util
+package lc.fungee.IngrediCheck.model.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

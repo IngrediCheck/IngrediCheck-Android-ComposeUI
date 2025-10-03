@@ -148,10 +148,10 @@ fun PreferencesList(
             // Divider after each row
             Divider(
                 color = AppColors.Divider,
-                thickness = 2.dp,
-                modifier = Modifier
+                thickness = 1.dp,
+                modifier = Modifier.padding(start = 20.dp)
                     .fillMaxWidth()
-                    .padding(bottom = 18.dp)
+                    .padding(bottom = 20.dp)
             )
         }
     }

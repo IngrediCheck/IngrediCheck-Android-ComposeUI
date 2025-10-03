@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -76,10 +77,10 @@ fun BottomBar(navController: NavController, onCheckClick: () -> Unit = {}) {
         tonalElevation = 0.dp,
         modifier = Modifier.shadow(
             elevation = 8.dp,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+//            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             clip = false // Don't clip the shadow
-        )
-            .height(100.dp) // Set height
+        ).navigationBarsPadding()
+            .height(80.dp) // Set height
             .padding(top = 1.dp) // Top and bottom padding
             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) // Rounded top corners
     ) {

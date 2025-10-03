@@ -30,6 +30,7 @@ import lc.fungee.IngrediCheck.ui.view.screens.onboarding.DisclaimerScreen
 import lc.fungee.IngrediCheck.ui.view.screens.onboarding.WelcomeScreen
 import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
 import java.net.URLDecoder
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 @Composable
 fun AppNavigation(
@@ -49,14 +50,14 @@ fun AppNavigation(
     // Keep custom splash as start destination; compute where to go after splash delay
     val ctx = LocalContext.current
     val isLoggedIn: Boolean = remember {
-        val prefs = ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
-        val provider = prefs.getString("login_provider", null)
+        val prefs = ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, android.content.Context.MODE_PRIVATE)
+        val provider = prefs.getString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, null)
         val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
-        hasSdkSession || (provider == "anonymous")
+        hasSdkSession || (provider == AppConstants.Providers.ANONYMOUS)
     }
     val disclaimerAccepted: Boolean = remember {
-        ctx.getSharedPreferences("user_session", android.content.Context.MODE_PRIVATE)
-            .getBoolean("disclaimer_accepted", false)
+        ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, android.content.Context.MODE_PRIVATE)
+            .getBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, false)
     }
     NavHost(
         navController = navController,
@@ -96,9 +97,9 @@ fun AppNavigation(
                 modifier = Modifier.fillMaxSize(),
                 onAgree = {
                     // Persist that the user has accepted the disclaimer so it only shows once
-                    ctx.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                    ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                         .edit()
-                        .putBoolean("disclaimer_accepted", true)
+                        .putBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, true)
                         .apply()
                     navController.navigate("home") {
                         popUpTo("disclaimer") { inclusive = true }
@@ -110,13 +111,13 @@ fun AppNavigation(
         composable("home") {
             if (preferenceViewModel != null) {
                 HomeScreen(
-                    navController = navController,
                     preferenceViewModel = preferenceViewModel,
                     supabaseClient = supabaseClient,
                     functionsBaseUrl = functionsBaseUrl,
                     anonKey = anonKey,
                     viewModel = viewModel,
-                    googleSignInClient = googleSignInClient
+                    googleSignInClient = googleSignInClient,
+                    navController = navController
                 )
             }
         }

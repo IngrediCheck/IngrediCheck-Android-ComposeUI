@@ -58,6 +58,9 @@ import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.White
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -88,7 +91,23 @@ fun ListScreen(
     val listVm = remember { ListTabViewModel(listRepo) }
     val ui by listVm.uiState.collectAsState()
     LaunchedEffect(Unit) {
-        { listVm.refreshAll() }
+        listVm.refreshAll()
+    }
+
+    // Also refresh when returning to this screen
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                listVm.refreshAll()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        try {
+            // keep until disposal
+        } finally {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 //    val isRefreshing = ui.isLoadingFavorites || ui.isLoadingHistory
 //    val pullRefreshState = rememberPullRefreshState(

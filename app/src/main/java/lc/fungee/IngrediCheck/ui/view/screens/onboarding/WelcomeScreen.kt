@@ -23,6 +23,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -40,13 +43,15 @@ import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.view.component.AppleSignInSection
 import lc.fungee.IngrediCheck.ui.view.component.GoogleSignInButton
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200
-import lc.fungee.IngrediCheck.ui.theme.AppColors
+ import lc.fungee.IngrediCheck.ui.theme.AppColors
+ import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 
 
 val fredokaMedium = FontFamily(Font(R.font.fredoka_medium))
 val termsTag = "TERMS"
 val privacyTag = "PRIVACY"
+
 @Composable
 fun WelcomeScreen(
     onGoogleSignIn: (() -> Unit)? = null,
@@ -63,8 +68,8 @@ fun WelcomeScreen(
         when (loginState) {
             is AppleLoginState.Success -> {
                 Log.d("WelcomeScreen", "Login successful, deciding destination based on disclaimer flag")
-                val accepted = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                    .getBoolean("disclaimer_accepted", false)
+                val accepted = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .getBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, false)
                 val dest = if (accepted) "home" else "disclaimer"
                 navController.navigate(dest) {
                     popUpTo("welcome") { inclusive = true }
@@ -72,8 +77,8 @@ fun WelcomeScreen(
             }
             is AppleLoginState.NavigateToDisclaimer -> {
                 Log.d("WelcomeScreen", "NavigateToDisclaimer received; checking disclaimer flag to avoid repeat")
-                val accepted = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                    .getBoolean("disclaimer_accepted", false)
+                val accepted = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .getBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, false)
                 val dest = if (accepted) "home" else "disclaimer"
                 navController.navigate(dest) {
                     popUpTo("welcome") { inclusive = true }
@@ -89,23 +94,26 @@ fun WelcomeScreen(
         }
     }
 
+
     // Removed sessionStoreFailed handling as it's not exposed by the ViewModel
 
-    Column(
+    Column (
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(15.dp)
+            .navigationBarsPadding(), // <-- Adds padding for bottom system buttons
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween // pushes bottom text to bottom
     ) {
         // 👇 Onboarding Pager with flexible height
-        Box(
-//            modifier = Modifier
+        Column(
+//          modifier = Modifier.padding(top= 20.dp)
 //                .weight(1f) // Take available space
 //                .fillMaxWidth()
-            modifier = Modifier
-                .padding(top = 84.dp, start = 16.dp) // position the Box from parent
-                .size(width = 343.dp, height = 488.dp) // exact size
+            modifier = Modifier.fillMaxWidth().weight(1f)
+               .padding(top = 10.dp) // position the Box from parent
+//                .size(width = , height = 488.dp) // exact size
                 .graphicsLayer(rotationZ = 0f, alpha = 1f) // angle + opacity
         ) {
             val welcomeItems = WelcomeScreenItemsManager.getOnboardingItems()
@@ -116,45 +124,69 @@ fun WelcomeScreen(
 
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.weight(1f)
             ) { page ->
                 WelcomePager(
                     item = welcomeItems[page],
-                    currentPage = pagerState.currentPage,
-                    totalPages = welcomeItems.size
+//                    currentPage = pagerState.currentPage,
+//                    totalPages = welcomeItems.size
                 )
             }
+
+            // ✅ Pager Indicators
+            val currentPage by remember { derivedStateOf { pagerState.currentPage } }
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                repeat(welcomeItems.size) { index ->
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(if (currentPage == index) 12.dp else 8.dp)
+                            .background(
+                                color = if (currentPage == index) AppColors.Brand else Greyscale200,
+                                shape = CircleShape
+                            )
+                    )
+                }
+            }
+
         }
 
         // Reduced spacer for better spacing
         Spacer(modifier = Modifier.height(32.dp))
 
         // Google Sign-In Button
-        GoogleSignInButton(
-            context = context,
-            onGoogleSignIn = onGoogleSignIn
-        )
+        Column ( horizontalAlignment = Alignment.CenterHorizontally) {
+            GoogleSignInButton(
+                context = context,
+                onGoogleSignIn = onGoogleSignIn
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        // Apple Sign-In Section (consolidated)
-        AppleSignInSection(viewModel = viewModel)
+            // Apple Sign-In Section (consolidated)
+            AppleSignInSection(viewModel = viewModel)
 
-        // Continue as Guest with better spacing
-        Spacer(modifier = Modifier.height(25.dp))
-        Text(
-            text = "Continue as guest",
-            color = AppColors.Brand,
-            fontSize = 17.sp,
-            lineHeight = 22.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable {
-                Log.d("WelcomeScreen", "Anonymous sign-in clicked")
-                viewModel.signInAnonymously(context)
-            }
-        )
+            // Continue as Guest with better spacing
+            Spacer(modifier = Modifier.height(25.dp))
+            Text(
+                text = "Continue as guest",
+                color = AppColors.Brand,
+                fontSize = 17.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable {
+                    Log.d("WelcomeScreen", "Anonymous sign-in clicked")
+                    viewModel.signInAnonymously(context)
+                },
+            )
+        }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(22.dp))
 
         // Terms and Privacy
         val annotatedText = buildAnnotatedString {
@@ -170,7 +202,7 @@ fun WelcomeScreen(
                     letterSpacing = (-0.08).sp,
                 )
             )
-            pushStringAnnotation(tag = termsTag, annotation = "https://www.ingredicheck.app/terms-conditions")
+            pushStringAnnotation(tag = termsTag, annotation = AppConstants.Website.TERMS)
             append("Terms of use")
             pop()
             pop()
@@ -187,7 +219,7 @@ fun WelcomeScreen(
                     letterSpacing = (-0.08).sp
                 )
             )
-            pushStringAnnotation(tag = privacyTag, annotation = "https://www.ingredicheck.app/privacy-policy")
+            pushStringAnnotation(tag = privacyTag, annotation = AppConstants.Website.PRIVACY)
             append("Privacy Policy")
             pop()
             pop()
@@ -225,14 +257,16 @@ fun WelcomeScreen(
 @Composable
 fun WelcomePager(
     item: WelcomeOnboardingItem,
-    modifier: Modifier = Modifier,
-    currentPage: Int = 0,
-    totalPages: Int = 1
+//    modifier: Modifier = Modifier,
+//    currentPage: Int = 0,
+//    totalPages: Int = 1
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 50.dp),
+            .padding(
+                start = 16.dp, end = 16.dp, top = 50.dp
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -242,7 +276,8 @@ fun WelcomePager(
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp) // Reduced height for better proportion
+                .height(200.dp)
+                 // Reduced height for better proportion
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -282,25 +317,9 @@ fun WelcomePager(
                 .padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+//        Spacer(modifier = Modifier.height(32.dp))
 
-        // ✅ Pager Indicators
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 8.dp)
-        ) {
-            repeat(totalPages) { index ->
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(
-                            color = if (currentPage == index) AppColors.Brand else Greyscale200,
-                            shape = CircleShape
-                        )
-                )
-            }
-        }
+
     }
 }
 

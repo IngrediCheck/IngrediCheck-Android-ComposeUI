@@ -45,7 +45,7 @@ fun SplashScreen(
             modifier = Modifier.Companion
                 .size(376.dp)
                 .align(Alignment.Companion.TopStart)
-                .offset(x = (-90).dp, y = (-1).dp)
+                .offset(x = (-100).dp, y = (-1).dp)
         )
 
         // Center logo

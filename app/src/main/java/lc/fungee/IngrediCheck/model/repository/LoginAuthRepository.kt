@@ -1,4 +1,6 @@
-package lc.fungee.IngrediCheck.model.repository
+﻿package lc.fungee.IngrediCheck.model.repository
+import lc.fungee.IngrediCheck.model.utils.AppConstants
+import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 
 import android.app.Activity
 import android.content.Context
@@ -44,7 +46,7 @@ class LoginAuthRepository(
 
     fun hasStoredSession(): Boolean {
         return try {
-            context.getSharedPreferences("supabase_session", Context.MODE_PRIVATE)
+            context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION, Context.MODE_PRIVATE)
                 .getString("session", null) != null
         } catch (_: Exception) {
             false
@@ -83,14 +85,14 @@ class LoginAuthRepository(
     }
 
     fun launchAppleLoginWebView(activity: Activity) {
-        val appRedirect = "io.supabase.ingredicheck://callback"
+        val appRedirect = "${AppleAuthConfig.APP_SCHEME}://callback"
         val authUrl = Uri.Builder()
             .scheme("https")
-            .authority("wqidjkpfdrvomfkmefqc.supabase.co")
+            .authority(Uri.parse(supabaseUrl).host ?: AppConstants.Supabase.HOST)
             .appendPath("auth")
             .appendPath("v1")
             .appendPath("authorize")
-            .appendQueryParameter("provider", "apple")
+            .appendQueryParameter("provider", AppConstants.Providers.APPLE)
             .appendQueryParameter("redirect_to", appRedirect)
             .build()
             .toString()
@@ -210,9 +212,9 @@ class LoginAuthRepository(
 
     suspend fun clearLocalData(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear()
+            context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear()
                 .apply()
-            context.getSharedPreferences("supabase_session", Context.MODE_PRIVATE).edit().clear()
+            context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION, Context.MODE_PRIVATE).edit().clear()
                 .apply()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -223,9 +225,9 @@ class LoginAuthRepository(
     suspend fun deleteAccountAndData(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             runCatching { supabaseClient.auth.signOut() }
-            context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear()
+            context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear()
                 .apply()
-            context.getSharedPreferences("supabase_session", Context.MODE_PRIVATE).edit().clear()
+            context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION, Context.MODE_PRIVATE).edit().clear()
                 .apply()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -235,12 +237,12 @@ class LoginAuthRepository(
 
     fun authProvider(): AuthProvider {
         return try {
-            val provider = context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                .getString("login_provider", null)
+            val provider = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                .getString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, null)
             when (provider) {
-                "apple" -> AuthProvider.APPLE
-                "google" -> AuthProvider.GOOGLE
-                "anonymous" -> AuthProvider.ANONYMOUS
+                AppConstants.Providers.APPLE -> AuthProvider.APPLE
+                AppConstants.Providers.GOOGLE -> AuthProvider.GOOGLE
+                AppConstants.Providers.ANONYMOUS -> AuthProvider.ANONYMOUS
                 else -> AuthProvider.NONE
             }
         } catch (_: Exception) {

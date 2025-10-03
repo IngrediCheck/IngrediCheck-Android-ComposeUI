@@ -1,4 +1,5 @@
-package lc.fungee.IngrediCheck.viewmodel
+﻿package lc.fungee.IngrediCheck.viewmodel
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 import android.app.Activity
 import android.content.Context
@@ -108,9 +109,9 @@ class AppleAuthViewModel(
                 val result = repository.importSessionFromTokens(accessToken, refreshToken, expiresInSeconds, tokenType)
                 val newState = result.fold(
                     onSuccess = { session ->
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -143,9 +144,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Apple login successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -186,9 +187,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Apple login successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -224,9 +225,9 @@ class AppleAuthViewModel(
                 val newState = result.fold(
                     onSuccess = { session ->
                         Log.d("AppleAuthViewModel", "Google login successful")
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "google")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.GOOGLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -256,9 +257,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Anonymous sign-in successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "anonymous")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.ANONYMOUS)
                             .apply()
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
@@ -317,7 +318,7 @@ class AppleAuthViewModel(
                         userId = null
                         _loginState.value = AppleLoginState.Idle
                         // Clear login provider
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
                             .clear()
                             .apply()
@@ -328,7 +329,7 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
                             .clear()
                             .apply()
@@ -340,7 +341,7 @@ class AppleAuthViewModel(
                 userEmail = null
                 userId = null
                 _loginState.value = AppleLoginState.Idle
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                     .edit()
                     .clear()
                     .apply()

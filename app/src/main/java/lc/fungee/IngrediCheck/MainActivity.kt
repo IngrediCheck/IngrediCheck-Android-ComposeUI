@@ -34,6 +34,7 @@ import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
 import lc.fungee.IngrediCheck.model.source.GoogleAuthDataSource
 import lc.fungee.IngrediCheck.model.source.rememberGoogleSignInLauncher
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 class MainActivity : ComponentActivity() {
 
@@ -47,8 +48,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val supabaseUrl = "https://wqidjkpfdrvomfkmefqc.supabase.co"
-        val supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI" // shortened for clarity
+        val supabaseUrl = AppConstants.Supabase.URL
+        val supabaseAnonKey = AppConstants.Supabase.ANON_KEY
 
         // Initialize repository and ViewModel with a Factory at Activity scope
         repository = LoginAuthRepository(
@@ -79,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 val currentPreferenceViewModel = remember(currentLoginState) {
                     val hasSdkSession = runCatching { repository.supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
                     // Read the same prefs used by SharedPreferencesSessionManager (supabase_session)
-                    val hasStoredSession = context.getSharedPreferences("supabase_session",
+                    val hasStoredSession = context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION,
                         MODE_PRIVATE
                     ).getString("session", null) != null
 
@@ -91,8 +92,8 @@ class MainActivity : ComponentActivity() {
                         val preferenceRepository = PreferenceRepository(
                             context = context,
                             supabaseClient = repository.supabaseClient,
-                            functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                            anonKey = supabaseAnonKey
+                            functionsBaseUrl = AppConstants.Functions.base,
+                            anonKey = AppConstants.Supabase.ANON_KEY
                         )
                         preferenceViewModel = PreferenceViewModel(
                             preferenceRepository
@@ -103,7 +104,7 @@ class MainActivity : ComponentActivity() {
 
                 when (val state = currentLoginState) {
                     is AppleLoginState.Loading -> {
-                        //                            LoadingScreen()
+                        //                            LoadingScreen() // or show a fallback/loading
                     }
                     is AppleLoginState.Success, is AppleLoginState.NavigateToDisclaimer -> {
                         // Only pass if not null
@@ -116,8 +117,8 @@ class MainActivity : ComponentActivity() {
                                 supabaseClient = repository.supabaseClient,
                                 windowSize = windowSizeClass,
                                 isOnline = networkViewModel.isOnline,
-                                functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                                anonKey = supabaseAnonKey
+                                functionsBaseUrl = AppConstants.Functions.base,
+                                anonKey = AppConstants.Supabase.ANON_KEY
                             )
                         } else {
 //                            LoadingScreen() // or show a fallback/loading
@@ -132,8 +133,8 @@ class MainActivity : ComponentActivity() {
                             supabaseClient = repository.supabaseClient,
                             windowSize = windowSizeClass,
                             isOnline = networkViewModel.isOnline,
-                            functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                            anonKey = supabaseAnonKey
+                            functionsBaseUrl = AppConstants.Functions.base,
+                            anonKey = AppConstants.Supabase.ANON_KEY
                         )
                     }
                     is AppleLoginState.Error -> {

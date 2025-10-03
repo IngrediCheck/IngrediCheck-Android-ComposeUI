@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.model.repository.auth.AuthProvider
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 // Unified UI state for all auth providers
 data class AuthUiState(
@@ -56,8 +57,8 @@ class AuthViewModel(
         val result = withContext(Dispatchers.IO) { repository.signInWithGoogleIdToken(idToken) }
         result.fold(
             onSuccess = { session ->
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                    .edit().putString("login_provider", "google").apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .edit().putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.GOOGLE).apply()
                 _state.value = AuthUiState(provider = AuthProvider.GOOGLE, isLoading = false, error = null)
             },
             onFailure = { e ->
@@ -72,8 +73,8 @@ class AuthViewModel(
         val result = withContext(Dispatchers.IO) { repository.signInWithAppleIdToken(idToken) }
         result.fold(
             onSuccess = { session ->
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                    .edit().putString("login_provider", "apple").apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .edit().putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE).apply()
                 _state.value = AuthUiState(provider = AuthProvider.APPLE, isLoading = false, error = null)
             },
             onFailure = { e ->
@@ -104,8 +105,8 @@ class AuthViewModel(
         val result = withContext(Dispatchers.IO) { repository.signInAnonymously() }
         result.fold(
             onSuccess = { session ->
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
-                    .edit().putString("login_provider", "anonymous").apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .edit().putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.ANONYMOUS).apply()
                 _state.value = AuthUiState(provider = AuthProvider.ANONYMOUS, isLoading = false, error = null)
             },
             onFailure = { e ->
@@ -120,11 +121,11 @@ class AuthViewModel(
         val result = withContext(Dispatchers.IO) { repository.signOut() }
         result.fold(
             onSuccess = {
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
                 _state.value = AuthUiState(provider = AuthProvider.NONE, isLoading = false, error = null)
             },
             onFailure = { e ->
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
                 _state.value = AuthUiState(provider = AuthProvider.NONE, isLoading = false, error = e.localizedMessage)
             }
         )
@@ -135,13 +136,13 @@ class AuthViewModel(
         val result: Result<Unit> = withContext(Dispatchers.IO) { repository.deleteAccountAndData() }
         result.fold(
             onSuccess = {
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear().apply()
-                context.getSharedPreferences("supabase_session", Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
                 _state.value = AuthUiState(provider = AuthProvider.NONE, isLoading = false, error = null)
             },
             onFailure = { e ->
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE).edit().clear().apply()
-                context.getSharedPreferences("supabase_session", Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
+                context.getSharedPreferences(AppConstants.Prefs.SUPABASE_SESSION, Context.MODE_PRIVATE).edit().clear().apply()
                 _state.value = AuthUiState(provider = AuthProvider.NONE, isLoading = false, error = e.localizedMessage)
             }
         )
