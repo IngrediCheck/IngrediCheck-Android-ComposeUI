@@ -201,13 +201,16 @@ fun AppNavigation(
             composable("welcome") {
                 WelcomeScreen(
                     onGoogleSignIn = {
-                        googleSignInClient.signOut().addOnCompleteListener {
-                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                        if (networkViewModel.isOnline) {
+                            googleSignInClient.signOut().addOnCompleteListener {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            }
                         }
                     },
                     viewModel = viewModel,
                     navController = navController,
-                    googleSignInClient = googleSignInClient
+                    googleSignInClient = googleSignInClient,
+                    networkViewModel = networkViewModel
                 )
             }
 

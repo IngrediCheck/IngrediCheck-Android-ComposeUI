@@ -35,12 +35,14 @@ import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.model.source.AppleSignInManager
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
 
 
-    @Composable
+@Composable
     fun AppleSignInSection(
-        viewModel: AppleAuthViewModel,
-        modifier: Modifier = Modifier
+    viewModel: AppleAuthViewModel,
+    networkViewModel: NetworkViewmodel,
+    modifier: Modifier = Modifier
     ) {
         val context = LocalContext.current
         val activity = context as? Activity

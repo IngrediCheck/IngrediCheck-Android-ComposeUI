@@ -45,7 +45,7 @@ import lc.fungee.IngrediCheck.ui.view.component.GoogleSignInButton
 import lc.fungee.IngrediCheck.ui.theme.Greyscale200
  import lc.fungee.IngrediCheck.ui.theme.AppColors
  import lc.fungee.IngrediCheck.model.utils.AppConstants
-
+import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
 
 
 val fredokaMedium = FontFamily(Font(R.font.fredoka_medium))
@@ -57,7 +57,8 @@ fun WelcomeScreen(
     onGoogleSignIn: (() -> Unit)? = null,
     viewModel: AppleAuthViewModel,
     navController: NavController,
-    googleSignInClient: GoogleSignInClient
+    googleSignInClient: GoogleSignInClient,
+    networkViewModel: NetworkViewmodel
 ) {
     val loginState by viewModel.loginState.collectAsState()
     val context = LocalContext.current
@@ -161,6 +162,16 @@ fun WelcomeScreen(
 
         // Google Sign-In Button
         Column ( horizontalAlignment = Alignment.CenterHorizontally) {
+            // Show offline message if no internet
+            if (!networkViewModel.isOnline) {
+                Text(
+                    text = "No internet connection",
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            
             GoogleSignInButton(
                 context = context,
                 onGoogleSignIn = onGoogleSignIn
@@ -169,7 +180,7 @@ fun WelcomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Apple Sign-In Section (consolidated)
-            AppleSignInSection(viewModel = viewModel)
+            AppleSignInSection(viewModel = viewModel, networkViewModel = networkViewModel)
 
             // Continue as Guest with better spacing
             Spacer(modifier = Modifier.height(25.dp))
@@ -180,8 +191,12 @@ fun WelcomeScreen(
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.clickable {
-                    Log.d("WelcomeScreen", "Anonymous sign-in clicked")
-                    viewModel.signInAnonymously(context)
+                    if (networkViewModel.isOnline) {
+                        Log.d("WelcomeScreen", "Anonymous sign-in clicked")
+                        viewModel.signInAnonymously(context)
+                    } else {
+                        Log.d("WelcomeScreen", "Guest login blocked - no internet connection")
+                    }
                 },
             )
         }
