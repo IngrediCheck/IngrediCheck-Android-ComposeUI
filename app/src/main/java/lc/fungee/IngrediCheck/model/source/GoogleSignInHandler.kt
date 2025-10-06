@@ -11,7 +11,7 @@ import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 
 @Composable
 fun rememberGoogleSignInLauncher(
-    activity: Activity,
+    activity: Activity?,
     viewModel: AppleAuthViewModel
 )
 = rememberLauncherForActivityResult(
@@ -23,7 +23,11 @@ fun rememberGoogleSignInLauncher(
         val account = task.getResult(ApiException::class.java)
         val idToken = account.idToken
         if (idToken != null) {
-            viewModel.signInWithGoogleIdToken(idToken, activity)
+            activity?.let { ctx ->
+                viewModel.signInWithGoogleIdToken(idToken, ctx)
+            } ?: run {
+                Log.e("GoogleSignIn", "activity context is null; cannot complete sign-in")
+            }
         }
     } catch (e: Exception) {
         Log.e("GoogleSignIn", "Sign-in failed", e)

@@ -42,7 +42,10 @@ fun PreferenceEmptyState() {
     Column(
         modifier = Modifier.Companion
             .fillMaxSize()
-            .background(color = White)
+            .background(color = White),
+        verticalArrangement = Arrangement.Center, // center vertically
+        horizontalAlignment = Alignment.CenterHorizontally // center horizontally
+
     ) {
         Image(
             painter = painterResource(id = R.drawable.emptystateillustration),
@@ -64,7 +67,7 @@ fun PreferenceEmptyState() {
             style = TextStyle(
                 fontFamily = FontFamily.Companion.SansSerif,
                 fontWeight = FontWeight.Companion.Normal,
-                fontSize = 16.sp,
+                fontSize = 20.sp,
                 lineHeight = 21.sp,
                 letterSpacing = (-0.32).sp
             )
@@ -73,34 +76,40 @@ fun PreferenceEmptyState() {
         // Base pages (real content)
         val basePages = listOf(
             buildAnnotatedString {
-                append("Avoid ")
+                append("\"Avoid ")
                 withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Gluten") }
-                append(".")
+
+                append(".\"")
             },
             buildAnnotatedString {
-                append("I follow a ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("vegetarian") }
-                append(" diet, but I'm okay with eating ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("fish") }
-                append(".")
+                append("\"No ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Plam oil ") }
+                append("for me.\"")
+
             },
             buildAnnotatedString {
-                append("Scan ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("food ingredients") }
-                append(" easily.")
+                append("\"No ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("animal products") }
+                append(", but ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("eggs") }
+                append(" & ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("dairy ") }
+                append("are ok.\"")
             },
             buildAnnotatedString {
-                append("Get alerts on ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("dietary restrictions") }
-                append(".")
+                append("\"NO ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("peanuts ") }
+                append("but other ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("nuts ") }
+                append("are ok.\"")
             }, buildAnnotatedString {
-                append("Avoid ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Sugar") }
-                append(".")
+                append("\"gluten ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("free") }
+                append(".\"")
             }, buildAnnotatedString {
-                append("Avoid ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Sugar") }
-                append(".")
+                append("\"i can,t stand ")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("garlic") }
+                append(".\"")
             }
 
         )
@@ -125,7 +134,8 @@ fun PreferenceEmptyState() {
                             bottomStart = 8.dp
                         )
                     ),
-                contentAlignment = Alignment.Companion.Center
+                contentAlignment = Alignment.Companion.Center,
+
             ) {
                 HorizontalPager(
                     state = pagerState,
@@ -136,14 +146,22 @@ fun PreferenceEmptyState() {
                     val annotatedText = if (page < basePages.size) {
                         basePages[page]
                     } else {
-                        buildAnnotatedString { append("Prefrences...") }
+                        buildAnnotatedString { append(" Add Prefrences...") }
                     }
-                    Text(
-                        text = annotatedText,
-                        modifier = Modifier.Companion.padding(horizontal = 16.dp),
-                        fontSize = 15.sp,
-                        color = AppColors.Brand
-                    )
+                    // Center the text in the Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+
+                        Text(
+                            text = annotatedText,
+                            modifier = Modifier.Companion.padding(horizontal = 16.dp),
+                            fontSize = 20.sp,
+                            color = AppColors.Brand
+                        )
+                    }
                 }
             }
             Row(

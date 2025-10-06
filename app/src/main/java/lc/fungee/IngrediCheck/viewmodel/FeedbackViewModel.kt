@@ -15,8 +15,8 @@ import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
 import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
 import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
-import lc.fungee.IngrediCheck.model.model.feedback.FeedbackData
-import lc.fungee.IngrediCheck.model.model.feedback.FeedbackImageData
+import lc.fungee.IngrediCheck.model.dto.feedback.FeedbackData
+import lc.fungee.IngrediCheck.model.dto.feedback.FeedbackImageData
 import lc.fungee.IngrediCheck.model.repository.FeedbackRepository
 import lc.fungee.IngrediCheck.model.repository.FeedbackSubmitResult
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository

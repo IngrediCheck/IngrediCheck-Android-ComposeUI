@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +57,7 @@ import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.delay
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
-import lc.fungee.IngrediCheck.model.model.ValidationState
+import lc.fungee.IngrediCheck.model.dto.ValidationState
 import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.theme.AppColors
@@ -67,7 +66,7 @@ import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Greyscale700
 import lc.fungee.IngrediCheck.ui.theme.Statusfail
 import lc.fungee.IngrediCheck.ui.theme.White
-import lc.fungee.IngrediCheck.ui.util.AutoScanGate
+import lc.fungee.IngrediCheck.model.utils.AutoScanGate
 import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
 
@@ -190,13 +189,15 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 15.dp, bottom = 10.dp)
+                     .padding(bottom = 14.dp)
+//                            bottom = 10.dp)
+//                        )
                 ) {
                     Text(
-                        text = "Your dietary preference",
+                        text = "Your dietary preferences",
                         style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center
                         ),
                         modifier = Modifier.align(Alignment.Center) // 🔥 Centered in screen
@@ -245,11 +246,11 @@ fun HomeScreen(
                         placeholder = {
                             Text(
                                 text = "Enter dietary preference here",
-                                style = TextStyle(fontSize = 16.sp),
-                                modifier = Modifier.Companion.alpha(0.5f)
+                                style = TextStyle(fontSize = 20.sp),
+                               modifier = Modifier.Companion.alpha(0.4f)
                             )
                         },
-                        textStyle = TextStyle(color = Greyscale700, fontSize = 16.sp),
+                        textStyle = TextStyle(color = Greyscale700, fontSize = 20.sp),
                         modifier = Modifier.Companion.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions.Companion.Default.copy(imeAction = ImeAction.Companion.Done),
                         keyboardActions = KeyboardActions(onDone = {
@@ -280,11 +281,7 @@ fun HomeScreen(
                             }
                         }
                     )
-//                    PullRefreshIndicator(
-//                        refreshing = isRefreshing,
-//                        state = pullRefreshState,
-//                        modifier = Modifier.align(Alignment.TopCenter) // position correctly
-//                    )
+//
                     Spacer(modifier = Modifier.Companion.height(16.dp))
                 }
 
@@ -294,11 +291,11 @@ fun HomeScreen(
                 // Validation feedback
                 when (val state = preferenceViewModel.validationState) {
                     is ValidationState.Validating -> {
-                        Text("Thinking...", color = AppColors.Brand, fontSize = 14.sp)
+                        Text("Thinking...", color = AppColors.Brand, fontSize = 18.sp)
                     }
 
                     is ValidationState.Failure -> {
-                        Text(state.message, color = Statusfail, fontSize = 14.sp)
+                        Text(state.message, color = Statusfail, fontSize = 18.sp)
 
                     }
 
@@ -314,7 +311,7 @@ fun HomeScreen(
                             Text(
                                 "Preference added successfully...",
                                 color = AppColors.Brand,
-                                fontSize = 14.sp
+                                fontSize = 18.sp
                             )
                         }
                     }

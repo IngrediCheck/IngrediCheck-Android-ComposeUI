@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.IngrediCheck.R
-import lc.fungee.IngrediCheck.model.model.DietaryPreference
+import lc.fungee.IngrediCheck.model.dto.DietaryPreference
 import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 
@@ -148,10 +148,10 @@ fun PreferencesList(
             // Divider after each row
             Divider(
                 color = AppColors.Divider,
-                thickness = 2.dp,
-                modifier = Modifier
+                thickness = 1.dp,
+                modifier = Modifier.padding(start = 20.dp)
                     .fillMaxWidth()
-                    .padding(bottom = 18.dp)
+                    .padding(bottom = 20.dp)
             )
         }
     }

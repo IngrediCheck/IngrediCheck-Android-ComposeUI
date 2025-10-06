@@ -3,6 +3,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
@@ -34,6 +39,7 @@ import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
 import lc.fungee.IngrediCheck.model.source.GoogleAuthDataSource
 import lc.fungee.IngrediCheck.model.source.rememberGoogleSignInLauncher
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 class MainActivity : ComponentActivity() {
 
@@ -47,8 +53,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val supabaseUrl = "https://wqidjkpfdrvomfkmefqc.supabase.co"
-        val supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxaWRqa3BmZHJ2b21ma21lZnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDczNDgxODksImV4cCI6MjAyMjkyNDE4OX0.sgRV4rLB79VxYx5a_lkGAlB2VcQRV2beDEK3dGH4_nI" // shortened for clarity
+        val supabaseUrl = AppConstants.Supabase.URL
+        val supabaseAnonKey = AppConstants.Supabase.ANON_KEY
 
         // Initialize repository and ViewModel with a Factory at Activity scope
         repository = LoginAuthRepository(
@@ -61,178 +67,24 @@ class MainActivity : ComponentActivity() {
             .get(AppleAuthViewModel::class.java)
 
         setContent {
-            val windowSizeClass = calculateWindowSizeClass(activity = this)
+            val windowSizeClass = calculateWindowSizeClass(activity = this@MainActivity)
+            val isAuthChecked = authViewModel.isAuthChecked.collectAsState().value
             IngrediCheckTheme {
-                val networkViewModel: NetworkViewmodel = viewModel()
-                val context = LocalContext.current
-                LaunchedEffect(context) {
-                    networkViewModel.startMonitoring(context.applicationContext)
-                }
-
-                val googleSignInClient = GoogleAuthDataSource.getClient(this@MainActivity)
-                val googleSignInLauncher = rememberGoogleSignInLauncher(this@MainActivity, authViewModel)
-
-                val loginState = authViewModel.loginState.collectAsState()
-                val currentLoginState = loginState.value
-
-                // Create PreferenceViewModel when authenticated, navigating to disclaimer, or when a stored session exists
-                val currentPreferenceViewModel = remember(currentLoginState) {
-                    val hasSdkSession = runCatching { repository.supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
-                    // Read the same prefs used by SharedPreferencesSessionManager (supabase_session)
-                    val hasStoredSession = context.getSharedPreferences("supabase_session",
-                        MODE_PRIVATE
-                    ).getString("session", null) != null
-
-                    if (preferenceViewModel == null &&
-                        (currentLoginState is AppleLoginState.Success ||
-                         currentLoginState is AppleLoginState.NavigateToDisclaimer ||
-                         hasSdkSession || hasStoredSession)
-                    ) {
-                        val preferenceRepository = PreferenceRepository(
-                            context = context,
-                            supabaseClient = repository.supabaseClient,
-                            functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                            anonKey = supabaseAnonKey
-                        )
-                        preferenceViewModel = PreferenceViewModel(
-                            preferenceRepository
-                        )
+                if (!isAuthChecked) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                    preferenceViewModel
-                }
-
-                when (val state = currentLoginState) {
-                    is AppleLoginState.Loading -> {
-                        //                            LoadingScreen()
-                    }
-                    is AppleLoginState.Success, is AppleLoginState.NavigateToDisclaimer -> {
-                        // Only pass if not null
-                        if (currentPreferenceViewModel != null) {
-                            AppNavigation(
-                                viewModel = authViewModel,
-                                googleSignInLauncher = googleSignInLauncher,
-                                googleSignInClient = googleSignInClient,
-                                preferenceViewModel = currentPreferenceViewModel,
-                                supabaseClient = repository.supabaseClient,
-                                windowSize = windowSizeClass,
-                                isOnline = networkViewModel.isOnline,
-                                functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                                anonKey = supabaseAnonKey
-                            )
-                        } else {
-//                            LoadingScreen() // or show a fallback/loading
-                        }
-                    }
-                    is AppleLoginState.Idle -> {
-                        AppNavigation(
-                            viewModel = authViewModel,
-                            googleSignInLauncher = googleSignInLauncher,
-                            googleSignInClient = googleSignInClient,
-                            preferenceViewModel = currentPreferenceViewModel,
-                            supabaseClient = repository.supabaseClient,
-                            windowSize = windowSizeClass,
-                            isOnline = networkViewModel.isOnline,
-                            functionsBaseUrl = "$supabaseUrl/functions/v1/ingredicheck",
-                            anonKey = supabaseAnonKey
-                        )
-                    }
-                    is AppleLoginState.Error -> {
-                        ErrorScreen(
-                            message = state.message,
-                            onRetry = { authViewModel.resetState() }
-                        )
-                    }
-                }
-
-                // Handle initial deep link (e.g., from Apple HTTPS bounce)
-                LaunchedEffect(Unit) {
-                    handleAppleDeepLink(this@MainActivity.intent)
+                } else {
+                    AppNavigation(
+                        viewModel = authViewModel,
+                        supabaseClient = repository.supabaseClient,
+                        windowSize = windowSizeClass,
+                        functionsBaseUrl = AppConstants.Functions.base,
+                        anonKey = AppConstants.Supabase.ANON_KEY
+                    )
                 }
             }
         }
-    }
-
-    private fun handleAppleDeepLink(intent: Intent?) {
-        val data: Uri = intent?.data ?: return
-        if (data.scheme == AppleAuthConfig.APP_SCHEME &&
-            data.host == AppleAuthConfig.APP_HOST) {
-            Log.d("MainActivity", "Apple deep link raw: $data")
-            Log.d("MainActivity", "Apple deep link query=${data.query}, fragment=${data.fragment}")
-            var code: String? = data.getQueryParameter("code")
-            var idToken: String? = data.getQueryParameter("id_token")
-            val error = data.getQueryParameter("error")
-            val fragment = data.fragment
-            if (code == null && fragment?.contains("code=") == true) {
-                val fragParams = Uri.parse("scheme://host?${fragment}")
-                code = fragParams.getQueryParameter("code")
-            }
-            if (idToken == null && fragment?.contains("id_token=") == true) {
-                val fragParams = Uri.parse("scheme://host?${fragment}")
-                idToken = fragParams.getQueryParameter("id_token")
-            }
-            // Supabase implicit flow tokens (fragment)
-            var accessToken: String? = null
-            var refreshToken: String? = null
-            var expiresIn: Long? = null
-            var tokenType: String? = null
-            if (fragment != null) {
-                val fragParams = Uri.parse("scheme://host?${fragment}")
-                accessToken = fragParams.getQueryParameter("access_token")
-                refreshToken = fragParams.getQueryParameter("refresh_token")
-                tokenType = fragParams.getQueryParameter("token_type")
-                val expiresInStr = fragParams.getQueryParameter("expires_in")
-                val expiresAtStr = fragParams.getQueryParameter("expires_at")
-                expiresIn = when {
-                    !expiresInStr.isNullOrBlank() -> expiresInStr.toLongOrNull()
-                    !expiresAtStr.isNullOrBlank() -> {
-                        val nowSec = System.currentTimeMillis() / 1000L
-                        (expiresAtStr.toLongOrNull()?.minus(nowSec))?.coerceAtLeast(0L)
-                    }
-                    else -> null
-                }
-            }
-            Log.d("MainActivity", "Apple deep link received. hasCode=${code != null}, hasIdToken=${idToken != null}, hasTokens=${accessToken != null && refreshToken != null}, error=$error")
-            when {
-                code != null -> {
-                    if (::authViewModel.isInitialized) {
-                        authViewModel.signInWithAppleCode(code, this)
-                    } else {
-                        Log.w("MainActivity", "authViewModel not initialized when deep link arrived (code)")
-                    }
-                }
-                idToken != null -> {
-                    if (::authViewModel.isInitialized) {
-                        authViewModel.signInWithAppleIdToken(idToken, this)
-                    } else {
-                        Log.w("MainActivity", "authViewModel not initialized when deep link arrived (id_token)")
-                    }
-                }
-                accessToken != null && refreshToken != null && expiresIn != null -> {
-                    if (::authViewModel.isInitialized) {
-                        val type = tokenType ?: "Bearer"
-                        authViewModel.completeWithSupabaseTokens(accessToken, refreshToken, expiresIn!!, type, this)
-                    } else {
-                        Log.w("MainActivity", "authViewModel not initialized when deep link arrived (implicit tokens)")
-                    }
-                }
-                error != null -> {
-                    if (::authViewModel.isInitialized) {
-                        authViewModel.setError("Apple sign-in error: $error")
-                    }
-                }
-                else -> {
-                    if (::authViewModel.isInitialized) {
-                        authViewModel.setError("No authentication data received from Apple deep link")
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleAppleDeepLink(intent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -265,9 +117,5 @@ class MainActivity : ComponentActivity() {
         } else if (requestCode == 1002) {
             authViewModel.setError("Apple login was cancelled or failed")
         }
-    }
-
-    private fun navigateToDisclaimerScreen() {
-        authViewModel.navigateToDisclaimer()
     }
 }

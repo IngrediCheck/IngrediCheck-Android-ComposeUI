@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -30,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -51,6 +49,7 @@ import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import kotlinx.coroutines.delay
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 enum class ConfirmAction {
     NONE, DELETE_ACCOUNT, RESET_GUEST
@@ -69,9 +68,9 @@ fun SettingScreen(
     val autoScan by preferenceViewModel.autoScanFlow.collectAsState(initial = false)
     var selectedUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val sharedPrefs = remember { context.getSharedPreferences("user_session", Context.MODE_PRIVATE) }
-    val loginProvider = remember { sharedPrefs.getString("login_provider", null) }
-    val isGuest = loginProvider.isNullOrBlank() || loginProvider == "anonymous"
+    val sharedPrefs = remember { context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE) }
+    val loginProvider = remember { sharedPrefs.getString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, null) }
+    val isGuest = loginProvider.isNullOrBlank() || loginProvider == AppConstants.Providers.ANONYMOUS
     val coroutineScope = rememberCoroutineScope()
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -89,6 +88,8 @@ fun SettingScreen(
         coroutineScope.launch {
             // Centralize Supabase sign-out via ViewModel
             try { viewModel.signOut(context) } catch (_: Exception) {}
+            // Ensure any persisted Supabase session blob is wiped
+            try { viewModel.clearSupabaseLocalSession() } catch (_: Exception) {}
             // Google: sign out and revoke if applicable
             try { googleSignInClient.signOut() } catch (_: Exception) {}
             try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
@@ -109,7 +110,7 @@ fun SettingScreen(
         // Header
         SettingHeader(onDismiss = onDismiss)
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 🔹 Section: Settings
         SettingSection(title = "SETTINGS") {
@@ -124,43 +125,43 @@ fun SettingScreen(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
 
         SettingSection(title = "ACCOUNT") {
             if (isGuest) {
                 // Guest/anonymous flow: only allow clearing local data and restart
                 IconRow(
-                    "Delete & Restart App",
-                    Icons.Default.Warning,
+                    "Reset App State",
+                    R.drawable.fluent_warning_20_regular,
                     tint = AppColors.ErrorStrong,
-                    tint2 = AppColors.ErrorStrong
+                    tint2 = AppColors.ErrorStrong, showDivider = false
                 ) { confirmAction = ConfirmAction.RESET_GUEST }
             } else {
                 // Authenticated user: show Sign Out and Delete Data & Account
                 IconRow(
                     "Sign Out",
-                    Icons.Default.ExitToApp,
-                    tint = AppColors.Brand
+                    R.drawable.stash_signout_light__1_,
+                    tint = AppColors.Brand, showArrow = false
                 ) { clearAllSession()}
                 IconRow(
                     "Delete Data & Account",
-                    Icons.Default.Delete,
+                    R.drawable.fluent_warning_20_regular,
                     tint = AppColors.ErrorStrong,
-                    tint2 = AppColors.ErrorStrong
+                    tint2 = AppColors.ErrorStrong,showDivider = false
                 ) { confirmAction = ConfirmAction.DELETE_ACCOUNT }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 🔹 Section: About
         SettingSection(title = "ABOUT") {
             IconRow(
                 "About me",
-                Icons.Default.AccountCircle,
+                R.drawable.healthicons_ui_user_profile,
 //                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/about" }
+            ) { selectedUrl = AppConstants.Website.ABOUT }
 
 //            IconRow(
 //                "Tip Jar",
@@ -170,25 +171,25 @@ fun SettingScreen(
 
             IconRow(
                 "Help",
-                Icons.Default.Info,
+                R.drawable.hugeicons_help_circle,
 //                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/about" }
+            ) { selectedUrl = AppConstants.Website.ABOUT }
 
             IconRow(
                 "Terms of Use",
-                Icons.Default.AddCircle,
+                R.drawable.iconoir_multiple_pages,
 //                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/terms-conditions" }
+            ) { selectedUrl = AppConstants.Website.TERMS }
 
             IconRow(
                 "Privacy Policy",
-                Icons.Default.Lock,
+                R.drawable.meteor_icons_lock,
 //                R.drawable.rightbackbutton
-            ) { selectedUrl = "https://www.ingredicheck.app/privacy-policy" }
+            ) { selectedUrl = AppConstants.Website.PRIVACY }
 
             IconRow(
-                "IngrediCheck for Android 1.0.(38)",
-                Icons.Default.Star,
+                "IngrediCheck for Android 1.0.0.(4)",
+                R.drawable.rectangle_34624324__1_,
 //                null,
                 showDivider = false
             )
@@ -220,6 +221,7 @@ fun SettingScreen(
                 onConfirm = {
                     coroutineScope.launch {
                         runCatching { viewModel.signOut(context) }
+                        runCatching { viewModel.clearSupabaseLocalSession() }
                         preferenceViewModel.clearAllLocalData()
                         sharedPrefs.edit().clear().apply()
                         clearWebCookies()
@@ -396,34 +398,37 @@ fun SettingScreen(
 
 @Composable
 private fun SettingHeader(onDismiss: () -> Unit) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 24.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(top = 18.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Spacer(Modifier.weight(1f))
+        // Centered Text
         Text(
             text = "SETTINGS",
             style = TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 17.sp,
+                fontSize = 20.sp,
                 letterSpacing = (-0.41).sp,
                 color = AppColors.Neutral700,
                 lineHeight = 22.sp
             )
         )
-        Spacer(Modifier.weight(1f))
+
+        // Right-aligned Icon
         Icon(
             painter = painterResource(R.drawable.trailingicon),
             contentDescription = "Dismiss",
             tint = Greyscale400,
             modifier = Modifier
-                .size(18.dp)
+                .align(Alignment.CenterEnd) // stick to right
+                .size(22.dp)
                 .clickable { onDismiss() }
         )
     }
+
 }
 
 @Composable
@@ -436,9 +441,9 @@ private fun SettingSection(
             text = title,
             style = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
-                letterSpacing = 0.05.em,
+                fontWeight = FontWeight.W400,
+                fontSize = 17.sp,
+                letterSpacing = 0.06.em,
                 textAlign = TextAlign.Start,
                 color = Greyscale400
             ),
@@ -447,7 +452,7 @@ private fun SettingSection(
 
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .background(White)
         ) {
             content()
@@ -472,8 +477,8 @@ private fun SwitchRow(
             text = text,
             style = TextStyle(
                 fontFamily = FontFamily.SansSerif,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
+                fontWeight = FontWeight.Normal,
+                fontSize = 20.sp,
                 letterSpacing = (-0.41).sp,
                 color = AppColors.Neutral700,
                 lineHeight = 22.sp
@@ -502,10 +507,11 @@ private fun SwitchRow(
 @Composable
 private fun IconRow(
     text: String,
-    leadingVector: ImageVector,
+    leadingVector: Int,
     tint: Color = Color.Black, //
     tint2: Color =  AppColors.Brand,
     showDivider: Boolean = true, //
+    showArrow: Boolean = true,  // ✅ new flag
     onClick: (() -> Unit)? = null
 ) {
     Column {
@@ -521,7 +527,7 @@ private fun IconRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = leadingVector,
+                painter = painterResource(id = leadingVector),
                 contentDescription = null,
                 tint = tint2
             )
@@ -530,8 +536,8 @@ private fun IconRow(
                 text = text,
                 style = TextStyle(
                     fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 20.sp,
                     //   letterSpacing = (-0.41).sp,
                     color = tint
 //                    lineHeight = 22.sp
@@ -539,14 +545,16 @@ private fun IconRow(
             )
             Spacer(modifier = Modifier.weight(1f))
 //
-            if(showDivider) {
+            if(showDivider  ) {
+                if(showArrow) {
 
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowRight,
-                    modifier = Modifier.size(20.dp),
-                    contentDescription = null,
-                    tint = Grey75
-                )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        modifier = Modifier.size(20.dp),
+                        contentDescription = null,
+                        tint = Grey75
+                    )
+                }
 
             }
         }
@@ -555,8 +563,8 @@ private fun IconRow(
         if (showDivider) {
             Divider(
                 color = AppColors.Divider,
-                thickness = 2.dp,
-                modifier = Modifier.padding(start = 35.dp)
+                thickness = 1.dp,
+                modifier = Modifier.padding(start = 47.dp)
             )
         }
     }

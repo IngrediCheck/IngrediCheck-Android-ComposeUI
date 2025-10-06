@@ -107,7 +107,6 @@ fun CameraPreview(
         if (mode == CameraMode.Scan && !barcodeDetected) {
 //            delay(4000)
             if (!barcodeDetected) {
-                showMessage = true
                 Toast.makeText(context, "Please scan the code", Toast.LENGTH_SHORT).show()
             }
         }
@@ -120,6 +119,10 @@ fun CameraPreview(
             barcodeDetected = false
         }
     }
+
+    // Keep a state-backed reference to the current mode to avoid stale captures in analyzer
+    var currentMode by remember { mutableStateOf(mode) }
+    LaunchedEffect(mode) { currentMode = mode }
 
     // Use cases shared across modes
     val options = remember {
@@ -137,8 +140,8 @@ fun CameraPreview(
     // Set analyzer separately so we can keep the instance but only bind in Scan mode
     LaunchedEffect(Unit) {
         imageAnalyzer.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
-            // Only process if currently in Scan mode
-            if (mode != CameraMode.Scan) {
+            // Only process if currently in Scan mode (use state-backed currentMode to reflect tab switches)
+            if (currentMode != CameraMode.Scan) {
                 imageProxy.close()
                 return@setAnalyzer
             }

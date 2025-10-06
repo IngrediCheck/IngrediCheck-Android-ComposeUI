@@ -18,9 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import lc.fungee.IngrediCheck.model.model.DietaryPreference
-import lc.fungee.IngrediCheck.model.model.PreferenceValidationResult
-import lc.fungee.IngrediCheck.model.model.ValidationState
+import lc.fungee.IngrediCheck.model.dto.DietaryPreference
+import lc.fungee.IngrediCheck.model.dto.PreferenceValidationResult
+import lc.fungee.IngrediCheck.model.dto.ValidationState
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import java.util.UUID
 

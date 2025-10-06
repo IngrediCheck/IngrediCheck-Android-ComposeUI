@@ -1,7 +1,9 @@
 package lc.fungee.IngrediCheck.ui.view.screens.onboarding
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -10,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -26,16 +29,45 @@ fun DisclaimerScreen(
     modifier: Modifier = Modifier,
     onAgree: () -> Unit
 ) {
+    Box(
+        modifier = Modifier.Companion
+            .fillMaxSize()
+            .background(Color.Companion.White)
+    ) {
+        // Left image
+        Image(
+            painter = painterResource(id = R.drawable.leftlogo),
+            contentDescription = "Left Logo",
+            contentScale = ContentScale.Companion.Fit,
+            modifier = Modifier.Companion
+                .size(376.dp)
+                .align(Alignment.Companion.TopStart)
+                .offset(x = (-100).dp, y = (-1).dp)
+        )
+        Image(
+            painter = painterResource(id = R.drawable.rightlogo),
+            contentDescription = "Right Logo",
+            contentScale = ContentScale.Companion.Fit,
+            modifier = Modifier.Companion
+                .size(376.dp)
+                .align(Alignment.Companion.BottomEnd)
+                .offset(x = 100.dp, y = (-1).dp)
+        )
+
+    }
+
     Column(
         modifier = modifier
+            .navigationBarsPadding()
             .fillMaxSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 100.dp, top = 16.dp),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Column(
-            modifier = Modifier,
-            horizontalAlignment = Alignment.Start
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Spacer(modifier = Modifier.height(100.dp))
 
@@ -57,6 +89,7 @@ fun DisclaimerScreen(
                 fontWeight = FontWeight.Bold,
                 lineHeight = 26.88.sp,
                 color = Greyscale600,
+                textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -65,19 +98,20 @@ fun DisclaimerScreen(
             Text(
                 text = "Thanks for choosing IngrediCheck!\n" +
                         "Our AI helps match foods to your dietary \nneeds. " +
-                        "While our AI is constantly learning, it’s not perfect—please double-check " +
+                        "While our AI is constantly learning, it's not perfect—please double-check " +
                         "product labels to ensure they meet your specific requirements.\n\n" +
                         "Your feedback is vital—it trains our AI to be more accurate. " +
                         "Spot a mistake or have a suggestion? Let us know and help improve everyone's shopping experience!",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 21.12.sp,
-                color = Greyscale500
+                color = Greyscale500,
+                textAlign = TextAlign.Center
             )
         }
 
         // This spacer takes up remaining space so button is at bottom
-        Spacer(modifier = Modifier.weight(1f))
+//        Spacer(modifier = Modifier.weight(0.7f))
 
         Button(
             onClick = { onAgree() },
@@ -90,7 +124,7 @@ fun DisclaimerScreen(
             )
         ) {
             Text(
-                text = "Get Started",
+                text = "I Understand",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 lineHeight = 21.12.sp,

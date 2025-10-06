@@ -1,4 +1,5 @@
 package lc.fungee.IngrediCheck.viewmodel
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 import android.app.Activity
 import android.content.Context
@@ -36,6 +37,15 @@ class AppleAuthViewModel(
     private val _loginState = MutableStateFlow<AppleLoginState>(AppleLoginState.Loading)
     val loginState: StateFlow<AppleLoginState> = _loginState
 
+    // App-level gate to block rendering until auth/session check finishes
+    private val _isAuthChecked = MutableStateFlow(false)
+    val isAuthChecked: StateFlow<Boolean> = _isAuthChecked
+
+    // Track whether a spinner should be shown for Apple/Google auth flows.
+    // Guest (anonymous) should not trigger a spinner in the Apple section UI.
+    var isAppleLoading by mutableStateOf(false)
+        private set
+
     @Volatile
     private var restoring = true
 
@@ -52,6 +62,7 @@ class AppleAuthViewModel(
                         userEmail = s.user?.email
                         userId = s.user?.id
                         restoring = false
+                        _isAuthChecked.value = true
                         return@launch
                     }
                     delay(200)
@@ -61,7 +72,9 @@ class AppleAuthViewModel(
             // No stored session or not restored in time -> fall back to Idle
             if (repository.getCurrentSession() == null) {
                 _loginState.value = AppleLoginState.Idle
+                isAppleLoading = false
             }
+            _isAuthChecked.value = true
         }
 
         // Observe status changes; ignore while restoring to avoid flicker
@@ -74,15 +87,18 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(current)
                         userEmail = current.user?.email
                         userId = current.user?.id
+                        isAppleLoading = false
                     } else {
                         _loginState.value = AppleLoginState.Idle
                         userEmail = null
                         userId = null
+                        isAppleLoading = false
                     }
                 }
             } catch (_: Exception) {
                 if (repository.getCurrentSession() == null) {
                     _loginState.value = AppleLoginState.Idle
+                    isAppleLoading = false
                 }
             }
         }
@@ -91,6 +107,7 @@ class AppleAuthViewModel(
     fun launchAppleWebViewLogin(activity: Activity) {
         Log.d("AppleAuthViewModel", "Launching Apple WebView login")
         _loginState.value = AppleLoginState.Loading
+        isAppleLoading = true
         repository.launchAppleLoginWebView(activity)
     }
 
@@ -103,14 +120,15 @@ class AppleAuthViewModel(
     ) {
         Log.d("AppleAuthViewModel", "Completing login with implicit tokens")
         _loginState.value = AppleLoginState.Loading
+        isAppleLoading = true
         viewModelScope.launch {
             try {
                 val result = repository.importSessionFromTokens(accessToken, refreshToken, expiresInSeconds, tokenType)
                 val newState = result.fold(
                     onSuccess = { session ->
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -122,9 +140,11 @@ class AppleAuthViewModel(
                     }
                 )
                 _loginState.value = newState
+                isAppleLoading = false
             } catch (e: Exception) {
                 Log.e("AppleAuthViewModel", "Exception during importing tokens", e)
                 _loginState.value = AppleLoginState.Error("Import tokens failed: ${e.message}")
+                isAppleLoading = false
             }
         }
     }
@@ -132,6 +152,7 @@ class AppleAuthViewModel(
     fun signInWithAppleIdToken(idToken: String, context: Context) {
         Log.d("AppleAuthViewModel", "signInWithAppleIdToken called with token: ${idToken.take(10)}...")
         _loginState.value = AppleLoginState.Loading
+        isAppleLoading = true
         viewModelScope.launch {
             try {
                 Log.d("AppleAuthViewModel", "Calling repository.exchangeAppleIdTokenWithSupabase")
@@ -143,9 +164,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Apple login successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -165,9 +186,11 @@ class AppleAuthViewModel(
                     }
                 )
                 _loginState.value = newState
+                isAppleLoading = false
             } catch (e: Exception) {
                 Log.e("AppleAuthViewModel", "Exception during Apple login", e)
                 _loginState.value = AppleLoginState.Error("Login failed: ${e.message}")
+                isAppleLoading = false
             }
         }
     }
@@ -175,6 +198,7 @@ class AppleAuthViewModel(
     fun signInWithAppleCode(code: String, context: Context) {
         Log.d("AppleAuthViewModel", "signInWithAppleCode called with code: ${code.take(10)}...")
         _loginState.value = AppleLoginState.Loading
+        isAppleLoading = true
         viewModelScope.launch {
             try {
                 Log.d("AppleAuthViewModel", "Calling repository.exchangeAppleCodeWithSupabase")
@@ -186,9 +210,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Apple login successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "apple")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.APPLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -224,9 +248,9 @@ class AppleAuthViewModel(
                 val newState = result.fold(
                     onSuccess = { session ->
                         Log.d("AppleAuthViewModel", "Google login successful")
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "google")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.GOOGLE)
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
@@ -256,9 +280,9 @@ class AppleAuthViewModel(
                         Log.d("AppleAuthViewModel", "Anonymous sign-in successful")
                         // Session is automatically managed by Supabase SDK
                         // Persist login provider for Settings UI
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
-                            .putString("login_provider", "anonymous")
+                            .putString(AppConstants.Prefs.KEY_LOGIN_PROVIDER, AppConstants.Providers.ANONYMOUS)
                             .apply()
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
@@ -289,11 +313,13 @@ class AppleAuthViewModel(
     fun navigateToDisclaimer() {
         Log.d("AppleAuthViewModel", "Triggering navigation to Disclaimer")
         _loginState.value = AppleLoginState.NavigateToDisclaimer
+        isAppleLoading = false
     }
 
     fun setError(message: String) {
         Log.e("AppleAuthViewModel", "Setting error: $message")
         _loginState.value = AppleLoginState.Error(message)
+        isAppleLoading = false
     }
 
     fun resetState() {
@@ -301,6 +327,14 @@ class AppleAuthViewModel(
         _loginState.value = AppleLoginState.Idle
         userEmail = null
         userId = null
+        isAppleLoading = false
+    }
+
+    // Clear any locally stored Supabase session blobs (SharedPreferencesSessionManager)
+    fun clearSupabaseLocalSession() {
+        viewModelScope.launch {
+            runCatching { repository.clearLocalData() }
+        }
     }
 
     // ✅ Sign Out Method - Using Supabase SDK
@@ -317,7 +351,7 @@ class AppleAuthViewModel(
                         userId = null
                         _loginState.value = AppleLoginState.Idle
                         // Clear login provider
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
                             .clear()
                             .apply()
@@ -328,7 +362,7 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                             .edit()
                             .clear()
                             .apply()
@@ -340,7 +374,7 @@ class AppleAuthViewModel(
                 userEmail = null
                 userId = null
                 _loginState.value = AppleLoginState.Idle
-                context.getSharedPreferences("user_session", Context.MODE_PRIVATE)
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                     .edit()
                     .clear()
                     .apply()

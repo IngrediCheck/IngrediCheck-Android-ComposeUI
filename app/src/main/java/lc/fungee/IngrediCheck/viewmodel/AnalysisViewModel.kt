@@ -13,11 +13,12 @@ import lc.fungee.IngrediCheck.model.entities.Product
 import lc.fungee.IngrediCheck.model.entities.calculateMatch
 import lc.fungee.IngrediCheck.model.repository.AnalysisRepository
 import lc.fungee.IngrediCheck.model.repository.ListTabRepository
+import lc.fungee.IngrediCheck.model.repository.NotFoundException
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import android.util.Log
 
 // Two-stage analysis phase indicator for UI
-enum class AnalysisPhase { Idle, LoadingProduct, Analyzing, Done, Error }
+enum class AnalysisPhase { Idle, LoadingProduct, NotFound, Analyzing, Done, Error }
 
 class AnalysisViewModel(
     private val repo: PreferenceRepository,
@@ -49,8 +50,14 @@ class AnalysisViewModel(
                 Log.d("AnalysisVM", "Start analyze, barcode=$barcode")
                 // 1) Fetch product details
                 val prod = analysisRepo.fetchProduct(barcode, clientActivityId)
-                product = prod
                 Log.d("AnalysisVM", "Product loaded: ${prod.ingredients}")
+                // Treat empty images + ingredients as not-found
+                if (prod.images.isEmpty() && prod.ingredients.isEmpty()) {
+                    product = null
+                    phase = AnalysisPhase.NotFound
+                    return@launch
+                }
+                product = prod
 
                 // Switch to analyzing while backend computes recommendations
                 phase = AnalysisPhase.Analyzing
@@ -65,6 +72,11 @@ class AnalysisViewModel(
 
                 // 5) Done
                 phase = AnalysisPhase.Done
+            } catch (e: NotFoundException) {
+                Log.w("AnalysisVM", "Product not found for barcode=$barcode")
+                product = null
+                error = null
+                phase = AnalysisPhase.NotFound
             } catch (e: Exception) {
                 Log.e("AnalysisVM", "Error analyzing product", e)
                 phase = AnalysisPhase.Error
@@ -82,6 +94,12 @@ class AnalysisViewModel(
                 Log.d("AnalysisVM", "Start analyzeImages, images count=${images.size}")
                 // 1) Extract product details from label images
                 val prod = analysisRepo.fetchProductFromImages(images, clientActivityId)
+                // Treat empty response (no images and no ingredients) as not-found
+                if (prod.images.isEmpty() && prod.ingredients.isEmpty()) {
+                    product = null
+                    phase = AnalysisPhase.NotFound
+                    return@launch
+                }
                 product = prod
 
                 // 2) Switch to analyzing while backend computes recommendations

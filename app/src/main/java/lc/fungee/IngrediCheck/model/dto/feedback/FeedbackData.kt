@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.model.model.feedback
+package lc.fungee.IngrediCheck.model.dto.feedback
 
 import kotlinx.serialization.Serializable
 

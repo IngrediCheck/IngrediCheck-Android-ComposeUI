@@ -10,7 +10,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +63,12 @@ fun AnalysisResultSection(
     Column(modifier = modifier) {
         AnalysisStatusChip(phase = phase, result = ui.result)
         Spacer(Modifier.height(16.dp))
-        Text("Ingredients")
+        Text(
+            text = "Ingredients",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(12.dp))
         if (ui.fragments.isNotEmpty()) {
             DecoratedIngredientsText(fragments = ui.fragments, recommendations = recommendations)
         } else {

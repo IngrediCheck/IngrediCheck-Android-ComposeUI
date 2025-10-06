@@ -35,12 +35,14 @@ import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.model.source.AppleSignInManager
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
 
 
-    @Composable
+@Composable
     fun AppleSignInSection(
-        viewModel: AppleAuthViewModel,
-        modifier: Modifier = Modifier
+    viewModel: AppleAuthViewModel,
+    networkViewModel: NetworkViewmodel,
+    modifier: Modifier = Modifier
     ) {
         val context = LocalContext.current
         val activity = context as? Activity
@@ -84,11 +86,11 @@ import lc.fungee.IngrediCheck.ui.theme.AppColors
                 }
             }
 
-            when (loginState) {
-                is AppleLoginState.Loading -> {
-                    Text("Loading...", color = Color.Gray)
-                    CircularProgressIndicator()
-                }
+            // Show spinner only for Apple/Google flows (controlled by isAppleLoading).
+            if (viewModel.isAppleLoading) {
+                Text("Loading...", color = Color.Gray)
+                CircularProgressIndicator()
+            } else when (loginState) {
                 is AppleLoginState.Error -> {
                     Text(
                         text = (loginState as AppleLoginState.Error).message,

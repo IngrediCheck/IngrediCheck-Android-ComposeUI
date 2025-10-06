@@ -2,6 +2,7 @@ package lc.fungee.IngrediCheck.ui.view.screens.check
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -12,7 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
 import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.White
@@ -38,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.exifinterface.media.ExifInterface
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.view.component.CameraCaptureManager
 import lc.fungee.IngrediCheck.ui.view.component.CameraMode
@@ -158,7 +163,7 @@ fun CheckBottomSheet(
     }
 
     // Hoisted UI state shared across Scanner and Analysis content
-    var selectedItemIndex by rememberSaveable { mutableStateOf(0) }
+    val selectedItemIndex by checkViewModel.selectedTabIndex.collectAsState()
     var capturedImage by remember { mutableStateOf<File?>(null) }
 
     ModalBottomSheet(
@@ -196,6 +201,11 @@ fun CheckBottomSheet(
                 ) {
                     // Camera state used by action row and preview
                     var scannedCode by remember { mutableStateOf<String?>(null) }
+                    var showTransition by remember { mutableStateOf(false) }
+                    val overlayAlpha by animateFloatAsState(
+                        targetValue = if (showTransition) 0.5f else 0f,
+                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                    )
                     // Top action row: Clear (left), Tabs (center), Check (right)
                     Row(
                         modifier = Modifier
@@ -207,7 +217,7 @@ fun CheckBottomSheet(
                         // Left: Clear (reserve space when hidden)
                         if (showActions) {
                             TextButton(onClick = { capturedImage = null }) {
-                                Text("Clear", color = AppColors.Brand)
+                                Text("Clear", color = AppColors.Brand, fontSize = 20.sp)
                             }
                         } else {
                             Spacer(Modifier.width(64.dp)) // approx TextButton width placeholder
@@ -222,7 +232,7 @@ fun CheckBottomSheet(
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .width(180.dp)
+                                    .width(190.dp)
                                     .height(26.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
@@ -247,12 +257,12 @@ fun CheckBottomSheet(
                                     tabs.forEachIndexed { index, title ->
                                         Tab(
                                             selected = selectedItemIndex == index,
-                                            onClick = { selectedItemIndex = index },
+                                            onClick = { checkViewModel.setSelectedTab(index) },
                                             text = {
                                                 Text(
                                                     title,
                                                     color = LabelsPrimary,
-                                                    fontSize = 11.sp
+                                                    fontSize = 18.sp
                                                 )
                                             },
                                             modifier = Modifier
@@ -270,7 +280,7 @@ fun CheckBottomSheet(
                                 onClick = { capturedImage?.let { checkViewModel.onPhotoCaptured(it) } },
                                 enabled = checkUiState !is CheckUiState.Processing
                             ) {
-                                Text("Check", color = AppColors.Brand)
+                                Text("Check", color = AppColors.Brand, fontSize = 20.sp)
                             }
                         } else {
                             Spacer(Modifier.width(64.dp))
@@ -289,31 +299,53 @@ fun CheckBottomSheet(
 
                     // Lower action row removed; actions are now in the top row with tabs
 
-                    CameraPreview(
+                    // Show a brief white transition when switching tabs to avoid stale frames feeling
+                    LaunchedEffect(selectedItemIndex) {
+                        showTransition = true
+                        kotlinx.coroutines.delay(240)
+                        showTransition = false
+                    }
+
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 12.dp)
                             .height(435.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        mode = if (selectedItemIndex == 0) CameraMode.Scan else CameraMode.Photo,
-                        onPhotoCaptured = { file ->
-                            // Normalize EXIF on a background thread so preview is always upright
-                            scope.launch {
-                                val normalized = normalizeImageFile(context, file)
-                                capturedImage = normalized
-                            }
-                        }, onBarcodeScanned = { value ->
-                            scannedCode = value
-                            if (!value.isNullOrEmpty()) {
-                                // Delegate navigation to ViewModel event (Scan mode flow)
-                                checkViewModel.onBarcodeScanned(value)
-                            }
+                            .border(1.dp, Color.Black, RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        Crossfade(targetState = selectedItemIndex, animationSpec = tween(240, easing = FastOutSlowInEasing)) { idx ->
+                            CameraPreview(
+                                modifier = Modifier.fillMaxSize(),
+                                mode = if (idx == 0) CameraMode.Scan else CameraMode.Photo,
+                                onPhotoCaptured = { file ->
+                                    // Normalize EXIF on a background thread so preview is always upright
+                                    scope.launch {
+                                        val normalized = normalizeImageFile(context, file)
+                                        capturedImage = normalized
+                                    }
+                                }, onBarcodeScanned = { value ->
+                                    scannedCode = value
+                                    if (!value.isNullOrEmpty()) {
+                                        // Delegate navigation to ViewModel event (Scan mode flow)
+                                        checkViewModel.onBarcodeScanned(value)
+                                    }
+                                }
+                            )
                         }
-                    )
+
+                        if (overlayAlpha > 0f) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(White.copy(alpha = overlayAlpha))
+                            )
+                        }
+                    }
 
                     Text(
                         "${texts[selectedItemIndex]}", color = LabelsPrimary, modifier = Modifier
-                            .padding(top = 20.dp, bottom = 40.dp)
+                            .padding(top = 20.dp, bottom = 40.dp), fontSize = 18.sp
                     )
 
                     if (selectedItemIndex == 1) {
@@ -370,13 +402,13 @@ fun CheckBottomSheet(
                             onRetakeRequested = {
                                 // Smoothly switch back to the scanner with Photo tab selected
                                 sheetContent = CheckSheetState.Scanner
-                                selectedItemIndex = 1 // Photo tab
+                                checkViewModel.setSelectedTab(1) // Photo tab
                                 // Keep previous capturedImage so preview remains visible in bottom-left
                             },
                             onBackToScanner = {
                                 sheetContent = CheckSheetState.Scanner
                                 // Keep the previously captured image preview, and remain on the Photo tab
-                                selectedItemIndex = 1
+                                checkViewModel.setSelectedTab(1)
                             },
                             onOpenFeedback = { mode, clientActivityId ->
                                 feedbackMode = mode
