@@ -21,11 +21,13 @@ import kotlinx.serialization.json.jsonObject
 import lc.fungee.IngrediCheck.model.dto.DietaryPreference
 import lc.fungee.IngrediCheck.model.dto.PreferenceValidationResult
 import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.analytics.Analytics
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 
 private val Context.dataStore by preferencesDataStore("dietary_prefs")
 
@@ -191,6 +193,21 @@ class PreferenceRepository(
         }
         Log.d("PreferenceRepo", "Making request to: $url")
 
+        // PostHog: track input start
+        val requestId = UUID.randomUUID().toString()
+        val startTime = System.currentTimeMillis()
+        val endpoint = if (id != null) "preference_lists_default_items" else "preference_lists_default"
+        val method = if (id != null) "PUT" else "POST"
+        Analytics.trackUserPreferenceInput(
+            requestId = requestId,
+            endpoint = endpoint,
+            clientActivityId = clientActivityId,
+            preferenceText = preferenceText,
+            method = method,
+            itemId = id?.toString(),
+            startTimeMs = startTime
+        )
+
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("clientActivityId", clientActivityId)
             .addFormDataPart("preference", preferenceText)
@@ -207,34 +224,89 @@ class PreferenceRepository(
         Log.d("PreferenceRepo", "Request headers: Authorization=Bearer $token, apikey=$anonKey")
         Log.d("PreferenceRepo", "Request body: clientActivityId=$clientActivityId, preference=$preferenceText")
 
-        client.newCall(request).execute().use { resp ->
-            val code = resp.code
-            val body = resp.body?.string().orEmpty()
-            Log.d("PreferenceRepo", "Response code: $code, body: $body")
+        try {
+            client.newCall(request).execute().use { resp ->
+                val code = resp.code
+                val body = resp.body?.string().orEmpty()
+                Log.d("PreferenceRepo", "Response code: $code, body: $body")
 
-            if (code !in listOf(200, 201, 204, 422)) throw Exception("Bad response: $code $body")
+                val latencyMs = System.currentTimeMillis() - startTime
 
-            if (code == 204) return@withContext PreferenceValidationResult.Success(
-                DietaryPreference(
-                    id = id ?: -1,
-                    text = preferenceText,
-                    annotatedText = "" // or preferenceText
-                )
-            )
-
-            val elem = json.parseToJsonElement(body).jsonObject
-            return@withContext when (elem["result"]?.toString()?.trim('"')) {
-                "success" -> {
-                    val prefElem = elem["preference"] ?: elem
-                    val pref = json.decodeFromJsonElement(DietaryPreference.serializer(), prefElem)
-                    PreferenceValidationResult.Success(pref)
+                if (code !in listOf(200, 201, 204, 422)) {
+                    Analytics.trackPreferenceValidationBadResponse(
+                        requestId = requestId,
+                        clientActivityId = clientActivityId,
+                        preferenceText = preferenceText,
+                        statusCode = code,
+                        latencyMs = latencyMs
+                    )
+                    throw Exception("Bad response: $code $body")
                 }
-                "failure" -> {
-                    val explanation = elem["explanation"]?.toString()?.trim('"') ?: "Validation failed"
-                    PreferenceValidationResult.Failure(explanation)
+
+                if (code == 204) {
+                    Analytics.trackPreferenceValidationSuccess(
+                        requestId = requestId,
+                        clientActivityId = clientActivityId,
+                        preferenceText = preferenceText,
+                        latencyMs = latencyMs
+                    )
+                    return@withContext PreferenceValidationResult.Success(
+                        DietaryPreference(
+                            id = id ?: -1,
+                            text = preferenceText,
+                            annotatedText = ""
+                        )
+                    )
                 }
-                else -> PreferenceValidationResult.Failure("Unexpected response format")
+
+                val elem = json.parseToJsonElement(body).jsonObject
+                val resultStr = elem["result"]?.toString()?.trim('"')
+                return@withContext when (resultStr) {
+                    "success" -> {
+                        Analytics.trackPreferenceValidationSuccess(
+                            requestId = requestId,
+                            clientActivityId = clientActivityId,
+                            preferenceText = preferenceText,
+                            latencyMs = latencyMs
+                        )
+                        val prefElem = elem["preference"] ?: elem
+                        val pref = json.decodeFromJsonElement(DietaryPreference.serializer(), prefElem)
+                        PreferenceValidationResult.Success(pref)
+                    }
+                    "failure" -> {
+                        // Server signalled validation failure; often 422, but treat explicitly
+                        Analytics.trackPreferenceValidationBadResponse(
+                            requestId = requestId,
+                            clientActivityId = clientActivityId,
+                            preferenceText = preferenceText,
+                            statusCode = code,
+                            latencyMs = latencyMs
+                        )
+                        val explanation = elem["explanation"]?.toString()?.trim('"') ?: "Validation failed"
+                        PreferenceValidationResult.Failure(explanation)
+                    }
+                    else -> {
+                        Analytics.trackPreferenceValidationBadResponse(
+                            requestId = requestId,
+                            clientActivityId = clientActivityId,
+                            preferenceText = preferenceText,
+                            statusCode = code,
+                            latencyMs = latencyMs
+                        )
+                        PreferenceValidationResult.Failure("Unexpected response format")
+                    }
+                }
             }
+        } catch (e: Exception) {
+            val latencyMs = System.currentTimeMillis() - startTime
+            Analytics.trackPreferenceValidationError(
+                requestId = requestId,
+                clientActivityId = clientActivityId,
+                preferenceText = preferenceText,
+                latencyMs = latencyMs,
+                error = e.message ?: "Unknown error"
+            )
+            throw e
         }
     }
 
