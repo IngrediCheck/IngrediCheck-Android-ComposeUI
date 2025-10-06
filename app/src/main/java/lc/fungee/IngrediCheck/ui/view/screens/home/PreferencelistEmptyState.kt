@@ -146,7 +146,7 @@ fun PreferenceEmptyState() {
                     val annotatedText = if (page < basePages.size) {
                         basePages[page]
                     } else {
-                        buildAnnotatedString { append("Prefrences...") }
+                        buildAnnotatedString { append(" Add Prefrences...") }
                     }
                     // Center the text in the Box
                     Box(

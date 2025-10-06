@@ -47,6 +47,17 @@ class CheckViewModel(
     private val _events = MutableSharedFlow<CheckEvent>(replay = 0, extraBufferCapacity = 64)
     val events: SharedFlow<CheckEvent> = _events
 
+    // Persist the last-selected tab (0 = Barcode, 1 = Photo) across sheet re-opens and app restarts
+    private val prefs by lazy { appContext.getSharedPreferences("check_prefs", Context.MODE_PRIVATE) }
+    private val _selectedTabIndex = MutableStateFlow(prefs.getInt("selected_tab_index", 0))
+    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex
+
+    fun setSelectedTab(index: Int) {
+        _selectedTabIndex.value = index
+        // Save immediately so it survives process death
+        prefs.edit().putInt("selected_tab_index", index).apply()
+    }
+
     fun onPhotoCaptured(file: File) {
         viewModelScope.launch {
             try {

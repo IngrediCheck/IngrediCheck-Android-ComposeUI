@@ -14,6 +14,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
+class NotFoundException(message: String) : Exception(message)
+
 /**
  * AnalysisRepository encapsulates network calls for analysis features using OkHttp/Json.
  * This avoids networking in the ViewModel and keeps MVVM without adding Retrofit/Room.
@@ -46,6 +48,7 @@ class AnalysisRepository(
                 val body = resp.body?.string().orEmpty()
                 Log.d("AnalysisRepo", "Product code=${resp.code}, body=${body.take(200)}")
                 if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
+                if (resp.code == 404) throw NotFoundException("Product not found")
                 if (!resp.isSuccessful) throw Exception("Failed to fetch product: ${resp.code}")
                 json.decodeFromString(Product.serializer(), body)
             }

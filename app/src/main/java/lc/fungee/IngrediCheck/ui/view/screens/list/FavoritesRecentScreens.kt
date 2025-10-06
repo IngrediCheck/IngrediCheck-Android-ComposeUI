@@ -66,6 +66,7 @@ import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.theme.White
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.BrandDeepGreen
+import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
 import java.net.URLEncoder
@@ -112,6 +113,36 @@ fun FavoritesPageScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                item {
+                    // Top-left Back row matching ProductHeader style
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val actionIconModifier = Modifier.size(20.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { navController?.popBackStack() }
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.backbutton),
+                                contentDescription = "Back",
+                                modifier = actionIconModifier.height(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Lists",
+                                color = PrimaryGreen100,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
                 item {
                     Text(
                         text = "Favorites",
@@ -258,6 +289,36 @@ fun RecentScansPageScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                item {
+                    // Top-left Back row matching ProductHeader style
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val actionIconModifier = Modifier.size(20.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { navController?.popBackStack() }
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.backbutton),
+                                contentDescription = "Back",
+                                modifier = actionIconModifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Lists",
+                                color = PrimaryGreen100,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
 
                 // Header
                 item {
@@ -265,7 +326,7 @@ fun RecentScansPageScreen(
                         text = "Recent Scans",
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
+                        fontSize = 20.sp,
                         color = AppColors.Neutral700,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -297,7 +358,7 @@ fun RecentScansPageScreen(
                             Image(
                                 painterResource(id = R.drawable.emptyrecentscan),
                                 contentDescription = null,
-                                modifier = Modifier.size(width = 174.dp, height = 134.dp)
+                                modifier = Modifier.size(width = 200.dp, height = 150.dp)
                             )
                             Text("No products scanned yet", color = Color.Gray)
                         }

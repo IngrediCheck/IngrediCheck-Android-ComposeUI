@@ -44,7 +44,7 @@ import com.google.gson.Gson
 import io.github.jan.supabase.SupabaseClient
 
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
-import lc.fungee.IngrediCheck.model.model.SupabaseSession
+import lc.fungee.IngrediCheck.model.dto.SupabaseSession
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.model.repository.FavoriteItem
 import lc.fungee.IngrediCheck.model.repository.HistoryItem
@@ -166,12 +166,12 @@ fun ListScreen(
                         text = "Lists",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp),
+                            .padding(top = 20.dp),
                         textAlign = TextAlign.Center,
                         style = TextStyle(
                             fontFamily = FontFamily.SansSerif,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 17.sp,
+                            fontSize = 20.sp,
                             letterSpacing = (-0.41).sp,
                             color = AppColors.Neutral700,
                             lineHeight = 22.sp
@@ -274,8 +274,8 @@ private fun FavoritesSection(
                 text = "Favorites",
                 style = TextStyle(
                     fontFamily = FontFamily.SansSerif,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
                     letterSpacing = (-0.41).sp,
                     color = AppColors.Neutral700,
                     lineHeight = 22.sp
@@ -283,7 +283,7 @@ private fun FavoritesSection(
             )
             Spacer(modifier = Modifier.weight(1f))
             if (!favorites.isNullOrEmpty()) {
-                TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
+                TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand, fontSize = 20.sp) }
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -364,7 +364,7 @@ private fun RecentScansSection(
             Spacer(modifier = Modifier.weight(1f))
             if (!history.isNullOrEmpty() && history.size > 4) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand) }
+                    TextButton(onClick = onViewAll) { Text("View all", color = AppColors.Brand, fontSize = 20.sp) }
 
 //                    IconButton(onClick = onSearch) {
 //                        Icon(imageVector = Icons.Default.Search, contentDescription = "Search")

@@ -88,6 +88,8 @@ fun SettingScreen(
         coroutineScope.launch {
             // Centralize Supabase sign-out via ViewModel
             try { viewModel.signOut(context) } catch (_: Exception) {}
+            // Ensure any persisted Supabase session blob is wiped
+            try { viewModel.clearSupabaseLocalSession() } catch (_: Exception) {}
             // Google: sign out and revoke if applicable
             try { googleSignInClient.signOut() } catch (_: Exception) {}
             try { googleSignInClient.revokeAccess() } catch (_: Exception) {}
@@ -219,6 +221,7 @@ fun SettingScreen(
                 onConfirm = {
                     coroutineScope.launch {
                         runCatching { viewModel.signOut(context) }
+                        runCatching { viewModel.clearSupabaseLocalSession() }
                         preferenceViewModel.clearAllLocalData()
                         sharedPrefs.edit().clear().apply()
                         clearWebCookies()

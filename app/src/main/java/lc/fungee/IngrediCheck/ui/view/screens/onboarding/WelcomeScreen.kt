@@ -176,7 +176,7 @@ fun WelcomeScreen(
             Text(
                 text = "Continue as guest",
                 color = AppColors.Brand,
-                fontSize = 17.sp,
+                fontSize = 20.sp,
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.clickable {
@@ -288,7 +288,7 @@ fun WelcomePager(
             style = TextStyle(
                 fontFamily = fredokaMedium,
                 fontWeight = FontWeight.Medium,
-                fontSize = 28.sp,
+                fontSize = 30.sp,
                 lineHeight = 34.sp,
                 letterSpacing = 0.36.sp,
                 textAlign = TextAlign.Center,
@@ -299,14 +299,14 @@ fun WelcomePager(
                 .padding(horizontal = 8.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // ✅ Description with better visibility
         Text(
             text = item.description,
             style = TextStyle(
                 fontWeight = FontWeight.Normal,
-                fontSize = 17.sp,
+                fontSize = 18.sp,
                 lineHeight = 22.sp,
                 letterSpacing = (-0.41).sp,
                 textAlign = TextAlign.Center,

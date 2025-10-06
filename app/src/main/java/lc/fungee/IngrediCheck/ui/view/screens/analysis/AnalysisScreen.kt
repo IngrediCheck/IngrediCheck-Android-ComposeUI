@@ -1,7 +1,9 @@
 package lc.fungee.IngrediCheck.ui.view.screens.analysis
 import AnalysisResultSection
+import android.R.attr.clickable
+import android.annotation.SuppressLint
 import lc.fungee.IngrediCheck.R
-
+//import androidx.compose.foundation.layout.fillParentMaxSize
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,12 +62,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,6 +83,9 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.AsyncImagePainter
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
 import io.github.jan.supabase.SupabaseClient
@@ -100,6 +108,9 @@ import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackMode
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Greyscale600
+import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
+import lc.fungee.IngrediCheck.ui.theme.PrimarayGreen50
+import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
 import lc.fungee.IngrediCheck.ui.theme.StatusUnmatchedBg
 import lc.fungee.IngrediCheck.ui.theme.StatusUnmatchedFg
 import lc.fungee.IngrediCheck.ui.theme.StatusMaybeBg
@@ -150,6 +161,28 @@ fun AnalysisScreen(
         }
     }
 
+    val loadingLabel = when {
+        !images.isNullOrEmpty() -> "Analysing Image..."
+        !barcode.isNullOrBlank() -> " Looking up $barcode"
+        else -> ""
+    }
+
+    // Early states
+    if (viewModel.phase == AnalysisPhase.LoadingProduct) {
+        LoadingContent(loadingLabel)
+        return
+    }
+    if (viewModel.phase == AnalysisPhase.NotFound) {
+        NotFoundContent(
+            onUploadPhotos = {
+                // Switch to Photo capture (parent sets Photo tab and returns to scanner)
+                onBackToScanner()
+            },
+            onBack = onBackToScanner
+        )
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.Companion
             .fillMaxWidth()
@@ -157,18 +190,9 @@ fun AnalysisScreen(
             .padding(top = 12.dp),
         horizontalAlignment = Alignment.Companion.CenterHorizontally
     ) {
-        // Top section: loading/error/product header
+        // Top section: error/product header
         item {
-            val loadingLabel = when {
-                !images.isNullOrEmpty() -> "Analysing Image..."
-                !barcode.isNullOrBlank() -> "Looking up $barcode"
-                else -> "Error :The request timed out.:"
-            }
             when {
-                viewModel.phase == AnalysisPhase.LoadingProduct && viewModel.product == null -> LoadingContent(
-                    loadingLabel
-                )
-
                 viewModel.product != null -> {
                     hapticSuccess(haptic)
                     val result = viewModel.product!!.calculateMatch(viewModel.recommendations)
@@ -209,8 +233,6 @@ fun AnalysisScreen(
                         }
                     }
                 )
-
-                else -> LoadingContent(loadingLabel)
             }
         }
 
@@ -238,6 +260,7 @@ fun AnalysisScreen(
     }
 }
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun ProductHeader(
     product: Product,
@@ -255,7 +278,7 @@ fun ProductHeader(
 
     Column(
         modifier = Modifier.Companion
-            .fillMaxSize()
+            .fillMaxWidth()
             .background(White)
     ) {
 
@@ -265,19 +288,31 @@ fun ProductHeader(
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.Companion.CenterVertically
         ) {
-            val actionIconModifier = Modifier.Companion.size(24.dp)
-            Icon(
-//                painter = painterResource(id = R.drawable.backbutton),
-                imageVector = Icons.Default.KeyboardArrowLeft,
-                contentDescription = "back button",
-                modifier = actionIconModifier.clickable { onBackToScanner() },
-                tint = AppColors.Brand
-            )
+            val actionIconModifier = Modifier.Companion.size(20.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.Companion
+                    .clickable { onBackToScanner() }
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.backbutton),
+                    contentDescription = "Back",
+                    modifier = actionIconModifier
+                )
+                Spacer(modifier = Modifier.Companion.width(6.dp))
+                Text(
+                    text = "Back",
+                    color = PrimaryGreen100,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
             Spacer(modifier = Modifier.Companion.weight(0.9f)) // pushes the next items to the end
 
             var isLike by remember { mutableStateOf(false) }
             Icon(
-                imageVector = Icons.Default.Send,
+//                imageVector = Icons.Default.Send,
+                painter = painterResource(id = R.drawable.ci_image_01  ),
                 contentDescription = "Check again",
                 modifier = actionIconModifier.clickable { onRetakeRequested() },
                 tint = AppColors.Brand
@@ -315,10 +350,11 @@ fun ProductHeader(
             )
 
         }
+        Spacer(modifier = Modifier.height(10.dp))
         // Product Name
         Text(
             text = product.name ?: "Unknown Product",
-            fontSize = 17.sp, // as per your spec (≈ 17px)
+            fontSize = 20.sp, // as per your spec (≈ 17px)
             fontWeight = FontWeight.Companion.SemiBold, // closest to weight 590
             lineHeight = 22.sp,
             letterSpacing = (-0.41).sp,
@@ -334,8 +370,8 @@ fun ProductHeader(
         product.brand?.let { brand ->
             Text(
                 text = brand,
-                fontSize = 15.sp,
-                color = Color.Companion.Gray,
+                fontSize = 18.sp,
+                color = Color.Companion.Black,
                 textAlign = TextAlign.Companion.Center,
                 modifier = Modifier.Companion
                     .fillMaxWidth() // make it span the whole width
@@ -344,70 +380,106 @@ fun ProductHeader(
         }
 
 
-        val pagerState = rememberPagerState()
-        val totalPages = product.images.size + 1 // extra blank page
-        val ctx = LocalContext.current
+        val pagerState = rememberPagerState(initialPage = 0)
+        val totalPages = product.images.size + 1
 
-        Column(
-            modifier = Modifier.Companion.fillMaxWidth(),
-            horizontalAlignment = Alignment.Companion.CenterHorizontally
-        ) {
-            // Pager
-            HorizontalPager(
-                count = totalPages,
-                state = pagerState,
+        // Compute an adaptive pager height based on screen width, with safe min/max bounds
+        val configuration = LocalConfiguration.current
+        val screenWidthDp = configuration.screenWidthDp
+        val baseDp = if (screenWidthDp > 0) screenWidthDp else 360
+        val pagerHeight = baseDp.dp.coerceIn(240.dp, 420.dp)
+
+            // Keep current page in bounds if count changes
+            LaunchedEffect(totalPages) {
+                val current = pagerState.currentPage
+                val safe = current.coerceIn(0, (totalPages - 1).coerceAtLeast(0))
+                if (current != safe) pagerState.scrollToPage(safe)
+            }
+
+            Box(
                 modifier = Modifier.Companion
                     .fillMaxWidth()
-                    .background(Greyscale50)
-                    .height(350.dp) // fixed frame height
-            ) { page ->
-                if (page < product.images.size) {
-                    val img = product.images[page]
-                    // Prefer direct URL if present; else load cached MEDIUM by hash
-                    val directUrl = img.url ?: img.imageUrl
-                    val modelState =
-                        rememberResolvedImageModel(img, supabaseClient, ImageCache.Size.MEDIUM)
-                    val model = modelState.value
-                    if (model != null) {
-                        AsyncImage(
-                            model = model,
-                            contentDescription = product.name,
-                            modifier = Modifier.Companion.fillMaxSize(0.8f),
-                            contentScale = ContentScale.Companion.Fit
-                        )
+                    .align(Alignment.Companion.CenterHorizontally)
+                    .heightIn(min = 240.dp, max = 420.dp)
+                    .height(pagerHeight),
+                contentAlignment = Alignment.Companion.Center
+            ) {
+                HorizontalPager(
+                    count = totalPages,
+                    state = pagerState,
+                    modifier = Modifier.Companion
+                        .fillMaxWidth()
+                        .heightIn(min = 240.dp, max = 420.dp)
+                        .height(pagerHeight)
+                        .background(Greyscale50)
+                ) { page ->
+                    if (page < product.images.size) {
+                        val img = product.images[page]
+                        val modelState = rememberResolvedImageModel(img, supabaseClient, ImageCache.Size.MEDIUM)
+                        val model = modelState.value
+                        if (model != null) {
+                            SubcomposeAsyncImage(
+                                model = model,
+                                contentDescription = product.name,
+                                modifier = Modifier.Companion
+                                    .fillMaxSize()
+                                    .padding(8.dp),
+                                contentScale = ContentScale.Companion.Fit
+                            ) {
+                                when (painter.state) {
+                                    is AsyncImagePainter.State.Loading, is AsyncImagePainter.State.Empty -> {
+                                        Box(
+                                            modifier = Modifier.Companion.fillMaxSize(),
+                                            contentAlignment = Alignment.Companion.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                    is AsyncImagePainter.State.Error -> {
+                                        Box(
+                                            modifier = Modifier.Companion
+                                                .fillMaxSize()
+                                                .background(Color.Companion.LightGray)
+                                        )
+                                    }
+                                    else -> {
+                                        SubcomposeAsyncImageContent()
+                                    }
+                                }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier.Companion.fillMaxSize(),
+                                contentAlignment = Alignment.Companion.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
                     } else {
-                        // Placeholder when image cannot be resolved yet
+                        // Upload Photos tile
                         Box(
                             modifier = Modifier.Companion
                                 .fillMaxSize()
                                 .background(Color.Companion.LightGray)
-                        )
-                    }
-                } else {
-                    // Last page: blank gray background (Upload Photos tile)
-                    Box(
-                        modifier = Modifier.Companion
-                            .fillMaxSize()
-                            .background(Color.Companion.LightGray)
-                            .clickable { onUploadPhotosClick() }
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.clickimageplaceholder),
-                            contentDescription = "click image",
-                            modifier = Modifier.Companion
-                                .width(220.dp) // set custom width
-                                .height(220.dp)
-                                .align(alignment = Alignment.Companion.Center) // set custom height
-                        )
+                                .clickable { onUploadPhotosClick() }
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.clickimageplaceholder),
+                                contentDescription = "click image",
+                                modifier = Modifier.Companion
+                                    .size(220.dp)
+                                    .align(Alignment.Companion.Center)
+                            )
+                        }
                     }
                 }
             }
 
             // Pager Indicator (dots)
             DynamicPagerIndicator(
-                currentPage = pagerState.currentPage,
-                totalPages = product.images.size + 1, // include blank page
-                modifier = Modifier.Companion.padding(10.dp)
+                currentPage = pagerState.currentPage.coerceAtMost((product.images.size - 1).coerceAtLeast(0)),
+                totalPages = product.images.size,
+                modifier = Modifier.Companion.fillMaxWidth().padding(10.dp)
             )
 
             Column(
@@ -423,7 +495,7 @@ fun ProductHeader(
             }
         }
     }
-}
+
 
 data class StatusUi(
     val bg: Color,
@@ -614,7 +686,7 @@ fun DecoratedIngredientsText(
         ClickableText(
             text = annotated,
             style = LocalTextStyle.current.copy(
-                fontSize = 15.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Companion.Normal,
                 lineHeight = 22.5.sp,
                 letterSpacing = (-0.24).sp,
@@ -704,7 +776,7 @@ fun DecoratedIngredientsText(
                         Text(
                             text = tooltipText,
                             color = Color.Companion.White,
-                            fontSize = 14.sp,
+                            fontSize = 16.sp,
                             lineHeight = 20.sp
                         )
                     }
@@ -782,21 +854,18 @@ fun DynamicPagerIndicator(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.Companion.CenterVertically
     ) {
-        val visibleDots = when {
-            totalPages <= 2 -> totalPages // for 1 image → 2 dots
-            currentPage <= 1 -> 0
-            currentPage >= totalPages - 2 -> 3 // near the end → show last 3
-            else -> 3 // middle → sliding window
-        }
+        if (totalPages <= 0) return@Row
 
+        val visibleCount = if (totalPages <= 2) totalPages else 3
         val startIndex = when {
-            totalPages <= 2 -> 0
-            currentPage <= 1 -> 0
-            currentPage >= totalPages - 2 -> totalPages - visibleDots
+            totalPages <= visibleCount -> 0
+            totalPages >= 3 && currentPage <= 0 -> 0
+            totalPages >= 3 && currentPage >= totalPages - 1 -> totalPages - visibleCount
             else -> currentPage - 1
         }
+        val endIndex = (startIndex + visibleCount).coerceAtMost(totalPages)
 
-        for (pageIndex in startIndex until (startIndex + visibleDots)) {
+        for (pageIndex in startIndex until endIndex) {
             val isSelected = pageIndex == currentPage
 
             val dotSize by animateDpAsState(
@@ -824,16 +893,18 @@ fun LoadingContent(barcode: String) {
 
     Box(
         modifier = Modifier.Companion.fillMaxSize(),
-        contentAlignment = Alignment.Companion.Center
+        contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.Companion.CenterHorizontally
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
 
-            CircularProgressIndicator()
 
-            Spacer(modifier = Modifier.Companion.height(16.dp))
-            Text("Looking up $barcode", color = Color.Companion.Black)
+
+
+            Text("$barcode", color = Color.Companion.Black, fontSize = 20.sp)
+            Spacer(modifier = Modifier.width(20.dp))
+            CircularProgressIndicator()
         }
     }
 }
@@ -873,12 +944,137 @@ fun ErrorContent(
             )
             Spacer(modifier = Modifier.Companion.height(24.dp))
             Button(onClick = onRetry) {
-                Text("Retry")
-            }
+        Text("Retry")
+    }
         }
     }
 }
 
+@Composable
+fun NotFoundContent(
+    onUploadPhotos: () -> Unit,
+    onBack: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(White)
+            .padding(top=40.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Top-left Back button (same style as ProductHeader)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val actionIconModifier = Modifier.size(20.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onBack() }
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.backbutton),
+                        contentDescription = "Back",
+                        modifier = actionIconModifier
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Back",
+                        color = PrimaryGreen100,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Congratulations!",
+                style = TextStyle(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            )
+            // ...rest of the content
+
+
+            //top center text
+
+            Box(
+                modifier = Modifier.Companion
+                    .fillMaxSize()
+                    .background(White)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Companion.Center
+            ) {
+                Column(horizontalAlignment = Alignment.Companion.CenterHorizontally) {
+                    Text(
+                        text = "   You found a Product that is not in our\nDatabase." +
+                                "Submit Product Images and Earn\nIngrediPoints@!",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Companion.Normal,
+                        color = LabelsPrimary,
+                        textAlign = TextAlign.Companion.Center
+                        //color = LabelsPrimary, modifier = Modi
+                    )
+                    Spacer(Modifier.height(25.dp))
+                    Box(
+                        modifier = Modifier.Companion
+                            .width(200.dp)
+                            .height(200.dp)
+                            .padding(horizontal = 8.dp)
+                            .background(
+                                color = PrimarayGreen50,
+                                shape = RoundedCornerShape(
+                                    topStart = 4.dp,
+                                    topEnd = 8.dp,
+                                    bottomEnd = 8.dp,
+                                    bottomStart = 8.dp
+                                )
+                            ),
+                        contentAlignment = Alignment.Companion.Center,
+
+                        ) {
+                        //icon
+
+                        Icon(
+//                imageVector = Icons.Default.Send,
+                            painter = painterResource(id = R.drawable.ci_image_01  ),
+                            contentDescription = "Check again",
+                            modifier = Modifier.clickable { onUploadPhotos() }.size(100.dp),
+                            tint = AppColors.Brand
+                        )
+
+//                        Button(
+//                            onClick = onUploadPhotos,
+//                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen100)
+//                        ) {
+//                            Text(
+//                                text = "Upload Photos",
+//                                color = Color.White, // text color
+//                                fontSize = 16.sp,
+//                                fontWeight = FontWeight.SemiBold
+//                            )
+//                        }
+                    }
+                    Spacer(Modifier.height(15.dp))
+                    Text(
+                        text = "Product will be analized instantly!",
+                        fontSize = 18.sp,
+                        color = Color.Companion.Black,
+                        textAlign = TextAlign.Companion.Center
+                    )
+
+
+
+                }
+            }
+        }
+    }
+}
 fun flattenIngredients(ingredients: List<Ingredient>?): List<String> {
     if (ingredients == null) return emptyList()
     val result = mutableListOf<String>()

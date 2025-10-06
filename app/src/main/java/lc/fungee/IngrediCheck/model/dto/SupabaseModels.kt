@@ -1,4 +1,4 @@
-package lc.fungee.IngrediCheck.model.model
+package lc.fungee.IngrediCheck.model.dto
 import com.google.gson.annotations.SerializedName
 
 data class SupabaseSession(

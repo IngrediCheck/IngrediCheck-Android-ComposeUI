@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +57,7 @@ import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.delay
 import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
-import lc.fungee.IngrediCheck.model.model.ValidationState
+import lc.fungee.IngrediCheck.model.dto.ValidationState
 import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.theme.AppColors
