@@ -27,6 +27,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +42,7 @@ import lc.fungee.IngrediCheck.ui.theme.White
 @Composable
 fun PreferenceEmptyState() {
     Column(
-        modifier = Modifier.Companion
+        modifier = Modifier
             .fillMaxSize()
             .background(color = White),
         verticalArrangement = Arrangement.Center, // center vertically
@@ -50,7 +52,7 @@ fun PreferenceEmptyState() {
         Image(
             painter = painterResource(id = R.drawable.emptystateillustration),
             contentDescription = "Your image",
-            modifier = Modifier.Companion
+            modifier = Modifier
                 .width(201.dp)
                 .height(180.dp)
                 .alpha(1.0f)
@@ -61,8 +63,8 @@ fun PreferenceEmptyState() {
             text = "Try the following",
             color = Greyscale500,
             modifier = Modifier.Companion
-                .width(120.dp)
-                .height(21.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .align(Alignment.Companion.CenterHorizontally),
             style = TextStyle(
                 fontFamily = FontFamily.Companion.SansSerif,
@@ -70,14 +72,16 @@ fun PreferenceEmptyState() {
                 fontSize = 20.sp,
                 lineHeight = 21.sp,
                 letterSpacing = (-0.32).sp
-            )
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.Companion.height(8.dp))
         // Base pages (real content)
         val basePages = listOf(
             buildAnnotatedString {
                 append("\"Avoid ")
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Gluten") }
 
                 append(".\"")
             },

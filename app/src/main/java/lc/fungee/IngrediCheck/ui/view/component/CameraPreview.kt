@@ -171,7 +171,6 @@ fun CameraPreview(
                                 guidance = "Find nearby barcode"
                             }
                         } else {
-                            noBarcodeFrames = 0
                         }
 
                         for (barcode in barcodes) {
@@ -180,7 +179,7 @@ fun CameraPreview(
                             if (!rawValue.isNullOrEmpty() && !didVibrate) {
                                 didVibrate = true
                                 barcodeDetected = true
-                                hapticSuccess(haptic)
+                                hapticSuccess(haptic, context, useBypass = true)
                                 // PostHog: complete scan with latency
                                 val start = scanStartMs ?: Analytics.trackBarcodeStarted()
                                 Analytics.trackBarcodeCompleted(start, rawValue)

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavGraph.Companion.findStartDestination
 
 import lc.fungee.IngrediCheck.ui.theme.Greyscale500
 import lc.fungee.IngrediCheck.ui.theme.PrimarayGreen50
@@ -87,8 +88,17 @@ fun BottomBar(navController: NavController, onCheckClick: () -> Unit = {}) {
         val middleIndex = 1
 
         items.forEachIndexed { index, item ->
-          val selected = currentRoute == item.route
-          //  val selected = currentRoute?.startsWith(item.route) == true
+          // Smart selection logic for all buttons to show as selected on related screens
+          val selected = when (item.route) {
+              "home" -> currentRoute == "home" || currentRoute == "setting"
+              "List" -> currentRoute == "List" || 
+                       currentRoute == "favoritesAll" || 
+                       currentRoute == "recentScansAll" ||
+                       currentRoute?.startsWith("favoriteItem") == true ||
+                       currentRoute?.startsWith("historyItem") == true
+              "check" -> false // Check button never shows as selected since it opens a sheet
+              else -> currentRoute == item.route
+          }
 
 //            val interactionSource = remember { MutableInteractionSource() } // disables ripple
             NavigationBarItem(
@@ -96,13 +106,50 @@ fun BottomBar(navController: NavController, onCheckClick: () -> Unit = {}) {
                 onClick = {
                     if (index == middleIndex) {
                         onCheckClick()
-                    } else if (!selected) {
-                        navController.navigate(item.route) {
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                    } else {
+                        when (item.route) {
+                            "List" -> {
+                                // Robustly return to List: pop toward it; if not found, navigate to it
+                                if (navController.currentBackStackEntry?.destination?.route != "List") {
+                                    var canPop = true
+                                    var foundList = false
+                                    while (canPop) {
+                                        val route = navController.currentBackStackEntry?.destination?.route
+                                        if (route == "List") { foundList = true; break }
+                                        canPop = navController.popBackStack()
+                                    }
+                                    if (!foundList) {
+                                        navController.navigate("List") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                            "home" -> {
+                                val popped = navController.popBackStack("home", inclusive = false)
+                                if (!popped) {
+                                    navController.navigate("home") {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                            else -> {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
                         }
                     }
                 },

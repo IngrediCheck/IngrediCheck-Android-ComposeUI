@@ -1,6 +1,5 @@
 package lc.fungee.IngrediCheck.ui.view.screens.analysis
 import AnalysisResultSection
-import android.R.attr.clickable
 import android.annotation.SuppressLint
 import lc.fungee.IngrediCheck.R
 //import androidx.compose.foundation.layout.fillParentMaxSize
@@ -33,14 +32,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,7 +77,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.compose.AsyncImagePainter
@@ -167,6 +161,21 @@ fun AnalysisScreen(
         else -> ""
     }
 
+    // Fire bypass haptic exactly when we enter Analyzing (transition from Preparing/Loading)
+    LaunchedEffect(viewModel.phase) {
+        if (viewModel.phase == AnalysisPhase.Analyzing) {
+            hapticSuccess(haptic, context, useBypass = true)
+        }
+    }
+
+    // Avoid a white gap: if phase is still Idle (before VM flips to LoadingProduct),
+    // show loading immediately regardless of input presence.
+    if (viewModel.phase == AnalysisPhase.Idle) {
+        val label = if (loadingLabel.isNotBlank()) loadingLabel else "Preparing analysis..."
+        LoadingContent(label)
+        return
+    }
+
     // Early states
     if (viewModel.phase == AnalysisPhase.LoadingProduct) {
         LoadingContent(loadingLabel)
@@ -194,7 +203,7 @@ fun AnalysisScreen(
         item {
             when {
                 viewModel.product != null -> {
-                    hapticSuccess(haptic)
+                    hapticSuccess(haptic, context, useBypass = true)
                     val result = viewModel.product!!.calculateMatch(viewModel.recommendations)
                     ProductHeader(
                         viewModel.product!!,
@@ -224,14 +233,7 @@ fun AnalysisScreen(
 
                 viewModel.error != null -> ErrorContent(
                     message = viewModel.error!!,
-                    onRetry = {
-                        val idRetry = UUID.randomUUID().toString()
-                        if (!images.isNullOrEmpty()) {
-                            viewModel.analyzeImages(idRetry, images)
-                        } else if (!barcode.isNullOrBlank()) {
-                            viewModel.analyzeBarcode(idRetry, barcode!!)
-                        }
-                    }
+                    onBack = onBackToScanner
                 )
             }
         }
@@ -288,16 +290,17 @@ fun ProductHeader(
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.Companion.CenterVertically
         ) {
-            val actionIconModifier = Modifier.Companion.size(20.dp)
+            val actionIconSize = 24.dp
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.Companion
                     .clickable { onBackToScanner() }
             ) {
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.backbutton),
                     contentDescription = "Back",
-                    modifier = actionIconModifier
+                    modifier = Modifier.size(actionIconSize),
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.Companion.width(6.dp))
                 Text(
@@ -312,9 +315,9 @@ fun ProductHeader(
             var isLike by remember { mutableStateOf(false) }
             Icon(
 //                imageVector = Icons.Default.Send,
-                painter = painterResource(id = R.drawable.ci_image_01  ),
+                painter = painterResource(id = R.drawable.clickimgicon  ),
                 contentDescription = "Check again",
-                modifier = actionIconModifier.clickable { onRetakeRequested() },
+                modifier = Modifier.size(actionIconSize).clickable { onRetakeRequested() },
                 tint = AppColors.Brand
             )
 
@@ -325,7 +328,7 @@ fun ProductHeader(
                 else Icons.Default.FavoriteBorder,
 //
                 contentDescription = "Heart logo",
-                modifier = actionIconModifier.clickable(
+                modifier = Modifier.size(actionIconSize).clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) {
@@ -338,9 +341,10 @@ fun ProductHeader(
 
             Spacer(modifier = Modifier.Companion.width(16.dp))
             Icon(
+
                 painter = painterResource(id = R.drawable.flaglogo),
                 contentDescription = "Flag logo",
-                modifier = actionIconModifier.clickable(
+                modifier = Modifier.size((actionIconSize-1.dp)).clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() } //
                 ) {
@@ -912,40 +916,55 @@ fun LoadingContent(barcode: String) {
 @Composable
 fun ErrorContent(
     message: String,
-    onRetry: () -> Unit
+    onBack: () -> Unit
 ) {
-
-
     Box(
-        modifier = Modifier.Companion.fillMaxSize(),
-        contentAlignment = Alignment.Companion.Center
+        modifier = Modifier.fillMaxSize().background(White)
     ) {
-        Column(
-            horizontalAlignment = Alignment.Companion.CenterHorizontally
+        // Back button in top-left corner
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .clickable { onBack() }
+                .padding(16.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Error",
-                tint = Color.Companion.Red,
-                modifier = Modifier.Companion.size(64.dp)
+                painter = painterResource(id = R.drawable.backbutton),
+                contentDescription = "Back",
+                modifier = Modifier.size(20.dp),
+                tint = Color.Unspecified
             )
-            Spacer(modifier = Modifier.Companion.height(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Something went wrong",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Companion.Bold
+                text = "Back",
+                fontSize = 16.sp,
+                color = PrimaryGreen100,
+                fontWeight = FontWeight.Normal
             )
-            Spacer(modifier = Modifier.Companion.height(8.dp))
+        }
+        
+        // Centered error message - exclude top area where back button is
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 80.dp), // Give space for back button
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Check if it's an internet connection error
+            val isNetworkError = message.contains("internet connection", ignoreCase = true) || 
+                                message.contains("check your internet", ignoreCase = true) ||
+                                message.contains("network", ignoreCase = true)
+            
             Text(
-                text = message,
-                fontSize = 14.sp,
+                text = if (isNetworkError) "The internet connection appears to be offline" else "Something went wrong",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.Companion.padding(horizontal = 32.dp)
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 32.dp)
             )
-            Spacer(modifier = Modifier.Companion.height(24.dp))
-            Button(onClick = onRetry) {
-        Text("Retry")
-    }
         }
     }
 }
@@ -1042,7 +1061,7 @@ fun NotFoundContent(
 
                         Icon(
 //                imageVector = Icons.Default.Send,
-                            painter = painterResource(id = R.drawable.ci_image_01  ),
+                            painter = painterResource(id = R.drawable.clickimgicon  ),
                             contentDescription = "Check again",
                             modifier = Modifier.clickable { onUploadPhotos() }.size(100.dp),
                             tint = AppColors.Brand

@@ -355,7 +355,7 @@ private fun RecentScansSection(
                 style = TextStyle(
                     fontFamily = FontFamily.SansSerif,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 17.sp,
+                    fontSize = 20.sp,
                     letterSpacing = (-0.41).sp,
                     color = AppColors.Neutral700,
                     lineHeight = 22.sp
@@ -411,6 +411,7 @@ private fun RecentScansSection(
                             supabaseClient = supabaseClient,
                             modifier = Modifier.clickable { onItemClick(item) }
                         )
+                        Spacer(Modifier.height(8.dp))
                         Divider(color = AppColors.Divider, thickness = 2.dp)
                     }
                 }

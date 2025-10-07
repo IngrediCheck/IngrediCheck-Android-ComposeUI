@@ -196,7 +196,7 @@ fun HomeScreen(
                     Text(
                         text = "Your dietary preferences",
                         style = TextStyle(
-                            fontSize = 24.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center
                         ),
@@ -323,17 +323,23 @@ fun HomeScreen(
 
                 // List / Demo transition
                 AnimatedContent(
-                    targetState = preferenceViewModel.preferences.isEmpty(),
+                    targetState = Pair(isRefreshing, preferenceViewModel.preferences.isEmpty()),
                     label = "preferencesTransition"
-                ) { isEmpty ->
-                    if (isEmpty) {
-                        PreferenceEmptyState()
-
-                    } else {
-//
-                        PreferencesList(preferenceViewModel, onEdit = { pref ->
-                            preferenceViewModel.startEditPreference(pref)
-                        })
+                ) { (loading, isEmpty) ->
+                    when {
+                        loading -> {
+                            // While loading, show nothing to avoid flashing the empty state
+                            Spacer(modifier = Modifier.height(1.dp))
+                        }
+                        isEmpty -> {
+                            // Only show empty state after loading completes and list is still empty
+                            PreferenceEmptyState()
+                        }
+                        else -> {
+                            PreferencesList(preferenceViewModel, onEdit = { pref ->
+                                preferenceViewModel.startEditPreference(pref)
+                            })
+                        }
                     }
                 }
             }
@@ -341,7 +347,7 @@ fun HomeScreen(
             PullRefreshIndicator(
                 refreshing = isRefreshing,
                 state = pullRefreshState,
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .align(Alignment.Companion.TopCenter)
                     .padding(top = paddingValues.calculateTopPadding())
                     .zIndex(1f)

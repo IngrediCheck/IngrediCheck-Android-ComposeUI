@@ -167,10 +167,8 @@ fun AppNavigation(
         val isAuthChecked by viewModel.isAuthChecked.collectAsState()
         
         if (!isAuthChecked) {
-            // Show loading until auth state is determined
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            // Show custom splash while auth state is being determined
+            SplashScreen(onSplashFinished = { /* no-op; flow continues when isAuthChecked becomes true */ })
         } else {
             val startDestination = remember(loginState, isAuthChecked) {
                 val prefs = ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
