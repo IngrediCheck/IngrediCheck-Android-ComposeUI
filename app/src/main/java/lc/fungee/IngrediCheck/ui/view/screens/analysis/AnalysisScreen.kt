@@ -172,13 +172,13 @@ fun AnalysisScreen(
     // show loading immediately regardless of input presence.
     if (viewModel.phase == AnalysisPhase.Idle) {
         val label = if (loadingLabel.isNotBlank()) loadingLabel else "Preparing analysis..."
-        LoadingContent(label)
+        LoadingContent(label, onBack = onBackToScanner)
         return
     }
 
     // Early states
     if (viewModel.phase == AnalysisPhase.LoadingProduct) {
-        LoadingContent(loadingLabel)
+        LoadingContent(loadingLabel, onBack = onBackToScanner)
         return
     }
     if (viewModel.phase == AnalysisPhase.NotFound) {
@@ -893,20 +893,45 @@ fun DynamicPagerIndicator(
 }
 
 @Composable
-fun LoadingContent(barcode: String) {
-
+fun LoadingContent(
+    message: String,
+    onBack: (() -> Unit)? = null
+) {
     Box(
-        modifier = Modifier.Companion.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.Companion
+            .fillMaxWidth()
+            .fillMaxHeight(0.94f)
+            .background(White)
     ) {
+        if (onBack != null) {
+            Row(
+                verticalAlignment = Alignment.Companion.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.Companion.TopStart)
+                    .clickable { onBack() }
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.backbutton),
+                    contentDescription = "Back",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Back",
+                    fontSize = 16.sp,
+                    color = PrimaryGreen100,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        }
+
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.align(Alignment.Companion.Center),
+            verticalAlignment = Alignment.Companion.CenterVertically
         ) {
-
-
-
-
-            Text("$barcode", color = Color.Companion.Black, fontSize = 20.sp)
+            Text(message, color = Color.Companion.Black, fontSize = 20.sp)
             Spacer(modifier = Modifier.width(20.dp))
             CircularProgressIndicator()
         }
@@ -919,13 +944,13 @@ fun ErrorContent(
     onBack: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxSize().background(White)
+        modifier = Modifier.Companion.fillMaxSize().background(White)
     ) {
         // Back button in top-left corner
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Companion.CenterVertically,
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.Companion.TopStart)
                 .clickable { onBack() }
                 .padding(16.dp)
         ) {
@@ -943,26 +968,25 @@ fun ErrorContent(
                 fontWeight = FontWeight.Normal
             )
         }
-        
+
         // Centered error message - exclude top area where back button is
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 80.dp), // Give space for back button
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Companion.CenterHorizontally
         ) {
-            // Check if it's an internet connection error
-            val isNetworkError = message.contains("internet connection", ignoreCase = true) || 
-                                message.contains("check your internet", ignoreCase = true) ||
-                                message.contains("network", ignoreCase = true)
-            
+            val isNetworkError = message.contains("internet connection", ignoreCase = true) ||
+                    message.contains("check your internet", ignoreCase = true) ||
+                    message.contains("network", ignoreCase = true)
+
             Text(
                 text = if (isNetworkError) "The internet connection appears to be offline" else "Something went wrong",
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = Color.Black,
+                fontWeight = FontWeight.Companion.Bold,
+                textAlign = TextAlign.Companion.Center,
+                color = Color.Companion.Black,
                 modifier = Modifier.padding(horizontal = 32.dp)
             )
         }

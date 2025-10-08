@@ -349,6 +349,9 @@ object CameraCaptureManager {
             ContextCompat.getMainExecutor(ctx),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    // iOS parity: Image Captured event with epoch seconds
+                    val epochSeconds = System.currentTimeMillis().toDouble() / 1000.0
+                    Analytics.trackImageCaptured(epochSeconds)
                     callback?.invoke(photoFile) // send file back
                 }
 

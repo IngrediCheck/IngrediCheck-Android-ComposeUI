@@ -136,4 +136,19 @@ object Analytics {
         )
         flush()
     }
+
+    // iOS-parity events
+    fun trackHomeViewAppeared() {
+        PostHog.capture(event = "Home View Appeared")
+    }
+
+    fun trackButtonTapped(buttonType: String) {
+        // Property key must match iOS exactly (capitalized, with space)
+        PostHog.capture(event = "Button Tapped", properties = mapOf("Button Type" to buttonType))
+    }
+
+    fun trackImageCaptured(epochSeconds: Double) {
+        // Property key must match iOS exactly
+        PostHog.capture(event = "Image Captured", properties = mapOf("time" to epochSeconds))
+    }
 }

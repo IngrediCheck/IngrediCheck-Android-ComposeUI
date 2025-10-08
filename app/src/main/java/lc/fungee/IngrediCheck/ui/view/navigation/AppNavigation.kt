@@ -15,6 +15,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,6 +47,8 @@ import lc.fungee.IngrediCheck.ui.view.screens.onboarding.WelcomeScreen
 import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
 import java.net.URLDecoder
 import lc.fungee.IngrediCheck.model.utils.AppConstants
+import kotlinx.coroutines.delay
+import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 
 @Composable
 fun AppNavigation(
@@ -84,7 +89,8 @@ fun AppNavigation(
     // On app launch, if there is no active session, clear any stale login_provider flag
     // so the UI doesn't think the user is logged in as a guest.
     LaunchedEffect(Unit) {
-        val hasSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
+        val hasSession =
+            runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
         if (!hasSession) {
             ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                 .edit()
@@ -165,167 +171,182 @@ fun AppNavigation(
         // Compute the true start destination reactively based on auth state
         val loginState by viewModel.loginState.collectAsState()
         val isAuthChecked by viewModel.isAuthChecked.collectAsState()
-        
-        if (!isAuthChecked) {
-            // Show custom splash while auth state is being determined
-            SplashScreen(onSplashFinished = { /* no-op; flow continues when isAuthChecked becomes true */ })
-        } else {
-            val startDestination = remember(loginState, isAuthChecked) {
-                val prefs = ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+
+        // Resolve start destination once and keep it stable to avoid flashing intermediate screens
+        var resolvedStart by rememberSaveable { mutableStateOf<String?>(null) }
+        LaunchedEffect(isAuthChecked, loginState) {
+            if (isAuthChecked && resolvedStart == null) {
+                // Small stabilization delay to let auth state settle after sign-out/login
+                delay(100)
+                val prefs =
+                    ctx.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
                 val accepted = prefs.getBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, false)
-                val hasSdkSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
-                
+                val hasSessionFromVm = when (loginState) {
+                    is AppleLoginState.Success -> true
+                    else -> false
+                }
+
                 Log.d(
-                    "AppNavigation", 
-                    "Computing startDestination: hasSdkSession=$hasSdkSession, accepted=$accepted, loginState=$loginState, isAuthChecked=$isAuthChecked"
+                    "AppNavigation",
+                    "Resolving startDestination once: hasSessionFromVm=$hasSessionFromVm, accepted=$accepted, loginState=$loginState, isAuthChecked=$isAuthChecked"
                 )
-                
-                val destination = when {
-                    hasSdkSession && accepted -> "home"
-                    hasSdkSession && !accepted -> "disclaimer"
+
+                resolvedStart = when {
+                    hasSessionFromVm && accepted -> "home"
+                    hasSessionFromVm && !accepted -> "disclaimer"
                     else -> "welcome"
                 }
-                
-                Log.d("AppNavigation", "startDestination computed as: $destination")
-                destination
+                Log.d("AppNavigation", "resolvedStart set to: $resolvedStart")
             }
+        }
 
+        val start = resolvedStart
+        if (start == null) {
+            // Show custom splash while we resolve the start destination
+            SplashScreen(onSplashFinished = { /* resolved via LaunchedEffect */ })
+        } else {
             NavHost(
                 navController = navController,
-                startDestination = startDestination,
+                startDestination = start,
                 modifier = Modifier.fillMaxSize()
             ) {
 
-            composable("welcome") {
-                WelcomeScreen(
-                    onGoogleSignIn = {
-                        if (networkViewModel.isOnline) {
-                            googleSignInClient.signOut().addOnCompleteListener {
-                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                composable("welcome") {
+                    WelcomeScreen(
+                        onGoogleSignIn = {
+                            if (networkViewModel.isOnline) {
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                                }
                             }
-                        }
-                    },
-                    viewModel = viewModel,
-                    navController = navController,
-                    googleSignInClient = googleSignInClient,
-                    networkViewModel = networkViewModel
-                )
-            }
+                        },
+                        viewModel = viewModel,
+                        navController = navController,
+                        googleSignInClient = googleSignInClient,
+                        networkViewModel = networkViewModel
+                    )
+                }
 
-            composable("disclaimer") {
-                val hasSession = runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
-                if (!hasSession) {
-                    LaunchedEffect(Unit) {
-                        navController.navigate("welcome") {
-                            popUpTo("disclaimer") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                } else {
-                    DisclaimerScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        onAgree = {
-                            // Persist that the user has accepted the disclaimer so it only shows once
-                            ctx.getSharedPreferences(
-                                AppConstants.Prefs.USER_SESSION,
-                                Context.MODE_PRIVATE
-                            )
-                                .edit()
-                                .putBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, true)
-                                .apply()
-                            navController.navigate("home") {
+                composable("disclaimer") {
+                    // Consider ViewModel's state authoritative to avoid transient SDK lag
+                    val hasVmSession = loginState is lc.fungee.IngrediCheck.viewmodel.AppleLoginState.Success
+                    val hasSession = hasVmSession ||
+                        runCatching { supabaseClient.auth.currentSessionOrNull() != null }.getOrDefault(false)
+
+                    if (!hasSession) {
+                        LaunchedEffect(Unit) {
+                            navController.navigate("welcome") {
                                 popUpTo("disclaimer") { inclusive = true }
+                                launchSingleTop = true
                             }
                         }
+                    } else {
+                        DisclaimerScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            onAgree = {
+                                // Persist that the user has accepted the disclaimer so it only shows once
+                                ctx.getSharedPreferences(
+                                    AppConstants.Prefs.USER_SESSION,
+                                    Context.MODE_PRIVATE
+                                )
+                                    .edit()
+                                    .putBoolean(AppConstants.Prefs.KEY_DISCLAIMER_ACCEPTED, true)
+                                    .apply()
+                                navController.navigate("home") {
+                                    popUpTo("disclaimer") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                }
+
+                composable("home") {
+                    HomeScreen(
+                        preferenceViewModel = preferenceViewModel,
+                        supabaseClient = supabaseClient,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey,
+                        viewModel = viewModel,
+                        googleSignInClient = googleSignInClient,
+                        navController = navController
+                    )
+                }
+
+                composable("List") {
+                    ListScreen(
+                        navController = navController,
+                        viewModel = viewModel,
+                        supabaseClient = supabaseClient,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey
+                    )
+                }
+                composable("favoritesAll") {
+                    FavoritesPageScreen(
+                        supabaseClient = supabaseClient,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey,
+                        navController = navController
+                    )
+                }
+                composable("recentScansAll") {
+                    RecentScansPageScreen(
+                        supabaseClient = supabaseClient,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey,
+                        navController = navController
+                    )
+                }
+                composable("historyItem?item={item}") { backStackEntry ->
+                    val raw = backStackEntry.arguments?.getString("item") ?: ""
+                    val itemJson = try {
+                        URLDecoder.decode(raw, "UTF-8")
+                    } catch (_: Exception) {
+                        raw
+                    }
+                    HistoryItemDetailScreen(
+                        itemJson = itemJson,
+                        supabaseClient = supabaseClient,
+                        navController = navController,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey
+                    )
+                }
+                composable("favoriteItem?item={item}") { backStackEntry ->
+                    val raw = backStackEntry.arguments?.getString("item") ?: ""
+                    val itemJson = try {
+                        URLDecoder.decode(raw, "UTF-8")
+                    } catch (_: Exception) {
+                        raw
+                    }
+                    FavoriteItemDetailScreen(
+                        itemJson = itemJson,
+                        supabaseClient = supabaseClient,
+                        navController = navController,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey
+                    )
+                }
+                composable("setting") {
+                    SettingScreen(
+                        preferenceViewModel = preferenceViewModel,
+                        onDismiss = { navController.popBackStack() },
+                        supabaseClient = supabaseClient,
+                        onRequireReauth = {
+                            navController.navigate("welcome") {
+                                popUpTo("home") { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        viewModel = viewModel,
+                        googleSignInClient = googleSignInClient
                     )
                 }
             }
 
-            composable("home") {
-                HomeScreen(
-                    preferenceViewModel = preferenceViewModel,
-                    supabaseClient = supabaseClient,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey,
-                    viewModel = viewModel,
-                    googleSignInClient = googleSignInClient,
-                    navController = navController
-                )
-            }
+            // Draw the offline overlay above all destinations
+            NetworkStatusOverlay(isOnline = networkViewModel.isOnline)
+        }
 
-            composable("List") {
-                ListScreen(
-                    navController = navController,
-                    viewModel = viewModel,
-                    supabaseClient = supabaseClient,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey
-                )
-            }
-            composable("favoritesAll") {
-                FavoritesPageScreen(
-                    supabaseClient = supabaseClient,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey,
-                    navController = navController
-                )
-            }
-            composable("recentScansAll") {
-                RecentScansPageScreen(
-                    supabaseClient = supabaseClient,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey,
-                    navController = navController
-                )
-            }
-            composable("historyItem?item={item}") { backStackEntry ->
-                val raw = backStackEntry.arguments?.getString("item") ?: ""
-                val itemJson = try {
-                    URLDecoder.decode(raw, "UTF-8")
-                } catch (_: Exception) {
-                    raw
-                }
-                HistoryItemDetailScreen(
-                    itemJson = itemJson,
-                    supabaseClient = supabaseClient,
-                    navController = navController,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey
-                )
-            }
-            composable("favoriteItem?item={item}") { backStackEntry ->
-                val raw = backStackEntry.arguments?.getString("item") ?: ""
-                val itemJson = try {
-                    URLDecoder.decode(raw, "UTF-8")
-                } catch (_: Exception) {
-                    raw
-                }
-                FavoriteItemDetailScreen(
-                    itemJson = itemJson,
-                    supabaseClient = supabaseClient,
-                    navController = navController,
-                    functionsBaseUrl = functionsBaseUrl,
-                    anonKey = anonKey
-                )
-            }
-            composable("setting") {
-                SettingScreen(
-                    preferenceViewModel = preferenceViewModel,
-                    onDismiss = { navController.popBackStack() },
-                    supabaseClient = supabaseClient,
-                    onRequireReauth = {
-                        navController.navigate("welcome") {
-                            popUpTo("home") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
-                    viewModel = viewModel,
-                    googleSignInClient = googleSignInClient
-                )
-            }
-        }
-        }
-        // Draw the offline overlay above all destinations
-        NetworkStatusOverlay(isOnline = networkViewModel.isOnline)
     }
 }

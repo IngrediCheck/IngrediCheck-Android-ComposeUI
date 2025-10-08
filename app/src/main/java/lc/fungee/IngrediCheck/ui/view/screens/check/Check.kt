@@ -428,7 +428,13 @@ fun CheckBottomSheet(
             is CheckSheetState.Analysis -> {
                 // If we navigated with empty args as a preloading sentinel, show a fast loading stub.
                 if ((state.images == null || state.images.isEmpty()) && state.barcode.isNullOrBlank()) {
-                    LoadingContent("Preparing analysis...")
+                    LoadingContent(
+                        "Preparing analysis...",
+                        onBack = {
+                            sheetContent = CheckSheetState.Scanner
+                            checkViewModel.reset()
+                        }
+                    )
                 } else {
                     AnalysisScreen(
                         barcode = state.barcode,
