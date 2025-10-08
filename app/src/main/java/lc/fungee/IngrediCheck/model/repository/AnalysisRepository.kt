@@ -9,6 +9,7 @@ import lc.fungee.IngrediCheck.model.entities.ImageInfo
 import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
 import lc.fungee.IngrediCheck.model.entities.Product
 import lc.fungee.IngrediCheck.model.entities.SafeEatsEndpoint
+import lc.fungee.IngrediCheck.analytics.Analytics
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -80,7 +81,10 @@ class AnalysisRepository(
             Log.d("AnalysisRepo", "Extract code=${resp.code}, body=${body.take(200)}")
             if (resp.code == 401) throw Exception("Authentication failed. Please log in again.")
             if (!resp.isSuccessful) throw Exception("Failed to extract product: ${resp.code}")
-            json.decodeFromString(Product.serializer(), body)
+            val product = json.decodeFromString(Product.serializer(), body)
+            // PostHog: track successful extraction
+            Analytics.trackProductExtraction(clientActivityId, product.name)
+            product
         }
     }
 

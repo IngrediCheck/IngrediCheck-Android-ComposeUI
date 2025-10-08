@@ -127,4 +127,8 @@ dependencies {
     implementation(libs.mlkit.barcode)
     implementation(libs.mlkit.text.recognition)
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // PostHog Analytics (correct artifact coordinates)
+    implementation("com.posthog:posthog-android:3.+")
+
 }

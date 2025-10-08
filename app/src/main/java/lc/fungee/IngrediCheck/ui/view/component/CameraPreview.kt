@@ -23,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,10 +39,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.material3.Text
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
- 
+
 import kotlinx.coroutines.delay
 import kotlin.math.hypot
 
@@ -51,6 +51,7 @@ import com.google.mlkit.vision.common.InputImage
 import lc.fungee.IngrediCheck.model.source.hapticSuccess
 import lc.fungee.IngrediCheck.ui.theme.White
 import java.io.File
+import lc.fungee.IngrediCheck.analytics.Analytics
 
 // Controls whether the camera is scanning barcodes or capturing photos
 enum class CameraMode { Scan, Photo }
@@ -58,7 +59,7 @@ enum class CameraMode { Scan, Photo }
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraPreview(
-    modifier: Modifier = Modifier.Companion,
+    modifier: Modifier = Modifier,
     mode: CameraMode,
     onPhotoCaptured: (File) -> Unit,
     onBarcodeScanned: (String?) -> Unit
@@ -67,6 +68,7 @@ fun CameraPreview(
     var barcodeDetected by remember { mutableStateOf(false) }
     var showMessage by remember { mutableStateOf(false) }
     var didVibrate by remember { mutableStateOf(false) }
+    var scanStartMs by remember { mutableStateOf<Long?>(null) }
     // Guidance state
     var guidance by remember { mutableStateOf<String?>(null) }
     var lastCenterX by remember { mutableStateOf<Float?>(null) }
@@ -105,7 +107,7 @@ fun CameraPreview(
     // Show hint once after 4s if scan hasn't happened (only in Scan mode)
     LaunchedEffect(barcodeDetected, mode) {
         if (mode == CameraMode.Scan && !barcodeDetected) {
-//            delay(4000)
+            // delay(4000)
             if (!barcodeDetected) {
                 Toast.makeText(context, "Please scan the code", Toast.LENGTH_SHORT).show()
             }
@@ -117,6 +119,14 @@ fun CameraPreview(
         if (mode == CameraMode.Scan) {
             didVibrate = false
             barcodeDetected = false
+            scanStartMs = null
+        }
+    }
+
+    // PostHog: mark scan session start once when entering Scan mode (and permission granted)
+    LaunchedEffect(mode, hasPermission) {
+        if (mode == CameraMode.Scan && hasPermission && scanStartMs == null) {
+            scanStartMs = Analytics.trackBarcodeStarted()
         }
     }
 
@@ -161,7 +171,6 @@ fun CameraPreview(
                                 guidance = "Find nearby barcode"
                             }
                         } else {
-                            noBarcodeFrames = 0
                         }
 
                         for (barcode in barcodes) {
@@ -170,7 +179,11 @@ fun CameraPreview(
                             if (!rawValue.isNullOrEmpty() && !didVibrate) {
                                 didVibrate = true
                                 barcodeDetected = true
-                                hapticSuccess(haptic)
+                                hapticSuccess(haptic, context, useBypass = true)
+                                // PostHog: complete scan with latency
+                                val start = scanStartMs ?: Analytics.trackBarcodeStarted()
+                                Analytics.trackBarcodeCompleted(start, rawValue)
+                                scanStartMs = null
                                 onBarcodeScanned(rawValue)
                             }
 
@@ -231,7 +244,7 @@ fun CameraPreview(
             modifier = Modifier.fillMaxSize(),
             update = { previewView ->
                 val cameraProvider =
-                    ProcessCameraProvider.Companion.getInstance(previewView.context).get()
+                    ProcessCameraProvider.getInstance(previewView.context).get()
                 val preview = Preview.Builder().build().also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
@@ -336,6 +349,9 @@ object CameraCaptureManager {
             ContextCompat.getMainExecutor(ctx),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    // iOS parity: Image Captured event with epoch seconds
+                    val epochSeconds = System.currentTimeMillis().toDouble() / 1000.0
+                    Analytics.trackImageCaptured(epochSeconds)
                     callback?.invoke(photoFile) // send file back
                 }
 

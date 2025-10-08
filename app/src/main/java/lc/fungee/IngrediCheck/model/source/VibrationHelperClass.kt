@@ -1,31 +1,44 @@
 package lc.fungee.IngrediCheck.model.source
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
-fun hapticSuccess(haptic: HapticFeedback) {
+/**
+ * Plays a standard "confirm" haptic. By default uses Compose's HapticFeedback Confirm.
+ * If useBypass is true and a Context is provided, falls back to a one-shot Vibrator effect
+ * approximating Confirm for consistency across devices.
+ */
+fun hapticSuccess(
+    haptic: HapticFeedback,
+    context: Context? = null,
+    useBypass: Boolean = false
+) {
+    if (!useBypass) {
+        // System-provided Confirm haptic (preferred)
+        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+        return
+    }
 
+    // Bypass path: approximate Confirm with a short one-shot vibration
+    val ctx = context ?: return
+    val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vm = ctx.getSystemService(VibratorManager::class.java)
+        vm?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+    vibrator ?: return
 
-    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-    // Get Vibrator in a backward-compatible way
-//    val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//        val vm = context.getSystemService(VibratorManager::class.java)
-//        vm?.defaultVibrator
-//    } else {
-//        @Suppress("DEPRECATION")
-//        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-//    }
-//
-//    vibrator ?: return
-//
-//    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//        // “success” feel: short-short-long
-//        val timings = longArrayOf(0, 30, 40, 30, 50, 60)      // on/off pattern (ms)
-//        val amps    = intArrayOf(0, 225, 0, 255, 0, 255)      // 0=silence, 1–255 strength
-//        val effect = VibrationEffect.createWaveform(timings, amps, -1)
-//        vibrator.vibrate(effect)
-//    } else {
-//        @Suppress("DEPRECATION")
-//        vibrator.vibrate(120) // simple fallback
-//    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE))
+    } else {
+        @Suppress("DEPRECATION")
+        vibrator.vibrate(40)
+    }
 }

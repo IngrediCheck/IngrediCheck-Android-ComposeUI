@@ -5,11 +5,15 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
 import lc.fungee.IngrediCheck.domain.usecase.DetectBarcodeUseCase
 import lc.fungee.IngrediCheck.domain.usecase.RecognizeTextUseCase
 import lc.fungee.IngrediCheck.domain.usecase.UploadImageUseCase
@@ -64,11 +68,13 @@ class CheckViewModel(
                 Log.d("CheckVM", "onPhotoCaptured: start, fileSize=${file.length()}")
                 _uiState.value = CheckUiState.Processing
 
-                // Navigate immediately to the Analysis sheet to show the white loading screen
-                // We pass empty images/barcode so AnalysisScreen shows LoadingContent right away
+                // Navigate immediately to the Analysis sheet so the user sees progress
                 _events.tryEmit(CheckEvent.NavigateToAnalysis(images = emptyList(), barcode = null))
 
-                val token = preferenceRepository.currentToken()
+                // Let Compose render the Analysis sheet before heavy work
+                yield()
+
+                val token = withContext(Dispatchers.IO) { preferenceRepository.currentToken() }
                 if (token.isNullOrBlank()) {
                     Log.w("CheckVM", "No token found; prompting sign-in")
                     _events.tryEmit(CheckEvent.ShowToast("Please sign in and try again."))
@@ -76,9 +82,9 @@ class CheckViewModel(
                     return@launch
                 }
 
-                val ocrDeferred = async { runCatching { recognizeText(file, appContext) }.getOrDefault("") }
-                val codeDeferred = async { runCatching { detectBarcode(file, appContext) }.getOrNull() }
-                val uploadDeferred = async {
+                val ocrDeferred = async(Dispatchers.IO) { runCatching { recognizeText(file, appContext) }.getOrDefault("") }
+                val codeDeferred = async(Dispatchers.IO) { runCatching { detectBarcode(file, appContext) }.getOrNull() }
+                val uploadDeferred = async(Dispatchers.IO) {
                     runCatching { uploadImage(file, token, functionsBaseUrl, anonKey) }.getOrNull()
                 }
 
@@ -95,7 +101,7 @@ class CheckViewModel(
 
                 Log.d("CheckVM", "OCR length=${ocrText.length}, barcode=${barcode}, hash=$imageHash")
                 // Optimistically cache the just-captured photo under the hash so UI can load instantly
-                runCatching { ImageCache.cacheFromFile(appContext, imageHash, file) }
+                runCatching { withContext(Dispatchers.IO) { ImageCache.cacheFromFile(appContext, imageHash, file) } }
                     .onFailure { Log.w("CheckVM", "cacheFromFile failed for $imageHash", it) }
                 val imageInfo = ImageInfo(
                     imageFileHash = imageHash,

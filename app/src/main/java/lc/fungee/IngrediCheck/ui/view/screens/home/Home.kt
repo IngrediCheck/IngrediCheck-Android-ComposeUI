@@ -62,14 +62,14 @@ import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.BrandGlow
-import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Greyscale700
+import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Statusfail
 import lc.fungee.IngrediCheck.ui.theme.White
 import lc.fungee.IngrediCheck.model.utils.AutoScanGate
 import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
 import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
-
+import lc.fungee.IngrediCheck.analytics.Analytics
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -80,7 +80,8 @@ fun HomeScreen(
     anonKey: String,
     viewModel: AppleAuthViewModel,
     googleSignInClient: GoogleSignInClient
-) {
+)
+{
     var showSheet by remember { mutableStateOf(false) }
 //        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // use the instance (lowercase), not the class name
@@ -89,6 +90,11 @@ fun HomeScreen(
     var isFocused by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
 
+
+    // Analytics: Home view appeared (iOS parity)
+    LaunchedEffect(Unit) {
+        Analytics.trackHomeViewAppeared()
+    }
 
     // One-shot auto-open on app start using pending flag
     var didAutoOpen by rememberSaveable { mutableStateOf(false) }
@@ -99,61 +105,34 @@ fun HomeScreen(
             showSheet = true
         }
     }
-
-
-
-
-
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = { preferenceViewModel.refreshPreferences() }
     )
 
     Scaffold(
-        bottomBar = {
-            BottomBar(
-                navController = navController,
-                onCheckClick = { showSheet = true })
-        }
+        bottomBar = { BottomBar(navController = navController, onCheckClick = { showSheet = true }) }
     ) { paddingValues ->
         Box(
-            modifier = Modifier.Companion
+            modifier = Modifier
+                .background(White)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
-//                if (!isOnline) {
-//                    Box(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .background(Color.Red)
-//                            .padding(8.dp),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Text(
-//                            text = "No Internet Connection",
-//                            color = Color.White,
-//                            style = MaterialTheme.typography.h4
-//                        )
-//                    }
-
             // Settings BottomSheet
             if (showSheetSetting) {
                 val sheetState = rememberModalBottomSheetState(
-                    skipPartiallyExpanded = true // open directly expanded
+                    skipPartiallyExpanded = true
                 )
-
                 ModalBottomSheet(
                     onDismissRequest = { showSheetSetting = false },
                     sheetState = sheetState,
                     containerColor = AppColors.SurfaceMuted,
                     dragHandle = null,
-                    shape = RoundedCornerShape(
-                        topStart = 10.dp,
-                        topEnd = 10.dp
-                    )
+                    shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
                 ) {
                     Box(
-                        modifier = Modifier.Companion
+                        modifier = Modifier
                             .fillMaxHeight(0.94f)
                             .fillMaxWidth()
                     ) {
@@ -173,39 +152,35 @@ fun HomeScreen(
                     }
                 }
             }
-//                }
-
-
             Column(
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // enables swipe
+                    .verticalScroll(rememberScrollState())
                     .background(White)
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
-//                    .pullRefresh(pullRefreshState)
             ) {
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                     .padding(bottom = 14.dp)
-//                            bottom = 10.dp)
-//                        )
+                        .padding(bottom = 14.dp)
                 ) {
                     Text(
                         text = "Your dietary preferences",
                         style = TextStyle(
-                            fontSize = 24.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Medium,
                             textAlign = TextAlign.Center
                         ),
-                        modifier = Modifier.align(Alignment.Center) // 🔥 Centered in screen
+                        modifier = Modifier.align(Alignment.Center)
                     )
 
                     IconButton(
-                        onClick = { showSheetSetting = true },
-                        modifier = Modifier.align(Alignment.CenterEnd) // 🔥 Right aligned
+                        onClick = {
+                            Analytics.trackButtonTapped("Settings")
+                            showSheetSetting = true
+                        },
+                        modifier = Modifier.align(Alignment.CenterEnd)
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.settingicon),
@@ -215,7 +190,6 @@ fun HomeScreen(
                         )
                     }
                 }
-
 
                 Box(
                     modifier = Modifier.Companion
@@ -291,11 +265,23 @@ fun HomeScreen(
                 // Validation feedback
                 when (val state = preferenceViewModel.validationState) {
                     is ValidationState.Validating -> {
-                        Text("Thinking...", color = AppColors.Brand, fontSize = 18.sp)
+                        Text(
+                            "Thinking...",
+                            color = AppColors.Brand,
+                            fontSize = 18.sp,
+                            modifier = Modifier.Companion.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
                     }
 
                     is ValidationState.Failure -> {
-                        Text(state.message, color = Statusfail, fontSize = 18.sp)
+                        Text(
+                            state.message,
+                            color = Statusfail,
+                            fontSize = 18.sp,
+                            modifier = Modifier.Companion.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
 
                     }
 
@@ -311,7 +297,9 @@ fun HomeScreen(
                             Text(
                                 "Preference added successfully...",
                                 color = AppColors.Brand,
-                                fontSize = 18.sp
+                                fontSize = 18.sp,
+                                modifier = Modifier.Companion.fillMaxWidth(),
+                                textAlign = TextAlign.Start
                             )
                         }
                     }
@@ -323,17 +311,23 @@ fun HomeScreen(
 
                 // List / Demo transition
                 AnimatedContent(
-                    targetState = preferenceViewModel.preferences.isEmpty(),
+                    targetState = Pair(isRefreshing, preferenceViewModel.preferences.isEmpty()),
                     label = "preferencesTransition"
-                ) { isEmpty ->
-                    if (isEmpty) {
-                        PreferenceEmptyState()
-
-                    } else {
-//
-                        PreferencesList(preferenceViewModel, onEdit = { pref ->
-                            preferenceViewModel.startEditPreference(pref)
-                        })
+                ) { (loading, isEmpty) ->
+                    when {
+                        loading -> {
+                            // While loading, show nothing to avoid flashing the empty state
+                            Spacer(modifier = Modifier.height(1.dp))
+                        }
+                        isEmpty -> {
+                            // Only show empty state after loading completes and list is still empty
+                            PreferenceEmptyState()
+                        }
+                        else -> {
+                            PreferencesList(preferenceViewModel, onEdit = { pref ->
+                                preferenceViewModel.startEditPreference(pref)
+                            })
+                        }
                     }
                 }
             }
@@ -341,7 +335,7 @@ fun HomeScreen(
             PullRefreshIndicator(
                 refreshing = isRefreshing,
                 state = pullRefreshState,
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .align(Alignment.Companion.TopCenter)
                     .padding(top = paddingValues.calculateTopPadding())
                     .zIndex(1f)

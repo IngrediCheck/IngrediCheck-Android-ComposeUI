@@ -4,50 +4,56 @@ import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
-import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
-import lc.fungee.IngrediCheck.ui.theme.AppColors
-import lc.fungee.IngrediCheck.ui.theme.White
+import androidx.activity.compose.BackHandler
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
+import io.github.jan.supabase.SupabaseClient
+import lc.fungee.IngrediCheck.IngrediCheckApp
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.rememberAsyncImagePainter
-import io.github.jan.supabase.SupabaseClient
-import java.io.File
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
-import androidx.lifecycle.viewmodel.compose.viewModel
-import lc.fungee.IngrediCheck.IngrediCheckApp
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import androidx.compose.ui.unit.sp
 import androidx.exifinterface.media.ExifInterface
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalHapticFeedback
 import lc.fungee.IngrediCheck.R
+import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
+import lc.fungee.IngrediCheck.ui.theme.White
+import coil.compose.rememberAsyncImagePainter
 import lc.fungee.IngrediCheck.ui.view.component.CameraCaptureManager
 import lc.fungee.IngrediCheck.ui.view.component.CameraMode
 import lc.fungee.IngrediCheck.ui.view.component.CameraPreview
 import lc.fungee.IngrediCheck.ui.view.screens.analysis.AnalysisScreen
+import lc.fungee.IngrediCheck.ui.view.screens.analysis.LoadingContent
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackScreen
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackMode
 import lc.fungee.IngrediCheck.viewmodel.FeedbackViewModel
@@ -57,6 +63,7 @@ import lc.fungee.IngrediCheck.viewmodel.CheckEvent
 import lc.fungee.IngrediCheck.viewmodel.CheckUiState
 import lc.fungee.IngrediCheck.viewmodel.CheckViewModel
 import lc.fungee.IngrediCheck.viewmodel.CheckViewModelFactory
+import lc.fungee.IngrediCheck.model.source.hapticSuccess
 
 //@SuppressLint("UnrememberedMutableInteractionSource")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +78,7 @@ fun CheckBottomSheet(
     var sheetContent by remember { mutableStateOf<CheckSheetState>(CheckSheetState.Scanner) }
 
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
 
     // ViewModel wiring via factory (manual DI)
@@ -195,7 +203,9 @@ fun CheckBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(0.94f)
-                        .padding(start = 16.dp, end = 16.dp, top = 24.dp),
+                        .navigationBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 24.dp)
+                        .verticalScroll(rememberScrollState()),
 
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -210,7 +220,7 @@ fun CheckBottomSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(32.dp),
+                            .height(44.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val showActions = selectedItemIndex == 1 && capturedImage != null
@@ -232,8 +242,9 @@ fun CheckBottomSheet(
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .width(190.dp)
-                                    .height(26.dp),
+                                    .fillMaxWidth()
+                                    .height(32.dp)
+                                    .padding(horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
@@ -262,7 +273,9 @@ fun CheckBottomSheet(
                                                 Text(
                                                     title,
                                                     color = LabelsPrimary,
-                                                    fontSize = 18.sp
+                                                    fontSize = 18.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             },
                                             modifier = Modifier
@@ -277,7 +290,13 @@ fun CheckBottomSheet(
                         // Right: Check (reserve space when hidden)
                         if (showActions) {
                             TextButton(
-                                onClick = { capturedImage?.let { checkViewModel.onPhotoCaptured(it) } },
+                                onClick = {
+                                    capturedImage?.let {
+                                        // Immediately switch to Analysis with a loading stub
+                                        sheetContent = CheckSheetState.Analysis(barcode = null, images = emptyList())
+                                        checkViewModel.onPhotoCaptured(it)
+                                    }
+                                },
                                 enabled = checkUiState !is CheckUiState.Processing
                             ) {
                                 Text("Check", color = AppColors.Brand, fontSize = 20.sp)
@@ -306,11 +325,16 @@ fun CheckBottomSheet(
                         showTransition = false
                     }
 
+                    // Compute a responsive preview height
+                    val config = LocalConfiguration.current
+                    val calc = config.screenHeightDp.dp * 0.48f
+                    val previewHeight = if (calc < 435.dp) calc else 435.dp
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 12.dp)
-                            .height(435.dp)
+                            .height(previewHeight)
                             .border(1.dp, Color.Black, RoundedCornerShape(8.dp))
                             .clip(RoundedCornerShape(8.dp))
                     ) {
@@ -344,8 +368,15 @@ fun CheckBottomSheet(
                     }
 
                     Text(
-                        "${texts[selectedItemIndex]}", color = LabelsPrimary, modifier = Modifier
-                            .padding(top = 20.dp, bottom = 40.dp), fontSize = 18.sp
+                        texts[selectedItemIndex],
+                        color = LabelsPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 20.dp, bottom = 40.dp),
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
                     )
 
                     if (selectedItemIndex == 1) {
@@ -363,6 +394,8 @@ fun CheckBottomSheet(
                                     .clip(RoundedCornerShape(25))
                                     .clickable {
                                         if (CameraCaptureManager.isReady()) {
+                                            // Bypass haptic on capture tap for immediate feedback
+                                            hapticSuccess(haptic, context, useBypass = true)
                                             CameraCaptureManager.takePhoto()
                                         } else {
                                             Toast.makeText(
@@ -392,30 +425,49 @@ fun CheckBottomSheet(
                 }
             }
 
-                    is CheckSheetState.Analysis -> {
-                        AnalysisScreen(
-                            barcode = state.barcode,
-                            images = state.images,
-                            supabaseClient = supabaseClient,
-                            functionsBaseUrl = functionsBaseUrl,
-                            anonKey = anonKey,
-                            onRetakeRequested = {
-                                // Smoothly switch back to the scanner with Photo tab selected
-                                sheetContent = CheckSheetState.Scanner
-                                checkViewModel.setSelectedTab(1) // Photo tab
-                                // Keep previous capturedImage so preview remains visible in bottom-left
-                            },
-                            onBackToScanner = {
-                                sheetContent = CheckSheetState.Scanner
-                                // Keep the previously captured image preview, and remain on the Photo tab
-                                checkViewModel.setSelectedTab(1)
-                            },
-                            onOpenFeedback = { mode, clientActivityId ->
-                                feedbackMode = mode
-                                feedbackClientActivityId = clientActivityId
-                                showFeedback = true
+            is CheckSheetState.Analysis -> {
+                // If we navigated with empty args as a preloading sentinel, show a fast loading stub.
+                if ((state.images == null || state.images.isEmpty()) && state.barcode.isNullOrBlank()) {
+                    LoadingContent(
+                        "Preparing analysis...",
+                        onBack = {
+                            sheetContent = CheckSheetState.Scanner
+                            checkViewModel.reset()
+                        }
+                    )
+                } else {
+                    AnalysisScreen(
+                        barcode = state.barcode,
+                        images = state.images,
+                        supabaseClient = supabaseClient,
+                        functionsBaseUrl = functionsBaseUrl,
+                        anonKey = anonKey,
+                        onRetakeRequested = {
+                            // Go back to scanner; select tab based on what was analyzed
+                            sheetContent = CheckSheetState.Scanner
+                            val targetTab = when {
+                                state.images?.isNotEmpty() == true -> 1 // Photo
+                                !state.barcode.isNullOrBlank() -> 0     // Barcode
+                                else -> selectedItemIndex               // Fallback: keep current
                             }
-                        )
+                            checkViewModel.setSelectedTab(targetTab)
+                        },
+                        onBackToScanner = {
+                            sheetContent = CheckSheetState.Scanner
+                            val targetTab = when {
+                                state.images?.isNotEmpty() == true -> 1 // Photo
+                                !state.barcode.isNullOrBlank() -> 0     // Barcode
+                                else -> selectedItemIndex               // Fallback
+                            }
+                            checkViewModel.setSelectedTab(targetTab)
+                        },
+                        onOpenFeedback = { mode, clientActivityId ->
+                            feedbackMode = mode
+                            feedbackClientActivityId = clientActivityId
+                            showFeedback = true
+                        }
+                    )
+                }
             }
         }
     }
