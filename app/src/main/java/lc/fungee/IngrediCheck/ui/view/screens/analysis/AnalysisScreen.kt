@@ -35,7 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
+//import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +68,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -100,6 +101,7 @@ import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackMode
 import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.ui.theme.BrandColor
 import lc.fungee.IngrediCheck.ui.theme.Greyscale50
 import lc.fungee.IngrediCheck.ui.theme.Greyscale600
 import lc.fungee.IngrediCheck.ui.theme.LabelsPrimary
@@ -318,7 +320,7 @@ fun ProductHeader(
                 painter = painterResource(id = R.drawable.clickimgicon  ),
                 contentDescription = "Check again",
                 modifier = Modifier.size(actionIconSize).clickable { onRetakeRequested() },
-                tint = AppColors.Brand
+                tint = Color.Unspecified
             )
 
             Spacer(modifier = Modifier.Companion.width(16.dp))
@@ -992,6 +994,14 @@ fun ErrorContent(
         }
     }
 }
+@Preview(showBackground = true)
+@Composable
+fun NotFoundContentPreview() {
+    NotFoundContent(
+        onUploadPhotos = { /* no-op for preview */ },
+        onBack = { /* no-op for preview */ }
+    )
+}
 
 @Composable
 fun NotFoundContent(
@@ -1032,7 +1042,7 @@ fun NotFoundContent(
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 text = "Congratulations!",
                 style = TextStyle(
@@ -1055,18 +1065,25 @@ fun NotFoundContent(
             ) {
                 Column(horizontalAlignment = Alignment.Companion.CenterHorizontally) {
                     Text(
-                        text = "   You found a Product that is not in our\nDatabase." +
-                                "Submit Product Images and Earn\nIngrediPoints@!",
+                        text = buildAnnotatedString {
+                            append("   You found a Product that is not in our ")
+                            append("Database. Submit Product Images and ")
+                            append("Earn IngrediPointsⒸ!")
+                        },
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.Companion.Normal,
+                        fontWeight = FontWeight.Normal,
                         color = LabelsPrimary,
-                        textAlign = TextAlign.Companion.Center
-                        //color = LabelsPrimary, modifier = Modi
+                        textAlign = TextAlign.Center,
+                        lineHeight = 28.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
                     )
+
                     Spacer(Modifier.height(25.dp))
                     Box(
                         modifier = Modifier.Companion
-                            .width(200.dp)
+                            .width(240.dp)
                             .height(200.dp)
                             .padding(horizontal = 8.dp)
                             .background(
@@ -1077,19 +1094,28 @@ fun NotFoundContent(
                                     bottomEnd = 8.dp,
                                     bottomStart = 8.dp
                                 )
-                            ),
+                            ).clickable { onUploadPhotos() },
                         contentAlignment = Alignment.Companion.Center,
 
                         ) {
-                        //icon
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            //icon
 
-                        Icon(
+                            Icon(
 //                imageVector = Icons.Default.Send,
-                            painter = painterResource(id = R.drawable.clickimgicon  ),
-                            contentDescription = "Check again",
-                            modifier = Modifier.clickable { onUploadPhotos() }.size(100.dp),
-                            tint = AppColors.Brand
-                        )
+                                painter = painterResource(id = R.drawable.clickimgicon),
+                                contentDescription = "Check again",
+                                modifier = Modifier.size(60.dp),
+                                tint = Color.Unspecified
+                            )
+           Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Upload Image",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandColor
+                            )
+                        }
 
 //                        Button(
 //                            onClick = onUploadPhotos,
@@ -1103,7 +1129,7 @@ fun NotFoundContent(
 //                            )
 //                        }
                     }
-                    Spacer(Modifier.height(15.dp))
+                    Spacer(Modifier.height(25.dp))
                     Text(
                         text = "Product will be analized instantly!",
                         fontSize = 18.sp,

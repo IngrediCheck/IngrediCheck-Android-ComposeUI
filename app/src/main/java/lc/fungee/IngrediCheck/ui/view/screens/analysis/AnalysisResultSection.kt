@@ -37,7 +37,13 @@ class AnalysisResultViewModel : ViewModel() {
     val uiState: StateFlow<UiState> = _uiState
 
     fun bind(product: Product, recs: List<IngredientRecommendation>) {
-        val res = product.calculateMatch(recs)
+        // If there are no ingredients (e.g., image-only case),
+        // do not compute a match to avoid showing an incorrect status chip.
+        val res = if (product.ingredients.isEmpty()) {
+            null
+        } else {
+            product.calculateMatch(recs)
+        }
         val frags = decoratedIngredientsList(product.ingredients, recs)
         _uiState.value = UiState(
             result = res,

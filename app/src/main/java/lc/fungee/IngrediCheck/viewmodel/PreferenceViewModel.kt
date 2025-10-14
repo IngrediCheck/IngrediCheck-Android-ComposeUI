@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -148,12 +149,19 @@ class PreferenceViewModel(
                             } else {
                                 preferences.add(0, result.pref)
                             }
-                            repo.saveLocal(preferences)
+                            repo.saveLocal(preferences) // update local storage
                             newPreferenceText = ""
                             editingId = null
                             indexOfCurrentlyEdited = 0
                             clientActivityId = UUID.randomUUID().toString()
                             validationState = ValidationState.Success
+                            // Reset to Idle after a short delay to avoid replaying the success message
+                            viewModelScope.launch {
+                                delay(600)
+                                if (validationState is ValidationState.Success) {
+                                    validationState = ValidationState.Idle
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {

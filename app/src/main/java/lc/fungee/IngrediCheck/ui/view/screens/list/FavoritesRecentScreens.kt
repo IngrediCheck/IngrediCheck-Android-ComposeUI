@@ -889,8 +889,8 @@ fun HistoryItemCard(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.brand ?: "Unknown Brand", fontSize = 14.sp)
-            Text(item.name ?: "Unknown Name", fontSize = 13.sp, color = Color.Gray)
+            Text(item.brand ?: "Unknown Brand", fontSize = 20.sp)
+            Text(item.name ?: "Unknown Name", fontSize = 18.sp, color = Color.Gray)
             val rawDate = item.createdAt ?: ""
             val date = if (rawDate.isNotBlank()) {
                 try {
@@ -900,8 +900,9 @@ fun HistoryItemCard(
                     rawDate
                 }
             } else ""
+            Spacer(modifier =modifier.height(8.dp))
 
-            if (date.isNotBlank()) Text(date, fontSize = 12.sp, color = Color.Gray)
+            if (date.isNotBlank()) Text(date, fontSize = 18.sp, color = Color.Gray)
         }
     }
 }

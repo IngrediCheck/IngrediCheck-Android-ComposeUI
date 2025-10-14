@@ -18,15 +18,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
-import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
-import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.view.navigation.AppNavigation
 import lc.fungee.IngrediCheck.ui.view.screens.home.ErrorScreen
 //import lc.fungee.IngrediCheck.ui.screens.home.LoadingScreen
@@ -34,8 +31,8 @@ import lc.fungee.IngrediCheck.ui.view.screens.SplashScreen
 
 
 import io.github.jan.supabase.auth.auth
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
@@ -46,6 +43,7 @@ import lc.fungee.IngrediCheck.model.source.GoogleAuthDataSource
 import lc.fungee.IngrediCheck.model.source.rememberGoogleSignInLauncher
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 import lc.fungee.IngrediCheck.model.utils.AppConstants
+import android.content.Intent
 
 
 class MainActivity : ComponentActivity() {
