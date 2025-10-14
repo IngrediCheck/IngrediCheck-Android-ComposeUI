@@ -994,14 +994,14 @@ fun ErrorContent(
         }
     }
 }
-@Preview(showBackground = true)
-@Composable
-fun NotFoundContentPreview() {
-    NotFoundContent(
-        onUploadPhotos = { /* no-op for preview */ },
-        onBack = { /* no-op for preview */ }
-    )
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun NotFoundContentPreview() {
+//    NotFoundContent(
+//        onUploadPhotos = { /* no-op for preview */ },
+//        onBack = { /* no-op for preview */ }
+//    )
+//}
 
 @Composable
 fun NotFoundContent(

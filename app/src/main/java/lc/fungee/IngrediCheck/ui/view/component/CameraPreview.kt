@@ -239,7 +239,13 @@ fun CameraPreview(
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+                PreviewView(ctx).apply {
+                    // Fill the container to avoid left/right padding, with TextureView for reliable clipping
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    clipToPadding = true
+                    clipToOutline = true
+                }
             },
             modifier = Modifier.fillMaxSize(),
             update = { previewView ->
