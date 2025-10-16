@@ -62,6 +62,11 @@
                 android:resource="@xml/photos_paths" />
         </provider>
 
+        <!-- Prefetch ML Kit models via Google Play Services -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr, barcode" />
+
 
     </application>
 

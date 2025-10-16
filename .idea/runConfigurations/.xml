@@ -1,8 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="app" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
-    <module name="IngrediCheck.app" />
+  <configuration default="false" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
     <option name="ANDROID_RUN_CONFIGURATION_SCHEMA_VERSION" value="1" />
-    <option name="DEPLOY" value="true" />
+    <option name="DEPLOY" value="false" />
     <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
     <option name="DEPLOY_AS_INSTANT" value="false" />
     <option name="ARTIFACT_NAME" value="" />
@@ -10,7 +9,7 @@
     <option name="ALL_USERS" value="false" />
     <option name="ALWAYS_INSTALL_WITH_PM" value="false" />
     <option name="ALLOW_ASSUME_VERIFIED" value="false" />
-    <option name="CLEAR_APP_STORAGE" value="false" />
+    <option name="CLEAR_APP_STORAGE" value="true" />
     <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
     <option name="ACTIVITY_EXTRA_FLAGS" value="" />
     <option name="MODE" value="default_activity" />
