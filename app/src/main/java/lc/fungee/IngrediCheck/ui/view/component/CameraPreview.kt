@@ -182,9 +182,6 @@ fun CameraPreview(
                         if (barcodes.isEmpty()) {
                             // No detections this frame
                             noBarcodeFrames++
-                            if (noBarcodeFrames > 10) {
-                                guidance = "Find nearby Barcode"
-                            }
                         } else {
                         }
 
@@ -223,9 +220,6 @@ fun CameraPreview(
                                 lastCenterY = centerY
                             } else {
                                 noBarcodeFrames++
-                                if (noBarcodeFrames > 1) {
-                                    guidance = "Find nearby Barcode"
-                                }
                             }
                         }
                     }
@@ -318,8 +312,8 @@ fun CameraPreview(
         }
 
         // Overlay guidance at top-center for 2s after trigger
-        // Periodic hint shown when no other guidance is active and permission granted
-        if (hasPermission && mode == CameraMode.Scan && showPeriodicHint && guidance == null) {
+        // Periodic hint shown independently of dynamic guidance when permission granted
+        if (hasPermission && mode == CameraMode.Scan && showPeriodicHint) {
             Text(
                 text = "Find nearby Barcode",
                 color = Color.White,
