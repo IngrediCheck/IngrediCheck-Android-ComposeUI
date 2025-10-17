@@ -872,18 +872,17 @@ fun HistoryItemCard(
     val model = modelState.value
 
     // Determine status dot color based on ingredient recommendations
+    // Default to Match (green) when there are no Maybe/Definitely flags
     val dotColor = remember(item.ingredientRecommendations) {
         when {
             item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.DefinitelyUnsafe } ->
                 StatusUnmatchedFg
             item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.MaybeUnsafe } ->
                 StatusUncertainFg
-            item.ingredientRecommendations.isNotEmpty() ->
-                AppColors.Brand
-            else -> null
+            else -> AppColors.Brand
         }
     }
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier.fillMaxWidth().padding(end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -923,14 +922,12 @@ fun HistoryItemCard(
         }
 
         // Right-side status dot
-        if (dotColor != null) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .offset(y = 8.dp)
-                    .background(dotColor, CircleShape)
-            )
-        }
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .offset(y = 8.dp)
+                .background(dotColor, CircleShape)
+        )
     }
 }
 
