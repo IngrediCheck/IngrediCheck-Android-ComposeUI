@@ -318,8 +318,8 @@ fun CameraPreview(
         }
 
         // Overlay guidance at top-center for 2s after trigger
-        // Periodic hint shown when no other guidance is active
-        if (mode == CameraMode.Scan && showPeriodicHint && guidance == null) {
+        // Periodic hint shown when no other guidance is active and permission granted
+        if (hasPermission && mode == CameraMode.Scan && showPeriodicHint && guidance == null) {
             Text(
                 text = "Find nearby Barcode",
                 color = Color.White,
@@ -330,7 +330,7 @@ fun CameraPreview(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
-        guidance?.let {
+        if (hasPermission) guidance?.let {
             Text(
                 text = it,
                 color = Color.White,
