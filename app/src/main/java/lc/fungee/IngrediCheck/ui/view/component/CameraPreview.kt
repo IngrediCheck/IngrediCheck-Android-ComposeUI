@@ -131,11 +131,7 @@ fun CameraPreview(
         }
     }
 
-    // Keep a state-backed reference to the current mode to avoid stale captures in analyzer
-    var currentMode by remember { mutableStateOf(mode) }
-    LaunchedEffect(mode) { currentMode = mode }
-
-    // Periodic hint: show for 2s, hide for 2s, repeat while in Scan mode
+    // Periodic hint toggling: show for 2s, hide for 2s while in Scan mode
     LaunchedEffect(mode) {
         if (mode == CameraMode.Scan) {
             while (true) {
@@ -148,6 +144,10 @@ fun CameraPreview(
             showPeriodicHint = false
         }
     }
+
+    // Keep a state-backed reference to the current mode to avoid stale captures in analyzer
+    var currentMode by remember { mutableStateOf(mode) }
+    LaunchedEffect(mode) { currentMode = mode }
 
     // Use cases shared across modes
     val options = remember {
@@ -183,7 +183,7 @@ fun CameraPreview(
                             // No detections this frame
                             noBarcodeFrames++
                             if (noBarcodeFrames > 10) {
-                                guidance = "Find nearby barcode"
+                                guidance = "Find nearby Barcode"
                             }
                         } else {
                         }
@@ -224,7 +224,7 @@ fun CameraPreview(
                             } else {
                                 noBarcodeFrames++
                                 if (noBarcodeFrames > 1) {
-                                    guidance = "Find nearby barcode"
+                                    guidance = "Find nearby Barcode"
                                 }
                             }
                         }
@@ -317,7 +317,8 @@ fun CameraPreview(
             )
         }
 
-        // Periodic overlay hint when scanning (suppressed if guidance is showing)
+        // Overlay guidance at top-center for 2s after trigger
+        // Periodic hint shown when no other guidance is active
         if (mode == CameraMode.Scan && showPeriodicHint && guidance == null) {
             Text(
                 text = "Find nearby Barcode",
@@ -329,8 +330,6 @@ fun CameraPreview(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }
-
-        // Overlay guidance at top-center for 2s after trigger
         guidance?.let {
             Text(
                 text = it,
