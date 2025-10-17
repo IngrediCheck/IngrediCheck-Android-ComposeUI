@@ -48,6 +48,7 @@ import lc.fungee.IngrediCheck.ui.view.screens.setting.SettingScreen
 import java.net.URLDecoder
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 import kotlinx.coroutines.delay
+import lc.fungee.IngrediCheck.ui.view.screens.V2onbording.Onboarding4
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 
 @Composable
@@ -342,6 +343,8 @@ fun AppNavigation(
                         googleSignInClient = googleSignInClient
                     )
                 }
+                composable("onboarding4") { Onboarding4() }
+
             }
 
             // Draw the offline overlay above all destinations
