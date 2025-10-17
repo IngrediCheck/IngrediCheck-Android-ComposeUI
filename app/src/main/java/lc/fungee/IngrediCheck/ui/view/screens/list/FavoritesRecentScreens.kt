@@ -4,6 +4,7 @@ import AnalysisResultSection
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -67,8 +68,11 @@ import lc.fungee.IngrediCheck.ui.theme.White
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.BrandDeepGreen
 import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.StatusUncertainFg
+import lc.fungee.IngrediCheck.ui.theme.StatusUnmatchedFg
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
+import lc.fungee.IngrediCheck.model.entities.SafetyRecommendation
 import java.net.URLEncoder
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -866,6 +870,19 @@ fun HistoryItemCard(
     val firstImage = item.images.firstOrNull()
     val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
     val model = modelState.value
+
+    // Determine status dot color based on ingredient recommendations
+    val dotColor = remember(item.ingredientRecommendations) {
+        when {
+            item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.DefinitelyUnsafe } ->
+                StatusUnmatchedFg
+            item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.MaybeUnsafe } ->
+                StatusUncertainFg
+            item.ingredientRecommendations.isNotEmpty() ->
+                AppColors.Brand
+            else -> null
+        }
+    }
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -903,6 +920,16 @@ fun HistoryItemCard(
             Spacer(modifier =modifier.height(8.dp))
 
             if (date.isNotBlank()) Text(date, fontSize = 18.sp, color = Color.Gray)
+        }
+
+        // Right-side status dot
+        if (dotColor != null) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .offset(y = 8.dp)
+                    .background(dotColor, CircleShape)
+            )
         }
     }
 }
