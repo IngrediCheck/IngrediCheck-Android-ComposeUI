@@ -17,12 +17,12 @@
       <SelectionState runConfigName="Justme">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="Unnamed">
+      <SelectionState runConfigName="Ingredicheck">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-10-17T06:10:19.937545400Z">
+        <DropdownSelection timestamp="2025-10-27T05:20:15.434786100Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=54181VDAQ000DX" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\gaura\.android\avd\Pixel_Tablet.avd" />
             </handle>
           </Target>
         </DropdownSelection>

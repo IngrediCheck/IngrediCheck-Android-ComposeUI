@@ -77,6 +77,9 @@ import lc.fungee.IngrediCheck.ui.theme.StatusUnmatchedFg
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
 import lc.fungee.IngrediCheck.model.entities.SafetyRecommendation
+import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
+import lc.fungee.IngrediCheck.model.repository.AnalysisRepository
+import java.util.UUID
 import java.net.URLEncoder
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -159,7 +162,7 @@ fun FavoritesPageScreen(
                         text = "Favorites",
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
+                        fontSize = 20.sp,
                         color = AppColors.Neutral700,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -430,6 +433,34 @@ fun FavoriteItemDetailScreen(
     val prefRepo = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
     val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
     val scope = rememberCoroutineScope()
+    val product = remember(item) {
+        item?.let {
+            Product(
+                barcode = it.barcode,
+                brand = it.brand,
+                name = it.name,
+                ingredients = it.ingredients,
+                images = it.images
+            )
+        }
+    }
+    val analysisRepo = remember { AnalysisRepository(prefRepo, functionsBaseUrl, anonKey) }
+    var recs by remember { mutableStateOf<List<IngredientRecommendation>>(emptyList()) }
+    LaunchedEffect(item?.barcode) {
+        val barcode = item?.barcode
+        if (!barcode.isNullOrBlank()) {
+            val id = UUID.randomUUID().toString()
+            runCatching {
+                analysisRepo.fetchRecommendations(
+                    clientActivityId = id,
+                    prefs = "",
+                    barcode = barcode
+                )
+            }.onSuccess { recs = it }.onFailure { recs = emptyList() }
+        } else {
+            recs = emptyList()
+        }
+    }
     var showSheet by remember { mutableStateOf(false) }
     Scaffold(
         bottomBar = {
@@ -504,7 +535,7 @@ fun FavoriteItemDetailScreen(
                 // Title and brand
                 Text(
                     text = item?.name ?: "Unknown Product",
-                    fontSize = 20.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     lineHeight = 22.sp,
                     letterSpacing = (-0.41).sp,
@@ -517,16 +548,22 @@ fun FavoriteItemDetailScreen(
                 item?.brand?.let { brand ->
                     Text(
                         text = brand,
-                        fontSize = 18.sp,
-                        color = Color.Black,
+                        fontSize = 15.sp,
+                        color = Color.Gray,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                // Images pager (same pattern as HistoryItemDetailScreen)
-                val pagerState = rememberPagerState()
-                val totalPages = (item?.images?.size ?: 0) + 1
+                // Images pager (match HistoryItemDetailScreen behavior)
+                val pagerState = rememberPagerState(initialPage = 0)
+                val imageCount = item?.images?.size ?: 0
+                val totalPages = imageCount + 1
+                val configuration = LocalConfiguration.current
+                val screenWidthDp = configuration.screenWidthDp
+                val baseDp = if (screenWidthDp > 0) screenWidthDp else 360
+                val pagerHeight = baseDp.dp.coerceIn(240.dp, 420.dp)
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -537,20 +574,44 @@ fun FavoriteItemDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(AppColors.SurfaceMuted)
-                            .height(350.dp)
+                            .heightIn(min = 240.dp, max = 420.dp)
+                            .height(pagerHeight)
                     ) { page ->
                         val imgs = item?.images ?: emptyList()
                         if (page < imgs.size) {
                             val img = imgs[page]
-                            val modelState = rememberResolvedImageModel(img, supabaseClient, ImageCache.Size.MEDIUM)
+                            val modelState = rememberResolvedImageModel(
+                                img, supabaseClient, ImageCache.Size.MEDIUM
+                            )
                             val model = modelState.value
                             if (model != null) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = model,
                                     contentDescription = item?.name,
-                                    modifier = Modifier.fillMaxSize(0.8f),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
                                     contentScale = ContentScale.Fit
-                                )
+                                ) {
+                                    when (painter.state) {
+                                        is AsyncImagePainter.State.Loading, is AsyncImagePainter.State.Empty -> {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) { CircularProgressIndicator() }
+                                        }
+                                        is AsyncImagePainter.State.Error -> {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.LightGray)
+                                            )
+                                        }
+                                        else -> {
+                                            SubcomposeAsyncImageContent()
+                                        }
+                                    }
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier
@@ -562,36 +623,36 @@ fun FavoriteItemDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.LightGray)
+                                    .background(Color.LightGray),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Image(
                                     painter = painterResource(id = R.drawable.clickimageplaceholder),
                                     contentDescription = "click image",
-                                    modifier = Modifier
-                                        .width(220.dp)
-                                        .height(220.dp)
-                                        .align(Alignment.Center)
+                                    modifier = Modifier.size(220.dp)
                                 )
                             }
                         }
                     }
-                    // Dots indicator
                     DynamicPagerIndicator(
-                        currentPage = pagerState.currentPage,
-                        totalPages = totalPages,
+                        currentPage = pagerState.currentPage.coerceAtMost((imageCount - 1).coerceAtLeast(0)),
+                        totalPages = imageCount,
                         modifier = Modifier.padding(10.dp)
                     )
                 }
 
-                // Ingredients
-                Text("Ingredients", fontWeight = FontWeight.SemiBold)
-                val ingredientsText = remember(item) {
-                    item?.ingredients?.flatMap { flattenNames(it) }?.joinToString(", ") ?: ""
+                // Analysis results and ingredients (match HistoryItemDetailScreen)
+                if (product != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        AnalysisResultSection(product = product, recommendations = recs)
+                    }
+                } else {
+                    Text("No ingredient details available", color = Color.Gray)
                 }
-                if (ingredientsText.isNotBlank()) Text(ingredientsText) else Text(
-                    "No ingredient details available",
-                    color = Color.Gray
-                )
             }
         }
         if (showSheet) {
