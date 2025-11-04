@@ -14,8 +14,8 @@ android {
         applicationId = "llc.fungee.IngrediCheck"
         minSdk = 31
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.1"
+        versionCode = 6
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +55,8 @@ configurations.all {
 }
 
 dependencies {
+    implementation("androidx.compose.foundation:foundation:1.7.0")
+
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
     implementation(libs.navigation.compose)
