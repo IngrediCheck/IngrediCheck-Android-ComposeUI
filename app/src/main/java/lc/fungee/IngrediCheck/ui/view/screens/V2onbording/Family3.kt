@@ -303,6 +303,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -327,12 +328,32 @@ import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.ui.theme.Malerope
 import lc.fungee.IngrediCheck.ui.theme.Nunitosemibold
 
+data class Gesture(val emoji: String, val name: String)
+data class HairStyle(val iconRes: Int, val name: String)
+data class SkinTone(val iconRes: Int, val name: String)
+data class Accessory(val iconRes: Int, val name: String)
+data class ColorTheme(val color: Color, val name: String)
+
 @Preview(showBackground = true, name = "a", device = PIXEL_9)
 @Composable
 fun Famaliy3() {
     // Shared state for selected family member
-    var selectedFamilyMember by remember { mutableStateOf(familyMembers.first()) }
-
+    var selectedFamilyMember by remember { mutableStateOf<FamilyMember?>(null) }
+    var selectedGesture by remember { mutableStateOf<Gesture?>(null) }
+    var selectedHairStyle by remember { mutableStateOf<HairStyle?>(null) }
+    var selectedSkinTone by remember { mutableStateOf<SkinTone?>(null) }
+    var selectedAccessory by remember { mutableStateOf<Accessory?>(null) }
+    var selectedColorTheme by remember { mutableStateOf<ColorTheme?>(null) }
+    // Track current section (0=Family, 1=Gesture, 2=Hair, 3=Skin, 4=Accessories, 5=Color)
+    val currentSection = when {
+        selectedFamilyMember == null -> 0
+        selectedGesture == null -> 1
+        selectedHairStyle == null -> 2
+        selectedSkinTone == null -> 3
+        selectedAccessory == null -> 4
+        selectedColorTheme == null -> 5
+        else -> 6 // All done
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -368,40 +389,88 @@ fun Famaliy3() {
             }
 
             // Pass the selected family member icon to SelectableCapsuleRow
-            SelectableCapsuleRow(selectedFamilyIcon = selectedFamilyMember.iconRes)
-
-            Text(
-                text = "Tell us how you're related to them so we can create the perfect avatar!",
-                fontSize = 16.sp,
-                textAlign = TextAlign.Start,
-                color = Color(0xFF949494),
-                fontFamily = Malerope,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 16.dp)
+            SelectableCapsuleRow(
+                selectedFamilyIcon = selectedFamilyMember,
+                selectedGesture = selectedGesture
             )
+
+
+        }
+        when (currentSection) {
+            0 -> FamaliySelectionCard(
+                selectedMember = selectedFamilyMember,
+                onMemberSelected = { selectedFamilyMember = it }
+            )
+
+            1 -> GestureSectionCard(
+                selectedGesture = selectedGesture,
+                onGestureSelected = { selectedGesture = it }
+            )
+
+            else -> {
+                // All selections complete
+                Text(
+                    "All selections complete! 🎉",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF91B640),
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top =40.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            CapsuleButton1("Random")
+            CapsuleButton("Generate")
         }
 
-        // Pass callback to update selected family member
-        FamaliySelectionCard(
-            selectedMember = selectedFamilyMember,
-            onMemberSelected = { selectedFamilyMember = it }
-        )
     }
+//        if (selectedFamilyMember == null) {
+//
+//            // Pass callback to update selected family member
+//            FamaliySelectionCard(
+//                selectedMember = selectedFamilyMember,
+//                onMemberSelected = { selectedFamilyMember = it }
+//            )
+//        } else{
+//            GestureSectionCard()
+//
+//        }
+
+
 }
 
+
 @Composable
-fun SelectableCapsuleRow(selectedFamilyIcon: Int) {
+fun SelectableCapsuleRow(selectedFamilyIcon: FamilyMember?, selectedGesture: Gesture?) {
     // List of demo items - first item icon will be replaced with selected family member
-    val defultfamalyIcon  =R.drawable.heroicons_user_group_solid
+    val defultfamalyIcon = R.drawable.heroicons_user_group_solid
+
     val items: List<Pair<String, Int>> = listOf(
-        "Family Member" to (if(selectedFamilyIcon != 0) selectedFamilyIcon else defultfamalyIcon), // Dynamic icon from selection
-        "Gesture" to R.drawable.solar_hand_shake_bold,
+        (if (selectedFamilyIcon != null) selectedFamilyIcon.name to selectedFamilyIcon.iconRes else "Family Member" to defultfamalyIcon),
+        (if (selectedGesture != null) selectedGesture.name to R.drawable.dropupicon else "Gresture" to R.drawable.solar_hand_shake_bold),
         "Hair Style" to R.drawable.mingcute_hair_2_fill,
         "Skin Tone" to R.drawable.group_1171276302,
         "Accessories" to R.drawable.bi_sunglasses,
         "Color Theme" to R.drawable.mdi_palette
     )
     var selectedIndex by remember { mutableStateOf(0) }
+    // Reset selection when family member is selected
+    LaunchedEffect(selectedFamilyIcon) {
+        if (selectedFamilyIcon != null) {
+            selectedIndex = +1 // No capsule selected
+        }
+        if (selectedGesture != null) {
+            selectedIndex = +1
+        }
+    }
 
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
@@ -485,7 +554,7 @@ fun CapsuleItem3(
                 Icon(
                     painter = painterResource(id = icon),
                     contentDescription = null,
-                    tint = if (isSelected) Color(0xFF91B640) else Color.Unspecified,
+                    tint = Color.Unspecified,
                     modifier = Modifier
                         .size(25.dp)
                         .graphicsLayer {
@@ -519,132 +588,161 @@ fun CapsuleItem3(
 
 @Composable
 fun FamaliySelectionCard(
-    selectedMember: FamilyMember,
+    selectedMember: FamilyMember?,
     onMemberSelected: (FamilyMember) -> Unit
 ) {
     var expandCard by remember { mutableStateOf(false) }
-
-    BoxWithConstraints(
+    Column(
         modifier = Modifier.fillMaxWidth()
+//        .height(113.dp)
     ) {
-        val menuWidth = maxWidth
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-                .shadow(
-                    elevation = 0.5.dp,
-                    shape = RoundedCornerShape(24.dp),
-                    clip = false
-                )
-                .clip(RoundedCornerShape(24.dp))
-                .clickable { expandCard = true }
-                .border(
-                    width = 0.5.dp,
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFFEEEEEE)
-                )
-                .background(Color(0xFFFFFFFF), shape = RoundedCornerShape(24.dp))
+        Text(
+            text = "Tell us how you're related to them so we can create the perfect avatar!",
+            fontSize = 16.sp,
+            textAlign = TextAlign.Start,
+            color = Color(0xFF949494),
+            fontFamily = Malerope,
+            fontWeight = FontWeight.Medium,
+//            modifier = Modifier.padding(top = 14.dp)
+        )
+        Spacer(Modifier.height(17.dp))
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
+            val menuWidth = maxWidth
+
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .shadow(
+                        elevation = 0.5.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        clip = false
+                    )
+                    .clip(RoundedCornerShape(24.dp))
+                    .clickable { expandCard = true }
+                    .border(
+                        width = 0.5.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        color = Color(0xFFEEEEEE)
+                    )
+                    .background(Color(0xFFFFFFFF), shape = RoundedCornerShape(24.dp))
             ) {
                 Row(
-                    modifier = Modifier.fillMaxHeight(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(Color(0xFFF9F9F9), shape = CircleShape),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxHeight(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painter = painterResource(id = selectedMember.iconRes),
-                            contentDescription = selectedMember.name,
-                            modifier = Modifier
-                                .matchParentSize()
-                                .padding(6.dp)
-                        )
-                    }
-                    Text(
-                        text = selectedMember.name,
-                        modifier = Modifier.padding(start = 8.dp),
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            lineHeight = 21.sp,
-                            fontWeight = FontWeight(500),
-                            color = Color(0xFF303030),
-                            textAlign = TextAlign.Center,
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Image(
-                    painter = painterResource(id = if (expandCard) R.drawable.dropupicon else R.drawable.dropdownicon),
-                    contentDescription = "image description",
-                    contentScale = ContentScale.None,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = expandCard,
-            onDismissRequest = { expandCard = false },
-            modifier = Modifier
-                .width(menuWidth)
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFFEEEEEE),
-                    shape = RoundedCornerShape(24.dp)
-                ),
-            offset = DpOffset(0.dp, -8.dp),
-            shape = RoundedCornerShape(24.dp),
-            containerColor = Color.White,
-            shadowElevation = 0.dp,
-            tonalElevation = 0.dp
-        ) {
-            familyMembers.forEach { member ->
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (selectedMember != null) {
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .background(Color(0xFFF9F9F9), shape = CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
+
                                 Image(
-                                    painter = painterResource(id = member.iconRes),
-                                    contentDescription = member.name,
+                                    painter = painterResource(id = selectedMember.iconRes),
+                                    contentDescription = selectedMember.name,
                                     modifier = Modifier
                                         .matchParentSize()
                                         .padding(6.dp)
                                 )
                             }
-                            Text(
-                                text = member.name,
-                                modifier = Modifier.padding(start = 8.dp),
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    lineHeight = 21.sp,
-                                    fontWeight = FontWeight(500),
-                                    color = Color(0xFF303030),
-                                    textAlign = TextAlign.Center,
-                                )
-                            )
+                        } else {
+                            // Show placeholder icon when nothing selected
+//                            Icon(
+//                                painter = painterResource(id = R.drawable.heroicons_user_group_solid),
+//                                contentDescription = "Select family member",
+//                                tint = Color(0xFFBDBDBD),
+//                                modifier = Modifier.size(24.dp)
+//                            )
                         }
-                    },
-                    onClick = {
-                        onMemberSelected(member)
-                        expandCard = false
+
+                        Text(
+                            text = selectedMember?.name ?: "Select Family Member",
+                            modifier = Modifier.padding(start = 8.dp),
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                lineHeight = 21.sp,
+                                fontWeight = FontWeight(500),
+                                color = if (selectedMember == null) Color(0xFF7F7F7F) else Color(
+                                    0xFF303030
+                                ),
+                                textAlign = TextAlign.Center,
+                            )
+                        )
                     }
-                )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Image(
+                        painter = painterResource(id = if (expandCard) R.drawable.dropupicon else R.drawable.dropdownicon),
+                        contentDescription = "image description",
+                        contentScale = ContentScale.None,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            DropdownMenu(
+                expanded = expandCard,
+                onDismissRequest = { expandCard = false },
+                modifier = Modifier
+                    .width(menuWidth)
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFFEEEEEE),
+                        shape = RoundedCornerShape(24.dp)
+                    ),
+                offset = DpOffset(0.dp, -8.dp),
+                shape = RoundedCornerShape(24.dp),
+                containerColor = Color.White,
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp
+            ) {
+                familyMembers.forEach { member ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .background(Color(0xFFF9F9F9), shape = CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = member.iconRes),
+                                        contentDescription = member.name,
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .padding(6.dp)
+                                    )
+                                }
+                                Text(
+                                    text = member.name,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        lineHeight = 21.sp,
+                                        fontWeight = FontWeight(500),
+                                        color = Color(0xFF303030),
+                                        textAlign = TextAlign.Center,
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            onMemberSelected(member)
+                            expandCard = false
+                        }
+                    )
+                }
             }
         }
     }

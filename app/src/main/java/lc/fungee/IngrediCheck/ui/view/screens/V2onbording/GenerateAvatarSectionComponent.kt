@@ -200,7 +200,10 @@ fun FamaliySelectionCard() {
 @OptIn(ExperimentalFoundationApi::class)
 @Preview(showBackground = true)
 @Composable
-fun GestureSectionCard() {
+fun GestureSectionCard(
+    selectedGesture: Gesture? = null ,
+    onGestureSelected: (Gesture) -> Unit = {}
+) {
     val gestures = listOf(
         Pair("👋","Wave"),
         Pair("👍","Thumbs Up"),
@@ -260,29 +263,32 @@ val pagerState = rememberPagerState (initialPage = 0, pageCount = {gestures.size
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = emoji,
-                    style = TextStyle(
-                        fontSize = 50.72.sp,
-                        lineHeight = 49.66.sp,
-                        fontWeight = FontWeight(400),
-                        color = Color(0xFF000000),
-                        textAlign = TextAlign.Center
-                    )
-                )
 
-                Text(
-                    text = name,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        lineHeight = 21.sp,
-                        fontFamily = Malerope,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF616161),
-                        textAlign = TextAlign.Center
+                    Text(
+                        text = emoji,
+                        style = TextStyle(
+                            fontSize = 50.72.sp,
+                            lineHeight = 49.66.sp,
+                            fontWeight = FontWeight(400),
+                            color = Color(0xFF000000),
+                            textAlign = TextAlign.Center
+                        ),
+                        modifier = Modifier.clickable{}
                     )
-                )
-            }
+
+                    Text(
+                        text = name,
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            lineHeight = 21.sp,
+                            fontFamily = Malerope,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF616161),
+                            textAlign = TextAlign.Center
+                        )
+                    )
+                }
+
         }
 
 
@@ -300,7 +306,7 @@ val pagerState = rememberPagerState (initialPage = 0, pageCount = {gestures.size
 
                 }
                 .background(
-                    color = Color(0xFFE3E3E3),
+                    color = Color(0xFFF7F7F7),
                     shape = CircleShape
                 ), contentAlignment = Alignment.Center
         ) {

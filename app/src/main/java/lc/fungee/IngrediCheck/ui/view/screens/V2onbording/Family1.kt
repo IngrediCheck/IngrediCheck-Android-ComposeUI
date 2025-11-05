@@ -58,14 +58,15 @@ fun Famaliy() {
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        sheetPeekHeight = 450.dp, // partially visible
+        sheetPeekHeight = 241.dp, // partially visible
         sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         sheetContainerColor = Color.White,
         modifier = Modifier.shadow(
+
             elevation = 8.dp,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
 //                   ambientColor = Color(0xFFF30404),
-//                   spotColor = Color(0xFFECECEC),
+//                   spotColor = Color(0xFFDE0B0B),
             clip = false
         ),
         sheetDragHandle = {
@@ -83,7 +84,7 @@ fun Famaliy() {
         },
         sheetContent = {
 
-Famaliy3()
+//Famaliy3()//family selection card color tone etc...
 
 
         }

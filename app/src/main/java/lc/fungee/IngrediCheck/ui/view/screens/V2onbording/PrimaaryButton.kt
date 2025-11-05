@@ -46,7 +46,7 @@ fun test()
     }
 }
 @Composable
-fun CapsuleButton(
+fun CapsuleButton( text :String
 ) {
     Box(
         modifier = Modifier
@@ -78,7 +78,7 @@ fun CapsuleButton(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = " Add Members",
+            text = text,
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
@@ -87,7 +87,7 @@ fun CapsuleButton(
 }
 @Composable
 fun CapsuleButton1(
-    text: String = "Add Members",
+    text: String,
     icon: Int? = null, // Pass drawable resource ID
     width: Dp? = 160.dp,
     height: Dp = 56.dp,
@@ -195,7 +195,7 @@ fun CapsuleButton1(
 
                 )
             Text(
-                text = "Generate",
+                text = text,
                 fontFamily = Nunitosemibold,
 
                 style = TextStyle(
