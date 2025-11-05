@@ -252,4 +252,50 @@ class LoginAuthRepository(
 
     suspend fun signInWithGoogleIdToken(idToken: String) = signInWithGoogleIdTokenSdk(idToken)
     suspend fun signInWithAppleIdToken(idToken: String) = exchangeAppleIdTokenWithSupabase(idToken)
+
+    // Internal mode methods
+    fun getInternalModeFromPrefs(): Boolean {
+        return try {
+            context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                .getBoolean(AppConstants.Prefs.KEY_IS_INTERNAL, false)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setInternalModeInPrefs(enabled: Boolean) {
+        try {
+            context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(AppConstants.Prefs.KEY_IS_INTERNAL, enabled)
+                .apply()
+        } catch (e: Exception) {
+            Log.e("LoginAuthRepository", "Failed to set internal mode in prefs", e)
+        }
+    }
+
+    suspend fun syncInternalModeToSupabase(enabled: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // Update user metadata with is_internal flag
+            val updates = mapOf("is_internal" to enabled)
+            supabaseClient.auth.updateUser {
+                data = updates
+            }
+            Log.d("LoginAuthRepository", "Internal mode synced to Supabase: $enabled")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("LoginAuthRepository", "Failed to sync internal mode to Supabase", e)
+            Result.failure(e)
+        }
+    }
+
+    fun refreshInternalModeFromServer(): Boolean? {
+        return try {
+            val session = supabaseClient.auth.currentSessionOrNull()
+            session?.user?.userMetadata?.get("is_internal") as? Boolean
+        } catch (e: Exception) {
+            Log.e("LoginAuthRepository", "Failed to refresh internal mode from server", e)
+            null
+        }
+    }
 }

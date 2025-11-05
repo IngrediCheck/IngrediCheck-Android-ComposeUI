@@ -1,15 +1,18 @@
 package lc.fungee.IngrediCheck.ui.view.screens.setting
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
+import androidx.compose.material.Snackbar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
@@ -31,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -51,6 +55,7 @@ import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 enum class ConfirmAction {
@@ -78,6 +83,22 @@ fun SettingScreen(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showDeleteGuestDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(ConfirmAction.NONE) }
+
+    // Internal mode gesture state
+    var versionTapCount by remember { mutableStateOf(0) }
+    var internalModeTapCount by remember { mutableStateOf(0) }
+    var tapResetJob by remember { mutableStateOf<Job?>(null) }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    val isInternalUser by viewModel.isInternalUser.collectAsState()
+
+    // Auto-dismiss toast after 2 seconds
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            delay(2000)
+            toastMessage = null
+        }
+    }
+
     fun clearWebCookies() {
         try {
             CookieManager.getInstance().removeAllCookies(null)
@@ -190,16 +211,65 @@ fun SettingScreen(
 //                R.drawable.rightbackbutton
             ) { selectedUrl = AppConstants.Website.PRIVACY }
 
-            IconRow(
-                "IngrediCheck for Android 1.0.0.(4)",
-                R.drawable.rectangle_34624324__1_,
-//                null,
-                showDivider = false
+            // Conditional Internal Mode Enabled label with tap gesture to disable
+            if (isInternalUser) {
+                InternalModeRow(
+                    onClick = {
+                        tapResetJob?.cancel()
+                        internalModeTapCount++
+                        if (internalModeTapCount >= 7) {
+                            viewModel.disableInternalMode(context)
+                            toastMessage = "Internal Mode Disabled"
+                            internalModeTapCount = 0
+                        } else {
+                            // Reset tap count after 3 seconds of inactivity
+                            tapResetJob = coroutineScope.launch {
+                                delay(3000)
+                                internalModeTapCount = 0
+                            }
+                        }
+                    }
+                )
+            }
+
+            // Version label with tap gesture to enable internal mode
+            VersionRow(
+                onClick = {
+                    tapResetJob?.cancel()
+                    versionTapCount++
+                    if (versionTapCount >= 7) {
+                        viewModel.enableInternalMode(context)
+                        toastMessage = "Internal Mode Unlocked"
+                        versionTapCount = 0
+                    } else {
+                        // Reset tap count after 3 seconds of inactivity
+                        tapResetJob = coroutineScope.launch {
+                            delay(3000)
+                            versionTapCount = 0
+                        }
+                    }
+                }
             )
         }
 
     }
 
+    // Toast notification display
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        toastMessage?.let { message ->
+            Snackbar(
+                modifier = Modifier
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp),
+                backgroundColor = AppColors.Brand,
+                contentColor = Color.White
+            ) {
+                Text(message, style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium))
+            }
+        }
+    }
 
     if (confirmAction != ConfirmAction.NONE) {
         var title = ""
@@ -568,6 +638,77 @@ private fun IconRow(
                 color = AppColors.Divider,
                 thickness = 1.dp,
                 modifier = Modifier.padding(start = 47.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InternalModeRow(onClick: () -> Unit) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(45.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onClick() }
+                .padding(horizontal = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Build,
+                contentDescription = null,
+                tint = AppColors.Brand
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Internal Mode Enabled",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 20.sp,
+                    color = AppColors.Brand
+                )
+            )
+        }
+        Divider(
+            color = AppColors.Divider,
+            thickness = 1.dp,
+            modifier = Modifier.padding(start = 47.dp)
+        )
+    }
+}
+
+@Composable
+private fun VersionRow(onClick: () -> Unit) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(45.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onClick() }
+                .padding(horizontal = 15.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.rectangle_34624324__1_),
+                contentDescription = null,
+                tint = AppColors.Brand
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "IngrediCheck for Android 1.0.0.(4)",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 20.sp,
+                    color = Color.Black
+                )
             )
         }
     }

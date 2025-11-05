@@ -27,6 +27,7 @@ object AppConstants {
         // Common keys inside SharedPreferences
         const val KEY_LOGIN_PROVIDER = "login_provider"
         const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
+        const val KEY_IS_INTERNAL = "is_internal"
     }
 
     object Providers {

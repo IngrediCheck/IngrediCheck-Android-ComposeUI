@@ -3,18 +3,21 @@ import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 import android.app.Activity
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.posthog.android.PostHog
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import lc.fungee.IngrediCheck.BuildConfig
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 
 sealed class AppleLoginState {
@@ -46,10 +49,29 @@ class AppleAuthViewModel(
     var isAppleLoading by mutableStateOf(false)
         private set
 
+    // Internal mode state
+    private val _isInternalUser = MutableStateFlow(false)
+    val isInternalUser: StateFlow<Boolean> = _isInternalUser
+
     @Volatile
     private var restoring = true
 
     init {
+        // Initialize internal mode from local prefs
+        _isInternalUser.value = repository.getInternalModeFromPrefs()
+
+        // Auto-enable internal mode on emulator/debug builds (like iOS simulator)
+        val isEmulator = Build.FINGERPRINT.contains("generic") ||
+                         Build.PRODUCT.contains("sdk") ||
+                         Build.MODEL.contains("Emulator")
+        if (isEmulator && BuildConfig.DEBUG && !_isInternalUser.value) {
+            viewModelScope.launch {
+                Log.d("AppleAuthViewModel", "Auto-enabling internal mode on emulator")
+                repository.setInternalModeInPrefs(true)
+                _isInternalUser.value = true
+            }
+        }
+
         // Restore session on app start and keep loginState in sync with Supabase Auth
         viewModelScope.launch {
             // If there is a stored session blob, wait briefly for SDK to restore it
@@ -63,6 +85,8 @@ class AppleAuthViewModel(
                         userId = s.user?.id
                         restoring = false
                         _isAuthChecked.value = true
+                        // Refresh internal mode from server
+                        refreshInternalModeFromServer()
                         return@launch
                     }
                     delay(200)
@@ -385,6 +409,88 @@ class AppleAuthViewModel(
     // ✅ Get Current Session - Using Supabase SDK
     fun getCurrentSession(): UserSession? {
         return repository.getCurrentSession()
+    }
+
+    // Internal mode methods
+    fun enableInternalMode(context: Context) {
+        Log.d("AppleAuthViewModel", "Enabling internal mode")
+        viewModelScope.launch {
+            try {
+                // Update local state first
+                _isInternalUser.value = true
+                repository.setInternalModeInPrefs(true)
+
+                // Sync to Supabase if user is authenticated
+                val session = repository.getCurrentSession()
+                if (session != null) {
+                    repository.syncInternalModeToSupabase(true)
+                }
+
+                // Update analytics
+                updateAnalyticsIdentity(context)
+
+                Log.d("AppleAuthViewModel", "Internal mode enabled successfully")
+            } catch (e: Exception) {
+                Log.e("AppleAuthViewModel", "Failed to enable internal mode", e)
+            }
+        }
+    }
+
+    fun disableInternalMode(context: Context) {
+        Log.d("AppleAuthViewModel", "Disabling internal mode")
+        viewModelScope.launch {
+            try {
+                // Update local state first
+                _isInternalUser.value = false
+                repository.setInternalModeInPrefs(false)
+
+                // Sync to Supabase if user is authenticated
+                val session = repository.getCurrentSession()
+                if (session != null) {
+                    repository.syncInternalModeToSupabase(false)
+                }
+
+                // Update analytics
+                updateAnalyticsIdentity(context)
+
+                Log.d("AppleAuthViewModel", "Internal mode disabled successfully")
+            } catch (e: Exception) {
+                Log.e("AppleAuthViewModel", "Failed to disable internal mode", e)
+            }
+        }
+    }
+
+    fun refreshInternalModeFromServer() {
+        viewModelScope.launch {
+            try {
+                val serverValue = repository.refreshInternalModeFromServer()
+                if (serverValue != null) {
+                    _isInternalUser.value = serverValue
+                    repository.setInternalModeInPrefs(serverValue)
+                    Log.d("AppleAuthViewModel", "Internal mode refreshed from server: $serverValue")
+                }
+            } catch (e: Exception) {
+                Log.e("AppleAuthViewModel", "Failed to refresh internal mode from server", e)
+            }
+        }
+    }
+
+    private fun updateAnalyticsIdentity(context: Context) {
+        try {
+            val posthog = PostHog.with(context)
+            val currentUserId = userId ?: "anonymous"
+
+            // Identify user with internal status
+            posthog.identify(
+                currentUserId,
+                mapOf("is_internal" to _isInternalUser.value),
+                null
+            )
+
+            Log.d("AppleAuthViewModel", "PostHog identity updated: userId=$currentUserId, isInternal=${_isInternalUser.value}")
+        } catch (e: Exception) {
+            Log.e("AppleAuthViewModel", "Failed to update PostHog identity", e)
+        }
     }
 
     // Google Web OAuth removed. Use native GoogleSignInClient to obtain an ID token,

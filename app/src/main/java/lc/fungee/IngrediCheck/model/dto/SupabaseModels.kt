@@ -42,7 +42,8 @@ data class UserMetadata(
     @SerializedName("phone_verified") val phoneVerified: Boolean? = null,
     val picture: String? = null,
     @SerializedName("provider_id") val providerId: String? = null,
-    val sub: String? = null
+    val sub: String? = null,
+    @SerializedName("is_internal") val isInternal: Boolean? = null
 )
 
 data class Identity(
