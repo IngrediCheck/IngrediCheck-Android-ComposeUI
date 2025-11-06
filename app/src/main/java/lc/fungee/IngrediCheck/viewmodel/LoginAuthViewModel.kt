@@ -10,7 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.posthog.android.PostHog
+// import com.posthog.android.PostHog
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.delay
@@ -477,15 +477,15 @@ class AppleAuthViewModel(
 
     private fun updateAnalyticsIdentity(context: Context) {
         try {
-            val posthog = PostHog.with(context)
+            // val posthog = PostHog.with(context)
             val currentUserId = userId ?: "anonymous"
 
             // Identify user with internal status
-            posthog.identify(
+            /* posthog.identify(
                 currentUserId,
                 mapOf("is_internal" to _isInternalUser.value),
                 null
-            )
+            ) */
 
             Log.d("AppleAuthViewModel", "PostHog identity updated: userId=$currentUserId, isInternal=${_isInternalUser.value}")
         } catch (e: Exception) {

@@ -50,6 +50,7 @@ material3 = { module = "androidx.compose.material3:material3", version.ref = "ma
 material-icons = { module = "androidx.compose.material:material-icons-extended", version = "1.7.5" } # add this
 mlkit-text-recognition = "com.google.mlkit:text-recognition:16.0.0"
 androidx-animation-core-android = { group = "androidx.compose.animation", name = "animation-core-android", version.ref = "animationCoreAndroid" }
+posthog-android = { group = "com.posthog", name = "posthog-android", version = "3.+" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -21,6 +21,8 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import lc.fungee.IngrediCheck.ui.view.screens.onboarding.AppleLoginWebViewActivity
 import lc.fungee.IngrediCheck.model.source.SharedPreferencesSessionManager
 import kotlin.time.ExperimentalTime
@@ -279,7 +281,11 @@ class LoginAuthRepository(
             // Update user metadata with is_internal flag
             val updates = mapOf("is_internal" to enabled)
             supabaseClient.auth.updateUser {
-                data = updates
+                data = buildJsonObject {
+                    updates.forEach { (key, value) ->
+                        put(key, value)
+                    }
+                }
             }
             Log.d("LoginAuthRepository", "Internal mode synced to Supabase: $enabled")
             Result.success(Unit)

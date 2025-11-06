@@ -38,6 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -129,6 +130,6 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // PostHog Analytics (correct artifact coordinates)
-    implementation("com.posthog:posthog-android:3.+")
+    implementation(libs.posthog.android)
 
 }
