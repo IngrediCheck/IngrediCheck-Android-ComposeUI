@@ -1,4 +1,4 @@
-﻿package lc.fungee.IngrediCheck.model.repository
+package lc.fungee.IngrediCheck.model.repository
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 
@@ -25,6 +25,10 @@ import lc.fungee.IngrediCheck.ui.view.screens.onboarding.AppleLoginWebViewActivi
 import lc.fungee.IngrediCheck.model.source.SharedPreferencesSessionManager
 import kotlin.time.ExperimentalTime
 import lc.fungee.IngrediCheck.model.repository.auth.AuthProvider
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MediaType.Companion.toMediaType
 
 @OptIn(ExperimentalTime::class)
 class LoginAuthRepository(
@@ -42,6 +46,37 @@ class LoginAuthRepository(
         }
         install(Postgrest)
         install(Storage)
+    }
+
+    private val httpClient: OkHttpClient = OkHttpClient()
+
+    suspend fun updateUserMetadata(metadata: Map<String, Any>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val session = supabaseClient.auth.currentSessionOrNull() ?: return@withContext Result.failure(Exception("Not authenticated"))
+            val token = session.accessToken
+            val url = supabaseUrl.trimEnd('/') + "/auth/v1/user"
+            val jsonProps = metadata.entries.joinToString(",") { (k, v) ->
+                val valueStr = when (v) {
+                    is String -> "\"" + v.replace("\"", "\\\"") + "\""
+                    is Boolean, is Number -> v.toString()
+                    else -> "\"" + v.toString().replace("\"", "\\\"") + "\""
+                }
+                "\"$k\":$valueStr"
+            }
+            val body = "{" + "\"data\":{" + jsonProps + "}}"
+            val req = Request.Builder()
+                .url(url)
+                .patch(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("apikey", supabaseAnonKey)
+                .build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) Result.success(Unit)
+                else Result.failure(Exception("Update metadata failed: ${resp.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun hasStoredSession(): Boolean {

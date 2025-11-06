@@ -46,7 +46,7 @@ import lc.fungee.IngrediCheck.ui.theme.Nunitosemibold
 
 @OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("SuspiciousIndentation")
-@Preview(showBackground = true , device = PIXEL_9)
+//@Preview(showBackground = true , device = PIXEL_9)
 @Composable
 fun Famaliy() {
 
