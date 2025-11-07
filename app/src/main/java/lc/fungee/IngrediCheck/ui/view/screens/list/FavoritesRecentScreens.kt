@@ -4,6 +4,7 @@ import AnalysisResultSection
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,20 +57,33 @@ import androidx.compose.ui.platform.LocalContext
 import lc.fungee.IngrediCheck.ui.view.screens.analysis.DynamicPagerIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
 import io.github.jan.supabase.SupabaseClient
 import lc.fungee.IngrediCheck.model.entities.Ingredient
 import lc.fungee.IngrediCheck.ui.view.component.BottomBar
 import lc.fungee.IngrediCheck.ui.view.screens.check.CheckBottomSheet
+import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackScreen
+import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackMode
 import lc.fungee.IngrediCheck.ui.theme.White
 import lc.fungee.IngrediCheck.ui.theme.AppColors
 import lc.fungee.IngrediCheck.ui.theme.BrandDeepGreen
 import lc.fungee.IngrediCheck.ui.theme.PrimaryGreen100
+import lc.fungee.IngrediCheck.ui.theme.StatusUncertainFg
+import lc.fungee.IngrediCheck.ui.theme.StatusUnmatchedFg
 import lc.fungee.IngrediCheck.model.source.image.ImageCache
 import lc.fungee.IngrediCheck.model.source.image.rememberResolvedImageModel
+import lc.fungee.IngrediCheck.model.entities.SafetyRecommendation
+import lc.fungee.IngrediCheck.model.entities.IngredientRecommendation
+import lc.fungee.IngrediCheck.model.repository.AnalysisRepository
+import java.util.UUID
 import java.net.URLEncoder
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.AsyncImagePainter
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -148,7 +162,7 @@ fun FavoritesPageScreen(
                         text = "Favorites",
                         fontFamily = FontFamily.SansSerif,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
+                        fontSize = 20.sp,
                         color = AppColors.Neutral700,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
@@ -419,6 +433,34 @@ fun FavoriteItemDetailScreen(
     val prefRepo = remember { PreferenceRepository(context, supabaseClient, functionsBaseUrl, anonKey) }
     val listRepo = remember { ListTabRepository(prefRepo, functionsBaseUrl, anonKey) }
     val scope = rememberCoroutineScope()
+    val product = remember(item) {
+        item?.let {
+            Product(
+                barcode = it.barcode,
+                brand = it.brand,
+                name = it.name,
+                ingredients = it.ingredients,
+                images = it.images
+            )
+        }
+    }
+    val analysisRepo = remember { AnalysisRepository(prefRepo, functionsBaseUrl, anonKey) }
+    var recs by remember { mutableStateOf<List<IngredientRecommendation>>(emptyList()) }
+    LaunchedEffect(item?.barcode) {
+        val barcode = item?.barcode
+        if (!barcode.isNullOrBlank()) {
+            val id = UUID.randomUUID().toString()
+            runCatching {
+                analysisRepo.fetchRecommendations(
+                    clientActivityId = id,
+                    prefs = "",
+                    barcode = barcode
+                )
+            }.onSuccess { recs = it }.onFailure { recs = emptyList() }
+        } else {
+            recs = emptyList()
+        }
+    }
     var showSheet by remember { mutableStateOf(false) }
     Scaffold(
         bottomBar = {
@@ -513,9 +555,15 @@ fun FavoriteItemDetailScreen(
                     )
                 }
 
-                // Images pager (same pattern as HistoryItemDetailScreen)
-                val pagerState = rememberPagerState()
-                val totalPages = (item?.images?.size ?: 0) + 1
+                // Images pager (match HistoryItemDetailScreen behavior)
+                val pagerState = rememberPagerState(initialPage = 0)
+                val imageCount = item?.images?.size ?: 0
+                val totalPages = imageCount + 1
+                val configuration = LocalConfiguration.current
+                val screenWidthDp = configuration.screenWidthDp
+                val baseDp = if (screenWidthDp > 0) screenWidthDp else 360
+                val pagerHeight = baseDp.dp.coerceIn(240.dp, 420.dp)
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -526,20 +574,44 @@ fun FavoriteItemDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(AppColors.SurfaceMuted)
-                            .height(350.dp)
+                            .heightIn(min = 240.dp, max = 420.dp)
+                            .height(pagerHeight)
                     ) { page ->
                         val imgs = item?.images ?: emptyList()
                         if (page < imgs.size) {
                             val img = imgs[page]
-                            val modelState = rememberResolvedImageModel(img, supabaseClient, ImageCache.Size.MEDIUM)
+                            val modelState = rememberResolvedImageModel(
+                                img, supabaseClient, ImageCache.Size.MEDIUM
+                            )
                             val model = modelState.value
                             if (model != null) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = model,
                                     contentDescription = item?.name,
-                                    modifier = Modifier.fillMaxSize(0.8f),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
                                     contentScale = ContentScale.Fit
-                                )
+                                ) {
+                                    when (painter.state) {
+                                        is AsyncImagePainter.State.Loading, is AsyncImagePainter.State.Empty -> {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) { CircularProgressIndicator() }
+                                        }
+                                        is AsyncImagePainter.State.Error -> {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.LightGray)
+                                            )
+                                        }
+                                        else -> {
+                                            SubcomposeAsyncImageContent()
+                                        }
+                                    }
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier
@@ -551,36 +623,36 @@ fun FavoriteItemDetailScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color.LightGray)
+                                    .background(Color.LightGray),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Image(
                                     painter = painterResource(id = R.drawable.clickimageplaceholder),
                                     contentDescription = "click image",
-                                    modifier = Modifier
-                                        .width(220.dp)
-                                        .height(220.dp)
-                                        .align(Alignment.Center)
+                                    modifier = Modifier.size(220.dp)
                                 )
                             }
                         }
                     }
-                    // Dots indicator
                     DynamicPagerIndicator(
-                        currentPage = pagerState.currentPage,
-                        totalPages = totalPages,
+                        currentPage = pagerState.currentPage.coerceAtMost((imageCount - 1).coerceAtLeast(0)),
+                        totalPages = imageCount,
                         modifier = Modifier.padding(10.dp)
                     )
                 }
 
-                // Ingredients
-                Text("Ingredients", fontWeight = FontWeight.SemiBold)
-                val ingredientsText = remember(item) {
-                    item?.ingredients?.flatMap { flattenNames(it) }?.joinToString(", ") ?: ""
+                // Analysis results and ingredients (match HistoryItemDetailScreen)
+                if (product != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        AnalysisResultSection(product = product, recommendations = recs)
+                    }
+                } else {
+                    Text("No ingredient details available", color = Color.Gray)
                 }
-                if (ingredientsText.isNotBlank()) Text(ingredientsText) else Text(
-                    "No ingredient details available",
-                    color = Color.Gray
-                )
             }
         }
         if (showSheet) {
@@ -628,6 +700,7 @@ fun HistoryItemDetailScreen(
     val recs = item?.ingredientRecommendations ?: emptyList()
 
     var showSheet by remember { mutableStateOf(false) }
+    var feedbackMode by remember { mutableStateOf<FeedbackMode?>(null) }
     Scaffold(
         bottomBar = {
             if (navController != null) BottomBar(
@@ -651,33 +724,42 @@ fun HistoryItemDetailScreen(
                         .padding(horizontal = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val actionIconModifier = Modifier.size(24.dp)
+                    val actionIconSize = 24.dp
                     Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clickable { navController?.popBackStack() }
-                            .padding(8.dp), // touch-friendly area
-                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.KeyboardArrowLeft,
+                            painter = painterResource(id = R.drawable.backbutton),
                             contentDescription = "Back",
-                            tint = BrandDeepGreen
+                            modifier = Modifier.size(actionIconSize),
+                            tint = Color.Unspecified
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            "Lists",
-                            color = BrandDeepGreen,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "Back",
+                            color = PrimaryGreen100,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Normal
                         )
                     }
-
                     Spacer(modifier = Modifier.weight(0.9f))
                     var isLike by remember { mutableStateOf(item?.favorited == true) }
                     Icon(
+                        painter = painterResource(id = R.drawable.clickimgicon),
+                        contentDescription = "Check again",
+                        modifier = Modifier.size(actionIconSize).clickable {
+                            // Open scanner/check sheet like ProductHeader retake
+                            showSheet = true
+                        },
+                        tint = Color.Unspecified
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Icon(
                         imageVector = if (isLike) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Heart logo",
-                        modifier = actionIconModifier.clickable {
+                        modifier = Modifier.size(actionIconSize).clickable {
                             val newVal = !isLike
                             isLike = newVal
                             val caid = item?.clientActivityId
@@ -690,10 +772,19 @@ fun HistoryItemDetailScreen(
                                 }
                             }
                         },
-                        tint = if (isLike) Color.Red else BrandDeepGreen
+                        tint = if (isLike) Color.Red else AppColors.Brand
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    // No flag icon per requirements
+                    Icon(
+                        painter = painterResource(id = R.drawable.flaglogo),
+                        contentDescription = "Flag logo",
+                        modifier = Modifier.size(actionIconSize).clickable {
+                            // Match ProductHeader: decide feedback mode based on available images
+                            val imgs = item?.images ?: emptyList()
+                            feedbackMode = if (imgs.isEmpty()) FeedbackMode.FeedbackAndImages else FeedbackMode.FeedbackOnly
+                        },
+                        tint = Color.Unspecified
+                    )
                 }
 
                 // Title and brand
@@ -719,9 +810,15 @@ fun HistoryItemDetailScreen(
                     )
                 }
 
-                // Images pager (same pattern as AnalysisScreen)
-                val pagerState = rememberPagerState()
-                val totalPages = (item?.images?.size ?: 0) + 1
+                // Images pager with adaptive height and upload tile
+                val pagerState = rememberPagerState(initialPage = 0)
+                val imageCount = item?.images?.size ?: 0
+                val totalPages = imageCount + 1
+                val configuration = LocalConfiguration.current
+                val screenWidthDp = configuration.screenWidthDp
+                val baseDp = if (screenWidthDp > 0) screenWidthDp else 360
+                val pagerHeight = baseDp.dp.coerceIn(240.dp, 420.dp)
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -732,7 +829,8 @@ fun HistoryItemDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(AppColors.SurfaceMuted)
-                            .height(350.dp)
+                            .heightIn(min = 240.dp, max = 420.dp)
+                            .height(pagerHeight)
                     ) { page ->
                         val imgs = item?.images ?: emptyList()
                         if (page < imgs.size) {
@@ -742,12 +840,33 @@ fun HistoryItemDetailScreen(
                             )
                             val model = modelState.value
                             if (model != null) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = model,
                                     contentDescription = item?.name,
-                                    modifier = Modifier.fillMaxSize(0.8f),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
                                     contentScale = ContentScale.Fit
-                                )
+                                ) {
+                                    when (painter.state) {
+                                        is AsyncImagePainter.State.Loading, is AsyncImagePainter.State.Empty -> {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) { CircularProgressIndicator() }
+                                        }
+                                        is AsyncImagePainter.State.Error -> {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.LightGray)
+                                            )
+                                        }
+                                        else -> {
+                                            SubcomposeAsyncImageContent()
+                                        }
+                                    }
+                                }
                             } else {
                                 Box(
                                     modifier = Modifier
@@ -760,22 +879,23 @@ fun HistoryItemDetailScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(Color.LightGray)
+                                    .clickable {
+                                        // Open feedback in ImagesOnly mode like ProductHeader
+                                        feedbackMode = FeedbackMode.ImagesOnly
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
                                 Image(
                                     painter = painterResource(id = R.drawable.clickimageplaceholder),
                                     contentDescription = "click image",
-                                    modifier = Modifier
-                                        .width(220.dp)
-                                        .height(220.dp)
-                                        .align(Alignment.Center)
+                                    modifier = Modifier.size(220.dp)
                                 )
                             }
                         }
                     }
-                    // Simple dots indicator like AnalysisScreen
                     DynamicPagerIndicator(
-                        currentPage = pagerState.currentPage,
-                        totalPages = totalPages,
+                        currentPage = pagerState.currentPage.coerceAtMost((imageCount - 1).coerceAtLeast(0)),
+                        totalPages = imageCount,
                         modifier = Modifier.padding(10.dp)
                     )
                 }
@@ -800,6 +920,19 @@ fun HistoryItemDetailScreen(
                 supabaseClient = supabaseClient,
                 functionsBaseUrl = functionsBaseUrl,
                 anonKey = anonKey
+            )
+        }
+        // Feedback bottom sheet (matches ProductHeader onOpenFeedback behavior)
+        val clientActivityId = item?.clientActivityId.orEmpty()
+        if (feedbackMode != null && clientActivityId.isNotBlank()) {
+            FeedbackScreen(
+                mode = feedbackMode!!,
+                clientActivityId = clientActivityId,
+                supabaseClient = supabaseClient,
+                functionsBaseUrl = functionsBaseUrl,
+                anonKey = anonKey,
+                onRequireReauth = {},
+                onBack = { feedbackMode = null }
             )
         }
     }
@@ -866,7 +999,19 @@ fun HistoryItemCard(
     val firstImage = item.images.firstOrNull()
     val modelState = rememberResolvedImageModel(firstImage, supabaseClient, ImageCache.Size.SMALL)
     val model = modelState.value
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+
+    // Determine status dot color based on ingredient recommendations
+    // Default to Match (green) when there are no Maybe/Definitely flags
+    val dotColor = remember(item.ingredientRecommendations) {
+        when {
+            item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.DefinitelyUnsafe } ->
+                StatusUnmatchedFg
+            item.ingredientRecommendations.any { it.safetyRecommendation == SafetyRecommendation.MaybeUnsafe } ->
+                StatusUncertainFg
+            else -> AppColors.Brand
+        }
+    }
+    Row(modifier = modifier.fillMaxWidth().padding(end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -889,8 +1034,8 @@ fun HistoryItemCard(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.brand ?: "Unknown Brand", fontSize = 14.sp)
-            Text(item.name ?: "Unknown Name", fontSize = 13.sp, color = Color.Gray)
+            Text(item.brand ?: "Unknown Brand", fontSize = 20.sp)
+            Text(item.name ?: "Unknown Name", fontSize = 18.sp, color = Color.Gray)
             val rawDate = item.createdAt ?: ""
             val date = if (rawDate.isNotBlank()) {
                 try {
@@ -900,9 +1045,18 @@ fun HistoryItemCard(
                     rawDate
                 }
             } else ""
+            Spacer(modifier =modifier.height(8.dp))
 
-            if (date.isNotBlank()) Text(date, fontSize = 12.sp, color = Color.Gray)
+            if (date.isNotBlank()) Text(date, fontSize = 18.sp, color = Color.Gray)
         }
+
+        // Right-side status dot
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .offset(y = 8.dp)
+                .background(dotColor, CircleShape)
+        )
     }
 }
 

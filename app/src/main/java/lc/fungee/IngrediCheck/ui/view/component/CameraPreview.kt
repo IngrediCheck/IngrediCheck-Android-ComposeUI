@@ -74,6 +74,7 @@ fun CameraPreview(
     var lastCenterX by remember { mutableStateOf<Float?>(null) }
     var lastCenterY by remember { mutableStateOf<Float?>(null) }
     var noBarcodeFrames by remember { mutableStateOf(0) }
+    var showPeriodicHint by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
@@ -130,6 +131,20 @@ fun CameraPreview(
         }
     }
 
+    // Periodic hint toggling: show for 2s, hide for 2s while in Scan mode
+    LaunchedEffect(mode) {
+        if (mode == CameraMode.Scan) {
+            while (true) {
+                showPeriodicHint = true
+                delay(2000)
+                showPeriodicHint = false
+                delay(2000)
+            }
+        } else {
+            showPeriodicHint = false
+        }
+    }
+
     // Keep a state-backed reference to the current mode to avoid stale captures in analyzer
     var currentMode by remember { mutableStateOf(mode) }
     LaunchedEffect(mode) { currentMode = mode }
@@ -167,9 +182,6 @@ fun CameraPreview(
                         if (barcodes.isEmpty()) {
                             // No detections this frame
                             noBarcodeFrames++
-                            if (noBarcodeFrames > 10) {
-                                guidance = "Find nearby barcode"
-                            }
                         } else {
                         }
 
@@ -208,9 +220,6 @@ fun CameraPreview(
                                 lastCenterY = centerY
                             } else {
                                 noBarcodeFrames++
-                                if (noBarcodeFrames > 10) {
-                                    guidance = "Find nearby barcode"
-                                }
                             }
                         }
                     }
@@ -239,7 +248,13 @@ fun CameraPreview(
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+                PreviewView(ctx).apply {
+                    // Fill the container to avoid left/right padding, with TextureView for reliable clipping
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    clipToPadding = true
+                    clipToOutline = true
+                }
             },
             modifier = Modifier.fillMaxSize(),
             update = { previewView ->
@@ -297,7 +312,19 @@ fun CameraPreview(
         }
 
         // Overlay guidance at top-center for 2s after trigger
-        guidance?.let {
+        // Periodic hint shown independently of dynamic guidance when permission granted
+        if (hasPermission && mode == CameraMode.Scan && showPeriodicHint) {
+            Text(
+                text = "Find nearby Barcode",
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+        if (hasPermission) guidance?.let {
             Text(
                 text = it,
                 color = Color.White,

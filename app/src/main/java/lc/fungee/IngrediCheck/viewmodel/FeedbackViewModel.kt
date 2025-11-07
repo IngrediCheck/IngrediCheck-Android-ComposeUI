@@ -208,6 +208,10 @@ class FeedbackViewModel(
 
     fun setError(message: String?) { ui = ui.copy(error = message) }
 
+    fun hasSession(): Boolean {
+        return preferenceRepository.currentToken() != null
+    }
+
     fun clearImages() {
         viewModelScope.launch {
             val token = preferenceRepository.currentToken() ?: return@launch

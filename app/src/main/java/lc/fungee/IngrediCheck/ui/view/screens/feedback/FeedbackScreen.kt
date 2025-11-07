@@ -188,11 +188,12 @@ fun FeedbackScreen(
                     Text("Help me improve 🥺", textAlign = TextAlign.Center)
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val canSubmitBase = !ui.isSubmitting && ui.processingCaptures == 0
+                        val canSubmitBase = !ui.isSubmitting && ui.processingCaptures == 0 && vm.hasSession()
+                        val hasUploadedPhoto = ui.photos.any { it.imageFileHash != null }
                         val canSubmit = canSubmitBase && when (mode) {
                             is FeedbackMode.FeedbackOnly -> true
-                            is FeedbackMode.ImagesOnly -> ui.photos.isNotEmpty()
-                            is FeedbackMode.FeedbackAndImages -> if (showCamera) ui.photos.isNotEmpty() else true
+                            is FeedbackMode.ImagesOnly -> hasUploadedPhoto
+                            is FeedbackMode.FeedbackAndImages -> if (showCamera) hasUploadedPhoto else true
                         }
 
                         // Top-right action depends on mode and stage

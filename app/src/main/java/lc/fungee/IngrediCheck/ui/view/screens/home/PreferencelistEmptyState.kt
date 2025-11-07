@@ -82,8 +82,8 @@ fun PreferenceEmptyState() {
         val basePages = listOf(
             buildAnnotatedString {
                 append("\"Avoid ")
-
-                append(".\"")
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Companion.Bold)) { append("Sugar") }
+               append(".\"")
             },
             buildAnnotatedString {
                 append("\"No ")
@@ -118,7 +118,7 @@ fun PreferenceEmptyState() {
 
         )
         // Add 3 dummy pages after the first real swipe
-        val totalPages = basePages.size + 3
+        val totalPages = basePages.size
         val pagerState = rememberPagerState(initialPage = 0, pageCount = { totalPages })
         Column(
             modifier = Modifier.Companion.fillMaxWidth()

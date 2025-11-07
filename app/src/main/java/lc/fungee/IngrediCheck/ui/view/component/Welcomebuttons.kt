@@ -92,10 +92,11 @@ import lc.fungee.IngrediCheck.viewmodel.NetworkViewmodel
                 CircularProgressIndicator()
             } else when (loginState) {
                 is AppleLoginState.Error -> {
-                    Text(
-                        text = (loginState as AppleLoginState.Error).message,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    // Show a generic friendly message instead of raw exception text
+//                    Text(
+////                        text = "Sign-in failed. Please try again.",
+//                        color = MaterialTheme.colorScheme.error
+//                    )
                 }
                 is AppleLoginState.Success -> {
                     // Login successful - handled by navigation

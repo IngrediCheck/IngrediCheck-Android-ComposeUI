@@ -14,8 +14,8 @@ android {
         applicationId = "llc.fungee.IngrediCheck"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,6 +39,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += setOf("dump_syms/**", "**/dump_syms.bin")
+        }
+    }
 }
 
 // Enforce a browser version compatible with current AGP (8.8.1)
@@ -49,6 +55,8 @@ configurations.all {
 }
 
 dependencies {
+    implementation("androidx.compose.foundation:foundation:1.7.0")
+
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
     implementation(libs.navigation.compose)
@@ -61,7 +69,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.firebase.crashlytics.buildtools)
+    // Removed Crashlytics buildtools from runtime to avoid packaging dump_syms binaries
     implementation(libs.androidx.material3.window.size.class1.android)
     implementation(libs.androidx.animation.core.android)
     testImplementation(libs.junit)
@@ -123,7 +131,6 @@ dependencies {
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
     implementation("io.coil-kt:coil-compose:2.6.0")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
     implementation(libs.mlkit.barcode)
     implementation(libs.mlkit.text.recognition)
     implementation("androidx.exifinterface:exifinterface:1.3.7")

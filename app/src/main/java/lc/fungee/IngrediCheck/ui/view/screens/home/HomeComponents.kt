@@ -33,6 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
@@ -45,6 +47,7 @@ import lc.fungee.IngrediCheck.R
 import lc.fungee.IngrediCheck.model.dto.DietaryPreference
 import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.ui.theme.AppColors
+import lc.fungee.IngrediCheck.model.source.hapticSuccess
 
 
 
@@ -56,6 +59,8 @@ fun PreferencesList(
     viewModel: PreferenceViewModel,
     onEdit: (DietaryPreference) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -70,7 +75,12 @@ fun PreferencesList(
                         .padding(bottom = 12.dp)
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onLongPress = { expanded = true }
+                                onLongPress = {
+                                    // Vibrate on long press before opening menu
+                                    hapticSuccess(haptic, context, useBypass = true)
+                                    expanded = true
+                                }
+
                             )
                         },
                     verticalAlignment = Alignment.Top
@@ -110,7 +120,8 @@ fun PreferencesList(
                         },
                         text = { Text("     Copy", fontSize = 16.sp) },
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(preference.annotatedText))
+                            // Copy plain text without markdown ** markers by using the styled builder
+                            clipboardManager.setText(viewModel.buildBoldAnnotatedString(preference.annotatedText))
                             expanded = false
                         }
                     )

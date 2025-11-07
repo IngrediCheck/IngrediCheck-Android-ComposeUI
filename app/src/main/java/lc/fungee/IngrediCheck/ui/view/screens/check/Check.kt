@@ -51,7 +51,7 @@ import lc.fungee.IngrediCheck.ui.theme.White
 import coil.compose.rememberAsyncImagePainter
 import lc.fungee.IngrediCheck.ui.view.component.CameraCaptureManager
 import lc.fungee.IngrediCheck.ui.view.component.CameraMode
-import lc.fungee.IngrediCheck.ui.view.component.CameraPreview
+//import lc.fungee.IngrediCheck.ui.view.component.CameraPreview
 import lc.fungee.IngrediCheck.ui.view.screens.analysis.AnalysisScreen
 import lc.fungee.IngrediCheck.ui.view.screens.analysis.LoadingContent
 import lc.fungee.IngrediCheck.ui.view.screens.feedback.FeedbackScreen
@@ -64,6 +64,7 @@ import lc.fungee.IngrediCheck.viewmodel.CheckUiState
 import lc.fungee.IngrediCheck.viewmodel.CheckViewModel
 import lc.fungee.IngrediCheck.viewmodel.CheckViewModelFactory
 import lc.fungee.IngrediCheck.model.source.hapticSuccess
+import lc.fungee.IngrediCheck.ui.view.component.CameraPreview
 
 //@SuppressLint("UnrememberedMutableInteractionSource")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -342,15 +343,16 @@ fun CheckBottomSheet(
                             CameraPreview(
                                 modifier = Modifier.fillMaxSize(),
                                 mode = if (idx == 0) CameraMode.Scan else CameraMode.Photo,
-                                onPhotoCaptured = { file ->
+                                onPhotoCaptured = { file: File ->
                                     // Normalize EXIF on a background thread so preview is always upright
                                     scope.launch {
                                         val normalized = normalizeImageFile(context, file)
                                         capturedImage = normalized
                                     }
-                                }, onBarcodeScanned = { value ->
+                                },
+                                onBarcodeScanned = { value: String? ->
                                     scannedCode = value
-                                    if (!value.isNullOrEmpty()) {
+                                    if (value != null && value.isNotEmpty()) {
                                         // Delegate navigation to ViewModel event (Scan mode flow)
                                         checkViewModel.onBarcodeScanned(value)
                                     }
@@ -491,7 +493,8 @@ fun CheckBottomSheet(
     if (showFeedbackCapture) {
         FeedbackCaptureSheet(
             vm = feedbackVm,
-            onDismiss = { showFeedbackCapture = false }
+            onDismiss = { showFeedbackCapture = false },
+            clientActivityId = feedbackClientActivityId
         )
     }
 }
