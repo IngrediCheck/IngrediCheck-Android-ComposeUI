@@ -36,23 +36,6 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Color(0xFF1C1B1F),
     */
 )
-val Nunito = FontFamily(
-    Font(R.font.nunitobold, FontWeight.Bold),
-//    Font(R.font.nunitosemibold), FontWeight.SemiBold)
-
-)
-val Nunitosemibold = FontFamily(
-    Font(R.font.nunitosemibold, FontWeight.SemiBold),
-
-
-)
-
-val Malerope = FontFamily(
-    Font(R.font.manropebold , FontWeight.Bold)
-    ,Font(R.font.manropemedium , FontWeight.Medium)
-    ,Font(R.font.manropesemibold , FontWeight.SemiBold)
-
-)
 
 @Composable
 fun IngrediCheckTheme(
