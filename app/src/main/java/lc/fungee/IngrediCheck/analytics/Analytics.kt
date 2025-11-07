@@ -151,4 +151,25 @@ object Analytics {
         // Property key must match iOS exactly
         PostHog.capture(event = "Image Captured", properties = mapOf("time" to epochSeconds))
     }
+
+    fun identifyAndRegister(distinctId: String?, isInternal: Boolean, email: String? = null) {
+        if (!distinctId.isNullOrBlank()) {
+            val props = mutableMapOf<String, Any>("is_internal" to isInternal)
+            if (!email.isNullOrBlank()) props["email"] = email
+            PostHog.identify(
+                distinctId = distinctId,
+                userProperties = props
+            )
+        }
+        PostHog.register("is_internal", isInternal)
+    }
+
+    fun registerInternal(isInternal: Boolean) {
+        PostHog.register("is_internal", isInternal)
+    }
+
+    fun resetAndRegister(isInternal: Boolean) {
+        PostHog.reset()
+        PostHog.register("is_internal", isInternal)
+    }
 }

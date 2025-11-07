@@ -4,6 +4,8 @@ import android.app.Application
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 import lc.fungee.IngrediCheck.di.AppContainer
+import com.posthog.PostHog
+import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 class IngrediCheckApp : Application() {
     lateinit var container: AppContainer
@@ -31,6 +33,8 @@ class IngrediCheckApp : Application() {
         }
 
         PostHogAndroid.setup(this, config)
+        val internal = AppConstants.isInternalEnabled(this)
+        PostHog.register("is_internal", internal)
     }
 
     companion object {

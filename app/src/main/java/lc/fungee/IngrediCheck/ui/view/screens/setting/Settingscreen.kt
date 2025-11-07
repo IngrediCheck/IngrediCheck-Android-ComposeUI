@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
@@ -51,7 +52,9 @@ import lc.fungee.IngrediCheck.viewmodel.PreferenceViewModel
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import lc.fungee.IngrediCheck.model.utils.AppConstants
+import android.widget.Toast
 
 enum class ConfirmAction {
     NONE, DELETE_ACCOUNT, RESET_GUEST
@@ -75,7 +78,15 @@ fun SettingScreen(
     val isGuest = loginProvider.isNullOrBlank() || loginProvider == AppConstants.Providers.ANONYMOUS
     val coroutineScope = rememberCoroutineScope()
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var internalEnabled by remember { mutableStateOf(AppConstants.isInternalEnabled(context)) }
+    var versionTapCount by remember { mutableStateOf(0) }
+    var tapResetJob by remember { mutableStateOf<Job?>(null) }
+    var internalTapCount by remember { mutableStateOf(0) }
+    var internalTapResetJob by remember { mutableStateOf<Job?>(null) }
+    var isSignOutLoading by remember { mutableStateOf(false) }
+    var isResetLoading by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var isDeleteAccountLoading by remember { mutableStateOf(false) }
     var showDeleteGuestDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(ConfirmAction.NONE) }
     fun clearWebCookies() {
@@ -138,21 +149,32 @@ fun SettingScreen(
                     "Reset App State",
                     R.drawable.fluent_warning_20_regular,
                     tint = AppColors.ErrorStrong,
-                    tint2 = AppColors.ErrorStrong, showDivider = false
+                    tint2 = AppColors.ErrorStrong,
+                    showDivider = false,
+                    trailingLoading = isResetLoading
                 ) { confirmAction = ConfirmAction.RESET_GUEST }
             } else {
                 // Authenticated user: show Sign Out and Delete Data & Account
                 IconRow(
                     "Sign Out",
                     R.drawable.stash_signout_light__1_,
-                    tint = AppColors.Brand, showArrow = false
-                ) { clearAllSession()}
+                    tint = AppColors.Brand,
+                    showArrow = false,
+                    trailingLoading = isSignOutLoading
+                ) {
+                    if (!isSignOutLoading) {
+                        isSignOutLoading = true
+                        clearAllSession()
+                    }
+                }
                 IconRow(
                     "Delete Data & Account",
                     R.drawable.fluent_warning_20_regular,
                     tint = AppColors.ErrorStrong,
-                    tint2 = AppColors.ErrorStrong,showDivider = false
-                ) { confirmAction = ConfirmAction.DELETE_ACCOUNT }
+                    tint2 = AppColors.ErrorStrong,
+                    showDivider = false,
+                    trailingLoading = isDeleteAccountLoading
+                ) { if (!isDeleteAccountLoading) confirmAction = ConfirmAction.DELETE_ACCOUNT }
             }
         }
 
@@ -190,11 +212,56 @@ fun SettingScreen(
 //                R.drawable.rightbackbutton
             ) { selectedUrl = AppConstants.Website.PRIVACY }
 
+            if (internalEnabled) {
+                IconRow(
+                    "Internal Mode Enabled",
+                    R.drawable.fluent_warning_20_regular,
+                    tint = AppColors.Brand,
+                    tint2 = AppColors.Brand,
+                    showDivider = true,
+                    showArrow = false,
+                    onClick = {
+                        internalTapCount += 1
+                        if (internalTapCount == 1) {
+                            internalTapResetJob?.cancel()
+                            internalTapResetJob = coroutineScope.launch {
+                                delay(1500)
+                                internalTapCount = 0
+                            }
+                        }
+                        if (internalTapCount >= 7) {
+                            internalTapCount = 0
+                            internalTapResetJob?.cancel()
+                            viewModel.disableInternalMode(context)
+                            internalEnabled = false
+                            Toast.makeText(context, "Internal Mode Disabled", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+            }
+
             IconRow(
                 "IngrediCheck for Android 1.0.0.(4)",
                 R.drawable.rectangle_34624324__1_,
 //                null,
-                showDivider = false
+                showDivider = false,
+                onClick = {
+                    versionTapCount += 1
+                    if (versionTapCount == 1) {
+                        tapResetJob?.cancel()
+                        tapResetJob = coroutineScope.launch {
+                            delay(1500)
+                            versionTapCount = 0
+                        }
+                    }
+                    if (versionTapCount >= 7) {
+                        versionTapCount = 0
+                        tapResetJob?.cancel()
+                        viewModel.enableInternalMode(context)
+                        internalEnabled = true
+                        Toast.makeText(context, "Internal Mode Enabled", Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
         }
 
@@ -212,6 +279,7 @@ fun SettingScreen(
                 confirmText = "I Understand"
                 onConfirm = {
                     coroutineScope.launch {
+                        isDeleteAccountLoading = true
                         // First: try remote account deletion (Edge Function must be deployed server-side)
                         runCatching { preferenceViewModel.deleteAccountRemote() }
                         clearAllSession()
@@ -223,6 +291,7 @@ fun SettingScreen(
                 confirmText = "I Understand"
                 onConfirm = {
                     coroutineScope.launch {
+                        isResetLoading = true
                         runCatching { viewModel.signOut(context) }
                         runCatching { viewModel.clearSupabaseLocalSession() }
                         preferenceViewModel.clearAllLocalData()
@@ -515,6 +584,7 @@ private fun IconRow(
     tint2: Color =  AppColors.Brand,
     showDivider: Boolean = true, //
     showArrow: Boolean = true,  // ✅ new flag
+    trailingLoading: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     Column {
@@ -523,6 +593,7 @@ private fun IconRow(
                 .fillMaxWidth()
                 .height(45.dp)
                 .clickable(
+                    enabled = !trailingLoading,
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) { onClick?.invoke() }
@@ -547,18 +618,19 @@ private fun IconRow(
                 )
             )
             Spacer(modifier = Modifier.weight(1f))
-//
-            if(showDivider  ) {
-                if(showArrow) {
-
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowRight,
-                        modifier = Modifier.size(20.dp),
-                        contentDescription = null,
-                        tint = Grey75
-                    )
-                }
-
+            if (trailingLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = AppColors.Brand
+                )
+            } else if (showDivider && showArrow) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowRight,
+                    modifier = Modifier.size(20.dp),
+                    contentDescription = null,
+                    tint = Grey75
+                )
             }
         }
 
