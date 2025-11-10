@@ -223,6 +223,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
