@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.put
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.analytics.Analytics
 import lc.fungee.IngrediCheck.IngrediCheckApp
@@ -419,7 +420,11 @@ class AppleAuthViewModel(
         Analytics.identifyAndRegister(distinctId, isInternal, email)
         if (session != null) {
             viewModelScope.launch {
-                repository.updateUserMetadata(mapOf("is_internal" to isInternal))
+                try {
+                    repository.supabaseClient.auth.updateUser {
+                        data { put("is_internal", isInternal) }
+                    }
+                } catch (_: Exception) { }
             }
         }
     }
