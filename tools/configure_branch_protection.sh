@@ -31,7 +31,7 @@ set -euo pipefail
 
 BRANCH="main"
 REQUIRED_CHECKS=(
-  "Build APK"
+  "Build APK / Assemble Release APK"
 )
 
 echo "Configuring branch protection for branch: ${BRANCH}"

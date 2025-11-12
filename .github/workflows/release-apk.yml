@@ -108,6 +108,18 @@ jobs:
             --out "${APK_PATH%.apk}.apk" \
             "${APK_PATH%.apk}-unsigned.apk"
           "${ANDROID_SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}/apksigner" verify "${APK_PATH%.apk}.apk"
+          rm "${APK_PATH%.apk}-unsigned.apk"
+
+      - name: Set release variables
+        id: release_vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "play_track=${{ github.event.inputs.play_track || 'internal' }}" >> $GITHUB_OUTPUT
+            echo "release_name=${{ github.event.inputs.release_name || github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "play_track=internal" >> $GITHUB_OUTPUT
+            echo "release_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -122,7 +134,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: llc.fungee.IngrediCheck
           releaseFiles: app/build/outputs/apk/release/*.apk
-          track: ${{ inputs.play_track || 'internal' }}
+          track: ${{ steps.release_vars.outputs.play_track }}
           status: completed
 
       - name: Publish GitHub Release
@@ -130,7 +142,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
-          name: ${{ inputs.release_name || github.ref_name }}
+          name: ${{ steps.release_vars.outputs.release_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
 
