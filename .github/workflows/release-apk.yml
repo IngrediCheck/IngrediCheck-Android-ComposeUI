@@ -70,7 +70,7 @@ jobs:
           packages: |
             cmdline-tools;latest
             platform-tools
-            platforms;android-36
+            platforms;android-35
             build-tools;${{ env.BUILD_TOOLS_VERSION }}
 
       - name: Cache Gradle
