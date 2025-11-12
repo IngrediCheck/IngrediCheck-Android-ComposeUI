@@ -99,28 +99,31 @@ jobs:
         run: |
           echo "${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
 
-      - name: Sign APK (if secrets present)
+      - name: Sign AAB (if secrets present)
         continue-on-error: true
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
         run: |
-          APK_PATH=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-          if [ -z "$APK_PATH" ]; then
-            echo "No APK produced at app/build/outputs/apk/release." >&2
+          AAB_PATH=$(ls app/build/outputs/bundle/release/*.aab | head -n 1)
+          if [ -z "$AAB_PATH" ]; then
+            echo "No AAB produced at app/build/outputs/bundle/release." >&2
             exit 1
           fi
-          mv "$APK_PATH" "${APK_PATH%.apk}-unsigned.apk"
-          "${ANDROID_SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}/apksigner" sign \
-            --ks release.keystore \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass env:STORE_PASSWORD \
-            --key-pass env:KEY_PASSWORD \
-            --out "${APK_PATH%.apk}.apk" \
-            "${APK_PATH%.apk}-unsigned.apk"
-          "${ANDROID_SDK_ROOT}/build-tools/${BUILD_TOOLS_VERSION}/apksigner" verify "${APK_PATH%.apk}.apk"
-          rm "${APK_PATH%.apk}-unsigned.apk"
+          if [ ! -f "release.keystore" ]; then
+            echo "Keystore not found, skipping signing"
+            exit 0
+          fi
+          # Sign AAB using jarsigner
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release.keystore \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            "$AAB_PATH" \
+            "$KEY_ALIAS"
+          # Verify the signature
+          jarsigner -verify -verbose -certs "$AAB_PATH"
 
       - name: Set release variables
         id: release_vars
