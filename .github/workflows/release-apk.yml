@@ -112,6 +112,7 @@ jobs:
           import json
           import os
           import re
+          import sys
           import traceback
           from google.oauth2 import service_account
           from googleapiclient.discovery import build
@@ -223,7 +224,7 @@ jobs:
                   print(f"Fallback: Incremented from {current_version} to {new_version}")
               else:
                   print("ERROR: Could not find versionCode in build.gradle.kts")
-                  exit 1
+                  sys.exit(1)
           EOF
 
       - name: Build release bundle
