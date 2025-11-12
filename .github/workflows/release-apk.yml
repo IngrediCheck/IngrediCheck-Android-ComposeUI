@@ -66,13 +66,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;${{ env.BUILD_TOOLS_VERSION }}
 
-      - name: Install Android API 36
+      - name: Accept Android SDK licenses and install packages
         run: |
           # Find sdkmanager in common locations
           if [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
@@ -86,6 +81,18 @@ jobs:
             exit 1
           fi
           echo "Using sdkmanager at: $SDK_MANAGER"
+          
+          # Accept all licenses first
+          yes | "$SDK_MANAGER" --licenses
+          
+          # Install packages separately (as per Stack Overflow solution)
+          # Install platform-tools first
+          yes | "$SDK_MANAGER" "platform-tools"
+          # Install Android API 35
+          yes | "$SDK_MANAGER" "platforms;android-35"
+          # Install build-tools
+          yes | "$SDK_MANAGER" "build-tools;${{ env.BUILD_TOOLS_VERSION }}"
+          # Install Android API 36
           yes | "$SDK_MANAGER" "platforms;android-36"
 
       - name: Cache Gradle
