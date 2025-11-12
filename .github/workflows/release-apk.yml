@@ -68,17 +68,24 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: |
-            cmdline-tools;latest
             platform-tools
             platforms;android-35
             build-tools;${{ env.BUILD_TOOLS_VERSION }}
 
       - name: Install Android API 36
         run: |
-          SDK_MANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -f "$SDK_MANAGER" ]; then
+          # Find sdkmanager in common locations
+          if [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDK_MANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          elif [ -f "$ANDROID_HOME/cmdline-tools/bin/sdkmanager" ]; then
             SDK_MANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"
+          elif [ -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDK_MANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          else
+            echo "Error: sdkmanager not found"
+            exit 1
           fi
+          echo "Using sdkmanager at: $SDK_MANAGER"
           yes | "$SDK_MANAGER" "platforms;android-36"
 
       - name: Cache Gradle
