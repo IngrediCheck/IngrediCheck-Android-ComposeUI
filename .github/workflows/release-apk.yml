@@ -19,8 +19,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - "v*"
 
 permissions:
   contents: write
@@ -45,17 +43,6 @@ jobs:
         run: |
           if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
             echo "Workflow must target the main branch. Ref: ${GITHUB_REF}" >&2
-            exit 1
-          fi
-
-      - name: Verify tag points to main (tag push)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          git fetch origin main --depth=1
-          MAIN_HEAD=$(git rev-parse origin/main)
-          if [ "$GITHUB_SHA" != "$MAIN_HEAD" ]; then
-            echo "Tag ${GITHUB_REF} (commit $GITHUB_SHA) does not point to the HEAD of main branch (commit $MAIN_HEAD)." >&2
-            echo "Releases must be created from the latest commit on the protected main branch." >&2
             exit 1
           fi
 
@@ -107,12 +94,12 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Decode keystore (if provided)
-        if: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 != '' }}
+        continue-on-error: true
         run: |
           echo "${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
 
       - name: Sign APK (if secrets present)
-        if: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 != '' && secrets.ANDROID_SIGNING_KEY_ALIAS != '' && secrets.ANDROID_SIGNING_KEY_PASSWORD != '' && secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD != '' }}
+        continue-on-error: true
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
@@ -140,14 +127,10 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "play_track=${{ github.event.inputs.play_track || 'internal' }}" >> $GITHUB_OUTPUT
             echo "release_name=${{ github.event.inputs.release_name || github.ref_name }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          else
             # Automatic upload to internal track for main branch pushes
             echo "play_track=internal" >> $GITHUB_OUTPUT
             echo "release_name=main-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-          else
-            # Tag pushes
-            echo "play_track=internal" >> $GITHUB_OUTPUT
-            echo "release_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload release artifact
@@ -157,7 +140,7 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
 
       - name: Upload to Google Play Console
-        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        continue-on-error: true
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -165,13 +148,4 @@ jobs:
           releaseFiles: app/build/outputs/apk/release/*.apk
           track: ${{ steps.release_vars.outputs.play_track }}
           status: completed
-
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: app/build/outputs/apk/release/*.apk
-          name: ${{ steps.release_vars.outputs.release_name }}
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
 
