@@ -17,6 +17,8 @@ on:
           - beta
           - production
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
@@ -138,7 +140,12 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "play_track=${{ github.event.inputs.play_track || 'internal' }}" >> $GITHUB_OUTPUT
             echo "release_name=${{ github.event.inputs.release_name || github.ref_name }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            # Automatic upload to internal track for main branch pushes
+            echo "play_track=internal" >> $GITHUB_OUTPUT
+            echo "release_name=main-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
           else
+            # Tag pushes
             echo "play_track=internal" >> $GITHUB_OUTPUT
             echo "release_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
