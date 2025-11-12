@@ -19,7 +19,6 @@ on:
   push:
     branches:
       - main
-      - ci-cd-setup
 
 permissions:
   contents: write
