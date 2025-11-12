@@ -6,6 +6,16 @@ on:
       release_name:
         description: Override release name (defaults to tag or ref name).
         required: false
+      play_track:
+        description: Google Play release track (internal, alpha, beta, production).
+        required: false
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
   push:
     tags:
       - "v*"
@@ -40,8 +50,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           git fetch origin main --depth=1
-          if ! git merge-base --is-ancestor origin/main "$GITHUB_SHA"; then
-            echo "Tag ${GITHUB_REF} does not point to the main branch." >&2
+          MAIN_HEAD=$(git rev-parse origin/main)
+          if [ "$GITHUB_SHA" != "$MAIN_HEAD" ]; then
+            echo "Tag ${GITHUB_REF} (commit $GITHUB_SHA) does not point to the HEAD of main branch (commit $MAIN_HEAD)." >&2
+            echo "Releases must be created from the latest commit on the protected main branch." >&2
             exit 1
           fi
 
@@ -102,6 +114,16 @@ jobs:
         with:
           name: release-apk
           path: app/build/outputs/apk/release/*.apk
+
+      - name: Upload to Google Play Console
+        if: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: llc.fungee.IngrediCheck
+          releaseFiles: app/build/outputs/apk/release/*.apk
+          track: ${{ inputs.play_track || 'internal' }}
+          status: completed
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
