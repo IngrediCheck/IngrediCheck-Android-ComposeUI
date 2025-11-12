@@ -11,12 +11,10 @@ Main must remain fast-forward only and receive all changes through reviewed pull
    - Target branch name pattern: `main`.  
    - Enable these options:
      - Require a pull request before merging (minimum one approval, dismiss stale reviews).  
-     - Require status checks to pass (`Build APK`).  
+     - Require status checks to pass (`Build APK / Assemble Release APK`).  
      - Require branches to be up to date before merging.  
      - Include administrators (prevents accidental direct pushes).  
      - Disallow force pushes and deletions.
-2. **Automate with GitHub CLI (optional)**  
-   Run `./tools/configure_branch_protection.sh` after authenticating with `gh auth login`. The script applies the settings above and can be re-run to enforce updates.
 
 ## Required GitHub Secrets
 
