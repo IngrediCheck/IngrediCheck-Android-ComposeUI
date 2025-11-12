@@ -73,6 +73,14 @@ jobs:
             platforms;android-35
             build-tools;${{ env.BUILD_TOOLS_VERSION }}
 
+      - name: Install Android API 36
+        run: |
+          SDK_MANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDK_MANAGER" ]; then
+            SDK_MANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"
+          fi
+          yes | "$SDK_MANAGER" "platforms;android-36"
+
       - name: Cache Gradle
         uses: gradle/actions/setup-gradle@v4
 
