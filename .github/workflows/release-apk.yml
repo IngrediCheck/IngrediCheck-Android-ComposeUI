@@ -91,6 +91,111 @@ jobs:
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x gradlew
 
+      - name: Auto-increment version code from Google Play
+        continue-on-error: true
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "Google Play service account not configured, skipping version code check"
+            exit 0
+          fi
+          
+          # Write service account JSON to file
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > /tmp/service_account.json
+          
+          # Install Python dependencies
+          python3 -m pip install --quiet google-api-python-client google-auth-httplib2 google-auth-oauthlib
+          
+          # Get latest version code from Google Play and update build.gradle.kts
+          python3 << 'EOF'
+          import json
+          import os
+          import re
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.errors import HttpError
+          
+          PACKAGE_NAME = "llc.fungee.IngrediCheck"
+          SERVICE_ACCOUNT_FILE = "/tmp/service_account.json"
+          
+          try:
+              credentials = service_account.Credentials.from_service_account_file(
+                  SERVICE_ACCOUNT_FILE,
+                  scopes=['https://www.googleapis.com/auth/androidpublisher']
+              )
+              
+              service = build('androidpublisher', 'v3', credentials=credentials)
+              
+              # Get all tracks to find the highest version code
+              max_version_code = 0
+              tracks = ['internal', 'alpha', 'beta', 'production']
+              
+              for track in tracks:
+                  try:
+                      edit = service.edits().insert(body={}, packageName=PACKAGE_NAME).execute()
+                      edit_id = edit['id']
+                      
+                      try:
+                          track_response = service.edits().tracks().get(
+                              packageName=PACKAGE_NAME,
+                              editId=edit_id,
+                              track=track
+                          ).execute()
+                          
+                          if 'releases' in track_response:
+                              for release in track_response['releases']:
+                                  if 'versionCodes' in release:
+                                      for vc in release['versionCodes']:
+                                          max_version_code = max(max_version_code, int(vc))
+                      except HttpError:
+                          pass
+                      
+                      service.edits().delete(packageName=PACKAGE_NAME, editId=edit_id).execute()
+                  except HttpError:
+                      continue
+              
+              new_version_code = max_version_code + 1
+              print(f"Latest version code: {max_version_code}")
+              print(f"New version code: {new_version_code}")
+              
+              # Update build.gradle.kts
+              gradle_file = "app/build.gradle.kts"
+              with open(gradle_file, 'r') as f:
+                  content = f.read()
+              
+              # Find and replace versionCode
+              pattern = r'versionCode\s*=\s*\d+'
+              replacement = f'versionCode = {new_version_code}'
+              new_content = re.sub(pattern, replacement, content)
+              
+              with open(gradle_file, 'w') as f:
+                  f.write(new_content)
+              
+              print(f"Updated {gradle_file} with version code {new_version_code}")
+              
+          except Exception as e:
+              print(f"Error querying Google Play API: {e}")
+              # Fallback: increment current version code by 1
+              gradle_file = "app/build.gradle.kts"
+              with open(gradle_file, 'r') as f:
+                  content = f.read()
+              
+              match = re.search(r'versionCode\s*=\s*(\d+)', content)
+              if match:
+                  current_version = int(match.group(1))
+                  new_version = current_version + 1
+                  new_content = re.sub(r'versionCode\s*=\s*\d+', f'versionCode = {new_version}', content)
+                  
+                  with open(gradle_file, 'w') as f:
+                      f.write(new_content)
+                  
+                  print(f"Fallback: Updated version code from {current_version} to {new_version}")
+              else:
+                  print("Could not find versionCode in build.gradle.kts")
+                  exit 1
+          EOF
+
       - name: Build release bundle
         run: ./gradlew bundleRelease
 
