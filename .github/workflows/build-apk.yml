@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    name: Assemble Release APK
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
