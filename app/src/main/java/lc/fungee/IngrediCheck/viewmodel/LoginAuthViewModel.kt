@@ -262,6 +262,7 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
