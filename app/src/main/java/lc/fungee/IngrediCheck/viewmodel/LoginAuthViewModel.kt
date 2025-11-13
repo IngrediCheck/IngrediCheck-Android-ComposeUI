@@ -15,7 +15,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.put
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.analytics.Analytics
+import lc.fungee.IngrediCheck.IngrediCheckApp
 
 sealed class AppleLoginState {
     object Idle : AppleLoginState()
@@ -61,6 +64,7 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(s)
                         userEmail = s.user?.email
                         userId = s.user?.id
+                        updateAnalyticsAndSupabase(s)
                         restoring = false
                         _isAuthChecked.value = true
                         return@launch
@@ -87,6 +91,7 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(current)
                         userEmail = current.user?.email
                         userId = current.user?.id
+                        updateAnalyticsAndSupabase(current)
                         isAppleLoading = false
                     } else {
                         _loginState.value = AppleLoginState.Idle
@@ -132,6 +137,7 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -171,6 +177,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -217,6 +224,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -254,6 +262,7 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -287,6 +296,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
+                        updateAnalyticsAndSupabase(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -355,6 +365,7 @@ class AppleAuthViewModel(
                             .edit()
                             .clear()
                             .apply()
+                        Analytics.resetAndRegister(AppConstants.isInternalEnabled(context))
                     },
                     onFailure = { exception ->
                         Log.e("AppleAuthViewModel", "Sign out failed", exception)
@@ -378,6 +389,7 @@ class AppleAuthViewModel(
                     .edit()
                     .clear()
                     .apply()
+                Analytics.resetAndRegister(AppConstants.isInternalEnabled(context))
             }
         }
     }
@@ -387,6 +399,36 @@ class AppleAuthViewModel(
         return repository.getCurrentSession()
     }
 
+    fun enableInternalMode(context: Context) {
+        AppConstants.setInternalEnabled(context, true)
+        Analytics.registerInternal(true)
+        val s = repository.getCurrentSession()
+        updateAnalyticsAndSupabase(s)
+    }
+
+    fun disableInternalMode(context: Context) {
+        AppConstants.setInternalEnabled(context, false)
+        Analytics.registerInternal(false)
+        val s = repository.getCurrentSession()
+        updateAnalyticsAndSupabase(s)
+    }
+
+    private fun updateAnalyticsAndSupabase(session: UserSession?) {
+        val ctx = IngrediCheckApp.appInstance
+        val isInternal = AppConstants.isInternalEnabled(ctx)
+        val distinctId = session?.user?.id
+        val email = session?.user?.email
+        Analytics.identifyAndRegister(distinctId, isInternal, email)
+        if (session != null) {
+            viewModelScope.launch {
+                try {
+                    repository.supabaseClient.auth.updateUser {
+                        data { put("is_internal", isInternal) }
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+    }
     // Google Web OAuth removed. Use native GoogleSignInClient to obtain an ID token,
     // then call signInWithGoogleIdToken(idToken, context)
 }

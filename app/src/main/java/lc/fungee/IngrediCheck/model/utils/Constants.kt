@@ -23,10 +23,12 @@ object AppConstants {
         // SharedPreferences file names
         const val USER_SESSION = "user_session"
         const val SUPABASE_SESSION = "supabase_session"
+        const val INTERNAL_FLAGS = "internal_flags"
 
         // Common keys inside SharedPreferences
         const val KEY_LOGIN_PROVIDER = "login_provider"
         const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
+        const val KEY_INTERNAL_MODE = "is_internal_user"
     }
 
     object Providers {
@@ -54,6 +56,22 @@ object AppConstants {
 
         val HOST: String?
             get() = Uri.parse(URL).host
+    }
+
+    fun isInternalEnabled(context: android.content.Context): Boolean {
+        return try {
+            context.getSharedPreferences(Prefs.INTERNAL_FLAGS, android.content.Context.MODE_PRIVATE)
+                .getBoolean(Prefs.KEY_INTERNAL_MODE, false)
+        } catch (_: Exception) { false }
+    }
+
+    fun setInternalEnabled(context: android.content.Context, enabled: Boolean) {
+        try {
+            context.getSharedPreferences(Prefs.INTERNAL_FLAGS, android.content.Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(Prefs.KEY_INTERNAL_MODE, enabled)
+                .apply()
+        } catch (_: Exception) { }
     }
 }
 

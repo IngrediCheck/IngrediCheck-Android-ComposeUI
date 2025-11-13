@@ -1,4 +1,4 @@
-﻿package lc.fungee.IngrediCheck.model.repository
+package lc.fungee.IngrediCheck.model.repository
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 import lc.fungee.IngrediCheck.model.entities.AppleAuthConfig
 
@@ -25,6 +25,7 @@ import lc.fungee.IngrediCheck.ui.view.screens.onboarding.AppleLoginWebViewActivi
 import lc.fungee.IngrediCheck.model.source.SharedPreferencesSessionManager
 import kotlin.time.ExperimentalTime
 import lc.fungee.IngrediCheck.model.repository.auth.AuthProvider
+ 
 
 @OptIn(ExperimentalTime::class)
 class LoginAuthRepository(
@@ -43,6 +44,8 @@ class LoginAuthRepository(
         install(Postgrest)
         install(Storage)
     }
+
+    
 
     fun hasStoredSession(): Boolean {
         return try {
