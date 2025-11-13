@@ -1,0 +1,76 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses and install packages
+        run: |
+          # Find sdkmanager in common locations
+          if [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDK_MANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          elif [ -f "$ANDROID_HOME/cmdline-tools/bin/sdkmanager" ]; then
+            SDK_MANAGER="$ANDROID_HOME/cmdline-tools/bin/sdkmanager"
+          elif [ -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDK_MANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          else
+            echo "Error: sdkmanager not found"
+            exit 1
+          fi
+          echo "Using sdkmanager at: $SDK_MANAGER"
+          
+          # Accept all licenses first
+          yes | "$SDK_MANAGER" --licenses
+          
+          # Install packages separately (as per Stack Overflow solution)
+          # Install platform-tools first
+          yes | "$SDK_MANAGER" "platform-tools"
+          # Install Android API 35
+          yes | "$SDK_MANAGER" "platforms;android-35"
+          # Install build-tools
+          yes | "$SDK_MANAGER" "build-tools;35.0.0"
+          # Install Android API 36
+          yes | "$SDK_MANAGER" "platforms;android-36"
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x gradlew
+
+      - name: Assemble release APK
+        run: ./gradlew assembleRelease
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/*.apk
+
