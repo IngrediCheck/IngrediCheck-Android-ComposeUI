@@ -112,27 +112,44 @@ jobs:
       - name: Build release bundle
         run: ./gradlew bundleRelease
 
-      - name: Decode keystore (if provided)
-        continue-on-error: true
+      - name: Decode keystore
         run: |
+          if [ -z "${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: ANDROID_SIGNING_KEYSTORE_BASE64 secret is missing. Signing secrets are required for release builds." >&2
+            exit 1
+          fi
           echo "${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+          if [ ! -f "release.keystore" ] || [ ! -s "release.keystore" ]; then
+            echo "ERROR: Failed to decode keystore. The secret may be invalid." >&2
+            exit 1
+          fi
 
-      - name: Sign AAB (if secrets present)
-        continue-on-error: true
+      - name: Sign AAB
         env:
           KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
         run: |
-          AAB_PATH=$(ls app/build/outputs/bundle/release/*.aab | head -n 1)
-          if [ -z "$AAB_PATH" ]; then
-            echo "No AAB produced at app/build/outputs/bundle/release." >&2
+          # Validate all signing secrets are present
+          if [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ] || [ -z "$STORE_PASSWORD" ]; then
+            echo "ERROR: One or more signing secrets are missing:" >&2
+            echo "  - ANDROID_SIGNING_KEY_ALIAS: $([ -z "$KEY_ALIAS" ] && echo 'MISSING' || echo 'present')" >&2
+            echo "  - ANDROID_SIGNING_KEY_PASSWORD: $([ -z "$KEY_PASSWORD" ] && echo 'MISSING' || echo 'present')" >&2
+            echo "  - ANDROID_SIGNING_KEYSTORE_PASSWORD: $([ -z "$STORE_PASSWORD" ] && echo 'MISSING' || echo 'present')" >&2
             exit 1
           fi
+          
           if [ ! -f "release.keystore" ]; then
-            echo "Keystore not found, skipping signing"
-            exit 0
+            echo "ERROR: Keystore file not found. Decode keystore step must have failed." >&2
+            exit 1
           fi
+          
+          AAB_PATH=$(ls app/build/outputs/bundle/release/*.aab | head -n 1)
+          if [ -z "$AAB_PATH" ]; then
+            echo "ERROR: No AAB produced at app/build/outputs/bundle/release." >&2
+            exit 1
+          fi
+          
           # Sign AAB using jarsigner
           jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore release.keystore \
@@ -140,8 +157,14 @@ jobs:
             -keypass "$KEY_PASSWORD" \
             "$AAB_PATH" \
             "$KEY_ALIAS"
+          
           # Verify the signature
           jarsigner -verify -verbose -certs "$AAB_PATH"
+          if [ $? -ne 0 ]; then
+            echo "ERROR: Signature verification failed." >&2
+            exit 1
+          fi
+          echo "✓ AAB signed and verified successfully"
 
       - name: Set release variables
         id: release_vars
