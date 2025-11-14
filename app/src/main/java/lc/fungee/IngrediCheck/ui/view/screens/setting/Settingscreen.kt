@@ -89,6 +89,12 @@ fun SettingScreen(
     var isDeleteAccountLoading by remember { mutableStateOf(false) }
     var showDeleteGuestDialog by remember { mutableStateOf(false) }
     var confirmAction by remember { mutableStateOf(ConfirmAction.NONE) }
+
+    val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+
+    val versionName = packageInfo.versionName
+    val versionCode = packageInfo.longVersionCode
+
     fun clearWebCookies() {
         try {
             CookieManager.getInstance().removeAllCookies(null)
@@ -241,7 +247,7 @@ fun SettingScreen(
             }
 
             IconRow(
-                "IngrediCheck for Android 1.0.0.(4)",
+                "IngrediCheck for Android $versionName($versionCode)",
                 R.drawable.rectangle_34624324__1_,
 //                null,
                 showDivider = false,
