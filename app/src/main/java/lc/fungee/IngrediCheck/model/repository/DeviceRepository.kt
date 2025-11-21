@@ -47,19 +47,32 @@ class DeviceRepository(
         val url = "$functionsBaseUrl/${SafeEatsEndpoint.DEVICES_REGISTER.format()}"
         val payload = buildJsonObject {
             put("deviceId", deviceId)
-            put("isInternal", isInternal)
+            put("markInternal", isInternal)
         }
         val request = authRequest(url, token)
             .post(payload.toString().toRequestBody(mediaTypeJson))
             .build()
 
         client.newCall(request).execute().use { resp ->
-            val bodyPreview = resp.body?.string().orEmpty()
-            Log.d("DeviceRepository", "registerDevice code=${resp.code}, body=${bodyPreview.take(200)}")
-            if (resp.code !in listOf(200, 201, 204)) {
-                throw Exception("Failed to register device: ${resp.code}")
+            val body = resp.body?.string().orEmpty()
+            Log.d("DeviceRepository", "registerDevice code=${resp.code}, body=${body.take(200)}")
+
+            when (resp.code) {
+                200 -> {
+                    // Success - device registered, optionally parse is_internal from response
+                    true
+                }
+                400 -> {
+                    Log.e("DeviceRepository", "Invalid device registration request")
+                    throw Exception("Invalid device ID or request format")
+                }
+                401 -> {
+                    throw Exception("Authentication required")
+                }
+                else -> {
+                    throw Exception("Failed to register device: ${resp.code}")
+                }
             }
-            true
         }
     }
 
@@ -74,12 +87,33 @@ class DeviceRepository(
             .build()
 
         client.newCall(request).execute().use { resp ->
-            val bodyPreview = resp.body?.string().orEmpty()
-            Log.d("DeviceRepository", "markDeviceInternal code=${resp.code}, body=${bodyPreview.take(200)}")
-            if (resp.code !in listOf(200, 201, 204)) {
-                throw Exception("Failed to mark device internal: ${resp.code}")
+            val body = resp.body?.string().orEmpty()
+            Log.d("DeviceRepository", "markDeviceInternal code=${resp.code}, body=${body.take(200)}")
+
+            when (resp.code) {
+                200 -> {
+                    // Success - device marked as internal
+                    true
+                }
+                400 -> {
+                    Log.e("DeviceRepository", "Invalid request to mark device internal")
+                    throw Exception("Invalid device ID or request format")
+                }
+                401 -> {
+                    throw Exception("Authentication required")
+                }
+                403 -> {
+                    Log.e("DeviceRepository", "Device ownership verification failed")
+                    throw Exception("Device does not belong to the authenticated user")
+                }
+                404 -> {
+                    Log.e("DeviceRepository", "Device not registered")
+                    throw Exception("Device not found. Please register first.")
+                }
+                else -> {
+                    throw Exception("Failed to mark device internal: ${resp.code}")
+                }
             }
-            true
         }
     }
 
@@ -94,24 +128,31 @@ class DeviceRepository(
         client.newCall(request).execute().use { resp ->
             val body = resp.body?.string().orEmpty()
             Log.d("DeviceRepository", "isDeviceInternal code=${resp.code}, body=${body.take(200)}")
-            if (resp.code !in listOf(200, 201, 204)) {
-                throw Exception("Failed to fetch device status: ${resp.code}")
-            }
-            if (body.isBlank()) {
-                false
-            } else {
-                val element = runCatching { json.parseToJsonElement(body) }.getOrNull()
-                element
-                    ?.jsonObject
-                    ?.get("isInternal")
-                    ?.jsonPrimitive
-                    ?.booleanOrNull
-                    ?: element
+
+            when (resp.code) {
+                200 -> {
+                    // Success - parse JSON response
+                    val element = runCatching { json.parseToJsonElement(body) }.getOrNull()
+                    element
                         ?.jsonObject
                         ?.get("is_internal")
                         ?.jsonPrimitive
                         ?.booleanOrNull
-                    ?: false
+                        ?: false
+                }
+                404 -> {
+                    // Device not registered - treat as not internal
+                    Log.d("DeviceRepository", "Device not registered, treating as not internal")
+                    false
+                }
+                403 -> {
+                    // Device doesn't belong to user - security issue
+                    Log.e("DeviceRepository", "Device ownership verification failed")
+                    throw Exception("Device does not belong to the authenticated user")
+                }
+                else -> {
+                    throw Exception("Failed to fetch device status: ${resp.code}")
+                }
             }
         }
     }
