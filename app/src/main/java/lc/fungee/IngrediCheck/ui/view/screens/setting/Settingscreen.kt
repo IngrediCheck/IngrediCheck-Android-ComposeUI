@@ -81,8 +81,6 @@ fun SettingScreen(
     var internalEnabled by remember { mutableStateOf(AppConstants.isInternalEnabled(context)) }
     var versionTapCount by remember { mutableStateOf(0) }
     var tapResetJob by remember { mutableStateOf<Job?>(null) }
-    var internalTapCount by remember { mutableStateOf(0) }
-    var internalTapResetJob by remember { mutableStateOf<Job?>(null) }
     var isSignOutLoading by remember { mutableStateOf(false) }
     var isResetLoading by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -217,34 +215,6 @@ fun SettingScreen(
                 R.drawable.meteor_icons_lock,
 //                R.drawable.rightbackbutton
             ) { selectedUrl = AppConstants.Website.PRIVACY }
-
-            if (internalEnabled) {
-                IconRow(
-                    "Internal Mode Enabled",
-                    R.drawable.fluent_warning_20_regular,
-                    tint = AppColors.Brand,
-                    tint2 = AppColors.Brand,
-                    showDivider = true,
-                    showArrow = false,
-                    onClick = {
-                        internalTapCount += 1
-                        if (internalTapCount == 1) {
-                            internalTapResetJob?.cancel()
-                            internalTapResetJob = coroutineScope.launch {
-                                delay(1500)
-                                internalTapCount = 0
-                            }
-                        }
-                        if (internalTapCount >= 7) {
-                            internalTapCount = 0
-                            internalTapResetJob?.cancel()
-                            viewModel.disableInternalMode(context)
-                            internalEnabled = false
-                            Toast.makeText(context, "Internal Mode Disabled", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
-            }
 
             IconRow(
                 "IngrediCheck for Android $versionName($versionCode)",

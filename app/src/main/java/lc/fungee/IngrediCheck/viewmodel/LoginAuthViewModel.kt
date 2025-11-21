@@ -420,10 +420,6 @@ class AppleAuthViewModel(
         }
     }
 
-    fun disableInternalMode(context: Context) {
-        setInternalUser(false, repository.getCurrentSession())
-    }
-
     fun setInternalUser(value: Boolean, session: UserSession? = repository.getCurrentSession()) {
         val ctx = IngrediCheckApp.appInstance
         AppConstants.setInternalEnabled(ctx, value)
