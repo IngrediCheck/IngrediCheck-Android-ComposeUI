@@ -273,6 +273,10 @@ fun SettingScreen(
 
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshDeviceInternalStatus { internalEnabled = it }
+    }
+
 
     if (confirmAction != ConfirmAction.NONE) {
         var title = ""

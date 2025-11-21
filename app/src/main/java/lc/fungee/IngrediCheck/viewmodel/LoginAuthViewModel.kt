@@ -3,6 +3,8 @@ import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ApplicationInfo
+import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.put
+import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.analytics.Analytics
 import lc.fungee.IngrediCheck.IngrediCheckApp
@@ -29,7 +32,8 @@ sealed class AppleLoginState {
 }
 
 class AppleAuthViewModel(
-    private val repository: LoginAuthRepository
+    private val repository: LoginAuthRepository,
+    private val deviceRepository: DeviceRepository
 ) : ViewModel() {
     var userEmail by mutableStateOf<String?>(null)
         private set
@@ -138,6 +142,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         updateAnalyticsAndSupabase(session)
+                        registerDeviceAfterLogin(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -178,6 +183,7 @@ class AppleAuthViewModel(
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
+                        registerDeviceAfterLogin(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -225,6 +231,7 @@ class AppleAuthViewModel(
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
+                        registerDeviceAfterLogin(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -263,6 +270,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         updateAnalyticsAndSupabase(session)
+                        registerDeviceAfterLogin(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -297,6 +305,7 @@ class AppleAuthViewModel(
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
+                        registerDeviceAfterLogin(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -400,17 +409,62 @@ class AppleAuthViewModel(
     }
 
     fun enableInternalMode(context: Context) {
-        AppConstants.setInternalEnabled(context, true)
-        Analytics.registerInternal(true)
-        val s = repository.getCurrentSession()
-        updateAnalyticsAndSupabase(s)
+        val deviceId = AppConstants.getDeviceId(context.applicationContext)
+        viewModelScope.launch {
+            runCatching {
+                deviceRepository.markDeviceInternal(deviceId)
+                setInternalUser(true, repository.getCurrentSession())
+            }.onFailure {
+                Log.e("AppleAuthViewModel", "Failed to enable internal mode", it)
+            }
+        }
     }
 
     fun disableInternalMode(context: Context) {
-        AppConstants.setInternalEnabled(context, false)
-        Analytics.registerInternal(false)
-        val s = repository.getCurrentSession()
-        updateAnalyticsAndSupabase(s)
+        setInternalUser(false, repository.getCurrentSession())
+    }
+
+    fun setInternalUser(value: Boolean, session: UserSession? = repository.getCurrentSession()) {
+        val ctx = IngrediCheckApp.appInstance
+        AppConstants.setInternalEnabled(ctx, value)
+        Analytics.registerInternal(value)
+        updateAnalyticsAndSupabase(session)
+    }
+
+    private fun registerDeviceAfterLogin(session: UserSession) {
+        viewModelScope.launch {
+            val ctx = IngrediCheckApp.appInstance
+            val deviceId = AppConstants.getDeviceId(ctx)
+            val cachedInternal = AppConstants.isInternalEnabled(ctx)
+            val shouldForceInternal = isDebugBuildOrEmulator(ctx)
+            val registerAsInternal = shouldForceInternal || cachedInternal
+
+            runCatching {
+                deviceRepository.registerDevice(deviceId, registerAsInternal)
+                if (shouldForceInternal && !cachedInternal) {
+                    setInternalUser(true, session)
+                }
+            }.onFailure {
+                Log.e("AppleAuthViewModel", "Failed to register device", it)
+            }
+        }
+    }
+
+    private fun isDebugBuildOrEmulator(context: Context): Boolean {
+        val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebuggable) return true
+        val fingerprint = Build.FINGERPRINT.lowercase()
+        val model = Build.MODEL.lowercase()
+        val product = Build.PRODUCT.lowercase()
+        val hardware = Build.HARDWARE.lowercase()
+        return fingerprint.contains("generic") ||
+                fingerprint.contains("unknown") ||
+                model.contains("emulator") ||
+                model.contains("android sdk built for x86") ||
+                product.contains("sdk") ||
+                product.contains("emulator") ||
+                hardware.contains("goldfish") ||
+                hardware.contains("ranchu")
     }
 
     private fun updateAnalyticsAndSupabase(session: UserSession?) {
@@ -426,6 +480,20 @@ class AppleAuthViewModel(
                         data { put("is_internal", isInternal) }
                     }
                 } catch (_: Exception) { }
+            }
+        }
+    }
+
+    fun refreshDeviceInternalStatus(onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val ctx = IngrediCheckApp.appInstance
+            val deviceId = AppConstants.getDeviceId(ctx)
+            runCatching {
+                val isInternal = deviceRepository.isDeviceInternal(deviceId)
+                setInternalUser(isInternal, repository.getCurrentSession())
+                onResult(isInternal)
+            }.onFailure {
+                Log.e("AppleAuthViewModel", "Failed to refresh device internal status", it)
             }
         }
     }

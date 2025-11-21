@@ -1,6 +1,8 @@
 package lc.fungee.IngrediCheck.model.utils
 
 import android.net.Uri
+import android.provider.Settings
+import java.util.UUID
 import lc.fungee.IngrediCheck.model.AuthEnv
 
 /**
@@ -29,6 +31,7 @@ object AppConstants {
         const val KEY_LOGIN_PROVIDER = "login_provider"
         const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
         const val KEY_INTERNAL_MODE = "is_internal_user"
+        const val KEY_DEVICE_ID = "device_id"
     }
 
     object Providers {
@@ -72,6 +75,22 @@ object AppConstants {
                 .putBoolean(Prefs.KEY_INTERNAL_MODE, enabled)
                 .apply()
         } catch (_: Exception) { }
+    }
+
+    fun getDeviceId(context: android.content.Context): String {
+        val prefs = context.getSharedPreferences(Prefs.INTERNAL_FLAGS, android.content.Context.MODE_PRIVATE)
+        val cached = prefs.getString(Prefs.KEY_DEVICE_ID, null)
+        if (!cached.isNullOrBlank()) {
+            return cached
+        }
+
+        val androidId = runCatching {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        }.getOrNull()
+
+        val resolved = androidId?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        prefs.edit().putString(Prefs.KEY_DEVICE_ID, resolved).apply()
+        return resolved
     }
 }
 
