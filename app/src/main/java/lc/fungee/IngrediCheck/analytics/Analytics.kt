@@ -152,24 +152,20 @@ object Analytics {
         PostHog.capture(event = "Image Captured", properties = mapOf("time" to epochSeconds))
     }
 
-    fun identifyAndRegister(distinctId: String?, isInternal: Boolean, email: String? = null) {
-        if (!distinctId.isNullOrBlank()) {
-            val props = mutableMapOf<String, Any>("is_internal" to isInternal)
-            if (!email.isNullOrBlank()) props["email"] = email
-            PostHog.identify(
-                distinctId = distinctId,
-                userProperties = props
-            )
-        }
+    // Call once when user logs in to link events to user
+    fun identify(userId: String, email: String? = null) {
+        val props = mutableMapOf<String, Any>()
+        if (!email.isNullOrBlank()) props["email"] = email
+        PostHog.identify(distinctId = userId, userProperties = props)
+    }
+
+    // Call when we get is_internal from server
+    fun setInternal(isInternal: Boolean) {
         PostHog.register("is_internal", isInternal)
     }
 
-    fun registerInternal(isInternal: Boolean) {
-        PostHog.register("is_internal", isInternal)
-    }
-
-    fun resetAndRegister(isInternal: Boolean) {
+    // Call on logout
+    fun reset() {
         PostHog.reset()
-        PostHog.register("is_internal", isInternal)
     }
 }

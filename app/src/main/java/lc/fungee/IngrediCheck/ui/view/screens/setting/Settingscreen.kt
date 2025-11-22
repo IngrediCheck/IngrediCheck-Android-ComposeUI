@@ -28,6 +28,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 import android.widget.Toast
+import android.util.Log
 
 enum class ConfirmAction {
     NONE, DELETE_ACCOUNT, RESET_GUEST
@@ -78,11 +80,9 @@ fun SettingScreen(
     val isGuest = loginProvider.isNullOrBlank() || loginProvider == AppConstants.Providers.ANONYMOUS
     val coroutineScope = rememberCoroutineScope()
     var showSignOutDialog by remember { mutableStateOf(false) }
-    var internalEnabled by remember { mutableStateOf(AppConstants.isInternalEnabled(context)) }
+    val internalEnabled by viewModel.effectiveInternalModeFlow.collectAsState()
     var versionTapCount by remember { mutableStateOf(0) }
     var tapResetJob by remember { mutableStateOf<Job?>(null) }
-    var internalTapCount by remember { mutableStateOf(0) }
-    var internalTapResetJob by remember { mutableStateOf<Job?>(null) }
     var isSignOutLoading by remember { mutableStateOf(false) }
     var isResetLoading by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -224,25 +224,8 @@ fun SettingScreen(
                     R.drawable.fluent_warning_20_regular,
                     tint = AppColors.Brand,
                     tint2 = AppColors.Brand,
-                    showDivider = true,
                     showArrow = false,
-                    onClick = {
-                        internalTapCount += 1
-                        if (internalTapCount == 1) {
-                            internalTapResetJob?.cancel()
-                            internalTapResetJob = coroutineScope.launch {
-                                delay(1500)
-                                internalTapCount = 0
-                            }
-                        }
-                        if (internalTapCount >= 7) {
-                            internalTapCount = 0
-                            internalTapResetJob?.cancel()
-                            viewModel.disableInternalMode(context)
-                            internalEnabled = false
-                            Toast.makeText(context, "Internal Mode Disabled", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    onClick = { /* No action */ }
                 )
             }
 
@@ -264,13 +247,16 @@ fun SettingScreen(
                         versionTapCount = 0
                         tapResetJob?.cancel()
                         viewModel.enableInternalMode(context)
-                        internalEnabled = true
                         Toast.makeText(context, "Internal Mode Enabled", Toast.LENGTH_SHORT).show()
                     }
                 }
             )
         }
 
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshDeviceInternalStatus()
     }
 
 

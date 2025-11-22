@@ -1,6 +1,8 @@
 package lc.fungee.IngrediCheck.model.utils
 
 import android.net.Uri
+import android.provider.Settings
+import java.util.UUID
 import lc.fungee.IngrediCheck.model.AuthEnv
 
 /**
@@ -28,7 +30,7 @@ object AppConstants {
         // Common keys inside SharedPreferences
         const val KEY_LOGIN_PROVIDER = "login_provider"
         const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
-        const val KEY_INTERNAL_MODE = "is_internal_user"
+        const val KEY_DEVICE_ID = "device_id"
     }
 
     object Providers {
@@ -58,20 +60,18 @@ object AppConstants {
             get() = Uri.parse(URL).host
     }
 
-    fun isInternalEnabled(context: android.content.Context): Boolean {
-        return try {
-            context.getSharedPreferences(Prefs.INTERNAL_FLAGS, android.content.Context.MODE_PRIVATE)
-                .getBoolean(Prefs.KEY_INTERNAL_MODE, false)
-        } catch (_: Exception) { false }
-    }
+    fun getDeviceId(context: android.content.Context): String {
+        val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        require(!androidId.isNullOrBlank()) { "ANDROID_ID unavailable" }
 
-    fun setInternalEnabled(context: android.content.Context, enabled: Boolean) {
-        try {
-            context.getSharedPreferences(Prefs.INTERNAL_FLAGS, android.content.Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(Prefs.KEY_INTERNAL_MODE, enabled)
-                .apply()
-        } catch (_: Exception) { }
+        // Already RFC4122? Use it as-is.
+        runCatching { UUID.fromString(androidId) }.getOrNull()?.let { return it.toString() }
+
+        val hex = androidId.filter { it.isDigit() || it.lowercaseChar() in 'a'..'f' }
+        require(hex.length % 2 == 0) { "ANDROID_ID must have even number of hex chars" }
+
+        val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        return UUID.nameUUIDFromBytes(bytes).toString()
     }
 }
 
