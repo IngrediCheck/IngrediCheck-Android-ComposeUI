@@ -75,8 +75,7 @@ class MainActivity : ComponentActivity() {
         )
         val deviceRepository = DeviceRepository(
             supabaseClient = repository.supabaseClient,
-            functionsBaseUrl = AppConstants.Functions.base,
-            anonKey = supabaseAnonKey
+            functionsBaseUrl = AppConstants.Functions.base
         )
         val vmFactory = LoginAuthViewModelFactory(repository, deviceRepository)
         authViewModel = ViewModelProvider(this, vmFactory)

@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit
 class DeviceRepository(
     private val supabaseClient: SupabaseClient,
     private val functionsBaseUrl: String,
-    private val anonKey: String,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -41,7 +40,6 @@ class DeviceRepository(
         return Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
-            .addHeader("apikey", anonKey)
     }
 
     /**
