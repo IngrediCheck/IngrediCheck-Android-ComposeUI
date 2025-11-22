@@ -81,7 +81,7 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(s)
                         userEmail = s.user?.email
                         userId = s.user?.id
-                        updateAnalytics(s)
+                        s.user?.id?.let { Analytics.identify(it, s.user?.email) }
                         registerDeviceAfterLogin(s)
                         restoring = false
                         _isAuthChecked.value = true
@@ -109,10 +109,10 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(current)
                         userEmail = current.user?.email
                         userId = current.user?.id
-                        updateAnalytics(current)
                         // Centralized device registration: triggered here for all login methods
                         val isAuthenticated = status::class.simpleName == "Authenticated"
                         if (isAuthenticated && !deviceRegistrationCompleted) {
+                            current.user?.id?.let { Analytics.identify(it, current.user?.email) }
                             registerDeviceAfterLogin(current)
                         }
                         isAppleLoading = false
@@ -160,7 +160,6 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
-                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -200,7 +199,6 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
-                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -247,7 +245,6 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
-                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -285,7 +282,6 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
-                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -319,7 +315,6 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
-                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -391,7 +386,7 @@ class AppleAuthViewModel(
                         serverInternalMode = false
                         deviceRegistrationCompleted = false
                         deviceRegistrationInProgress = false
-                        Analytics.resetAndRegister(effectiveInternalMode(context))
+                        Analytics.reset()
                     },
                     onFailure = { exception ->
                         Log.e("AppleAuthViewModel", "Sign out failed", exception)
@@ -418,7 +413,7 @@ class AppleAuthViewModel(
                 serverInternalMode = false
                 deviceRegistrationCompleted = false
                 deviceRegistrationInProgress = false
-                Analytics.resetAndRegister(effectiveInternalMode(context))
+                Analytics.reset()
             }
         }
     }
@@ -433,20 +428,19 @@ class AppleAuthViewModel(
         viewModelScope.launch {
             runCatching {
                 deviceRepository.markDeviceInternal(deviceId)
-                setInternalUser(true, repository.getCurrentSession())
+                setInternalUser(true)
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to enable internal mode", it)
             }
         }
     }
 
-    fun setInternalUser(value: Boolean, session: UserSession? = repository.getCurrentSession()) {
+    fun setInternalUser(value: Boolean) {
         serverInternalMode = value
         val ctx = IngrediCheckApp.appInstance
         val effective = effectiveInternalMode(ctx)
         _effectiveInternalMode.value = effective
-        Analytics.registerInternal(effective)
-        updateAnalytics(session)
+        Analytics.setInternal(effective)
     }
 
     private fun registerDeviceAfterLogin(session: UserSession) {
@@ -461,7 +455,7 @@ class AppleAuthViewModel(
             runCatching {
                 val isInternal = deviceRepository.registerDevice(deviceId, markInternal)
                 deviceRegistrationCompleted = true
-                setInternalUser(isInternal, session)
+                setInternalUser(isInternal)
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to register device", it)
             }.also {
@@ -487,14 +481,6 @@ class AppleAuthViewModel(
                 hardware.contains("ranchu")
     }
 
-    private fun updateAnalytics(session: UserSession?) {
-        val ctx = IngrediCheckApp.appInstance
-        val isInternal = effectiveInternalMode(ctx)
-        val distinctId = session?.user?.id
-        val email = session?.user?.email
-        Analytics.identifyAndRegister(distinctId, isInternal, email)
-    }
-
     fun refreshDeviceInternalStatus(onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             val ctx = IngrediCheckApp.appInstance
@@ -503,7 +489,7 @@ class AppleAuthViewModel(
                 val isInternal = deviceRepository.isDeviceInternal(deviceId)
                 deviceRegistrationCompleted = true
                 deviceRegistrationInProgress = false
-                setInternalUser(isInternal, repository.getCurrentSession())
+                setInternalUser(isInternal)
                 onResult(effectiveInternalMode(ctx))
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to refresh device internal status", it)
