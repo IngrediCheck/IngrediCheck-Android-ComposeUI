@@ -457,17 +457,12 @@ class AppleAuthViewModel(
         viewModelScope.launch {
             val ctx = IngrediCheckApp.appInstance
             val deviceId = AppConstants.getDeviceId(ctx)
-            val shouldForceInternal = isDebugBuildOrEmulator(ctx)
-            if (shouldForceInternal) {
-                setInternalUser(true, session)
-            }
+            val markInternal = isDebugBuildOrEmulator(ctx)
 
             runCatching {
-                deviceRepository.registerDevice(deviceId, shouldForceInternal)
+                val isInternal = deviceRepository.registerDevice(deviceId, markInternal)
                 deviceRegistrationCompleted = true
-                if (!shouldForceInternal) {
-                    refreshDeviceInternalStatus()
-                }
+                setInternalUser(isInternal, session)
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to register device", it)
             }.also {

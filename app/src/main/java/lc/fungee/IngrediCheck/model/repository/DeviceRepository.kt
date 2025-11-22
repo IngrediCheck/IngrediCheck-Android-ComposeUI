@@ -42,12 +42,15 @@ class DeviceRepository(
             .addHeader("apikey", anonKey)
     }
 
-    suspend fun registerDevice(deviceId: String, isInternal: Boolean): Boolean = withContext(Dispatchers.IO) {
+    /**
+     * Registers the device and returns the is_internal status from the server response.
+     */
+    suspend fun registerDevice(deviceId: String, markInternal: Boolean): Boolean = withContext(Dispatchers.IO) {
         val token = authToken()
         val url = "$functionsBaseUrl/${SafeEatsEndpoint.DEVICES_REGISTER.format()}"
         val payload = buildJsonObject {
             put("deviceId", deviceId)
-            put("markInternal", isInternal)
+            put("markInternal", markInternal)
         }
         val request = authRequest(url, token)
             .post(payload.toString().toRequestBody(mediaTypeJson))
@@ -55,12 +58,17 @@ class DeviceRepository(
 
         client.newCall(request).execute().use { resp ->
             val body = resp.body?.string().orEmpty()
-            Log.d("DeviceRepository", "registerDevice code=${resp.code}, body=${body.take(200)}")
 
             when (resp.code) {
                 200 -> {
-                    // Success - device registered, optionally parse is_internal from response
-                    true
+                    // Parse is_internal from response
+                    val element = runCatching { json.parseToJsonElement(body) }.getOrNull()
+                    element
+                        ?.jsonObject
+                        ?.get("is_internal")
+                        ?.jsonPrimitive
+                        ?.booleanOrNull
+                        ?: markInternal // fallback to requested value if parsing fails
                 }
                 400 -> {
                     Log.e("DeviceRepository", "Invalid device registration request")
