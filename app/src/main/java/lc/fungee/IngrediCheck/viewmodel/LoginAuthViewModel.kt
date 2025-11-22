@@ -17,7 +17,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.put
 import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.analytics.Analytics
@@ -82,7 +81,7 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(s)
                         userEmail = s.user?.email
                         userId = s.user?.id
-                        updateAnalyticsAndSupabase(s)
+                        updateAnalytics(s)
                         registerDeviceAfterLogin(s)
                         restoring = false
                         _isAuthChecked.value = true
@@ -110,7 +109,7 @@ class AppleAuthViewModel(
                         _loginState.value = AppleLoginState.Success(current)
                         userEmail = current.user?.email
                         userId = current.user?.id
-                        updateAnalyticsAndSupabase(current)
+                        updateAnalytics(current)
                         // Centralized device registration: triggered here for all login methods
                         val isAuthenticated = status::class.simpleName == "Authenticated"
                         if (isAuthenticated && !deviceRegistrationCompleted) {
@@ -161,7 +160,7 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
-                        updateAnalyticsAndSupabase(session)
+                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -201,7 +200,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
-                        updateAnalyticsAndSupabase(session)
+                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -248,7 +247,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
-                        updateAnalyticsAndSupabase(session)
+                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -286,7 +285,7 @@ class AppleAuthViewModel(
                             .apply()
                         userEmail = session.user?.email
                         userId = session.user?.id
-                        updateAnalyticsAndSupabase(session)
+                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -320,7 +319,7 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email ?: "anonymous@example.com"
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
-                        updateAnalyticsAndSupabase(session)
+                        updateAnalytics(session)
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -447,7 +446,7 @@ class AppleAuthViewModel(
         val effective = effectiveInternalMode(ctx)
         _effectiveInternalMode.value = effective
         Analytics.registerInternal(effective)
-        updateAnalyticsAndSupabase(session)
+        updateAnalytics(session)
     }
 
     private fun registerDeviceAfterLogin(session: UserSession) {
@@ -488,21 +487,12 @@ class AppleAuthViewModel(
                 hardware.contains("ranchu")
     }
 
-    private fun updateAnalyticsAndSupabase(session: UserSession?) {
+    private fun updateAnalytics(session: UserSession?) {
         val ctx = IngrediCheckApp.appInstance
         val isInternal = effectiveInternalMode(ctx)
         val distinctId = session?.user?.id
         val email = session?.user?.email
         Analytics.identifyAndRegister(distinctId, isInternal, email)
-        if (session != null) {
-            viewModelScope.launch {
-                try {
-                    repository.supabaseClient.auth.updateUser {
-                        data { put("is_internal", isInternal) }
-                    }
-                } catch (_: Exception) { }
-            }
-        }
     }
 
     fun refreshDeviceInternalStatus(onResult: (Boolean) -> Unit = {}) {
