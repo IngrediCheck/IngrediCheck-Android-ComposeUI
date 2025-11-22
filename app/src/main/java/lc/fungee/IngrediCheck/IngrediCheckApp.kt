@@ -1,11 +1,12 @@
 package lc.fungee.IngrediCheck
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
+import android.os.Build
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 import lc.fungee.IngrediCheck.di.AppContainer
 import com.posthog.PostHog
-import lc.fungee.IngrediCheck.model.utils.AppConstants
 
 class IngrediCheckApp : Application() {
     lateinit var container: AppContainer
@@ -33,8 +34,23 @@ class IngrediCheckApp : Application() {
         }
 
         PostHogAndroid.setup(this, config)
-        val internal = AppConstants.isInternalEnabled(this)
-        PostHog.register("is_internal", internal)
+        PostHog.register("is_internal", defaultInternalFlag())
+    }
+
+    private fun defaultInternalFlag(): Boolean {
+        if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) return true
+        val fingerprint = Build.FINGERPRINT.lowercase()
+        val model = Build.MODEL.lowercase()
+        val product = Build.PRODUCT.lowercase()
+        val hardware = Build.HARDWARE.lowercase()
+        return fingerprint.contains("generic") ||
+                fingerprint.contains("unknown") ||
+                model.contains("emulator") ||
+                model.contains("android sdk built for x86") ||
+                product.contains("sdk") ||
+                product.contains("emulator") ||
+                hardware.contains("goldfish") ||
+                hardware.contains("ranchu")
     }
 
     companion object {

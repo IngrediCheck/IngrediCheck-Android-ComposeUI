@@ -28,6 +28,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import lc.fungee.IngrediCheck.model.utils.AppConstants
 import android.widget.Toast
+import android.util.Log
 
 enum class ConfirmAction {
     NONE, DELETE_ACCOUNT, RESET_GUEST
@@ -78,7 +80,7 @@ fun SettingScreen(
     val isGuest = loginProvider.isNullOrBlank() || loginProvider == AppConstants.Providers.ANONYMOUS
     val coroutineScope = rememberCoroutineScope()
     var showSignOutDialog by remember { mutableStateOf(false) }
-    var internalEnabled by remember { mutableStateOf(AppConstants.isInternalEnabled(context)) }
+    val internalEnabled by viewModel.effectiveInternalModeFlow.collectAsState()
     var versionTapCount by remember { mutableStateOf(0) }
     var tapResetJob by remember { mutableStateOf<Job?>(null) }
     var isSignOutLoading by remember { mutableStateOf(false) }
@@ -216,6 +218,17 @@ fun SettingScreen(
 //                R.drawable.rightbackbutton
             ) { selectedUrl = AppConstants.Website.PRIVACY }
 
+            if (internalEnabled) {
+                IconRow(
+                    "Internal Mode Enabled",
+                    R.drawable.fluent_warning_20_regular,
+                    tint = AppColors.Brand,
+                    tint2 = AppColors.Brand,
+                    showArrow = false,
+                    onClick = { /* No action */ }
+                )
+            }
+
             IconRow(
                 "IngrediCheck for Android $versionName($versionCode)",
                 R.drawable.rectangle_34624324__1_,
@@ -234,7 +247,6 @@ fun SettingScreen(
                         versionTapCount = 0
                         tapResetJob?.cancel()
                         viewModel.enableInternalMode(context)
-                        internalEnabled = true
                         Toast.makeText(context, "Internal Mode Enabled", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -244,7 +256,7 @@ fun SettingScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.refreshDeviceInternalStatus { internalEnabled = it }
+        viewModel.refreshDeviceInternalStatus()
     }
 
 
