@@ -1,6 +1,8 @@
 package lc.fungee.IngrediCheck.model.repository
 
 import android.util.Log
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -17,7 +19,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 class DeviceRepository(
-    private val preferenceRepository: PreferenceRepository,
+    private val supabaseClient: SupabaseClient,
     private val functionsBaseUrl: String,
     private val anonKey: String,
     private val json: Json = Json { ignoreUnknownKeys = true },
@@ -30,8 +32,8 @@ class DeviceRepository(
 
     private val mediaTypeJson = "application/json".toMediaType()
 
-    private suspend fun authToken(): String {
-        return preferenceRepository.currentToken()
+    private fun authToken(): String {
+        return supabaseClient.auth.currentSessionOrNull()?.accessToken
             ?: throw IllegalStateException("Not authenticated")
     }
 

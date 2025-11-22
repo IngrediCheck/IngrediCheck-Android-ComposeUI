@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
             anonKey = supabaseAnonKey
         )
         val deviceRepository = DeviceRepository(
-            preferenceRepository = preferenceRepository,
+            supabaseClient = repository.supabaseClient,
             functionsBaseUrl = AppConstants.Functions.base,
             anonKey = supabaseAnonKey
         )
