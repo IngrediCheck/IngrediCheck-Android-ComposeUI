@@ -61,8 +61,6 @@ class AppleAuthViewModel(
     private var deviceRegistrationCompleted = false
     @Volatile
     private var deviceRegistrationInProgress = false
-    @Volatile
-    private var lastSessionStatusAuthenticated = false
 
     // Observable state for effective internal mode
     private val _effectiveInternalMode = MutableStateFlow(false)
@@ -85,7 +83,7 @@ class AppleAuthViewModel(
                         userEmail = s.user?.email
                         userId = s.user?.id
                         updateAnalyticsAndSupabase(s)
-                        registerDeviceAfterLogin(s, reason = "restore-session")
+                        registerDeviceAfterLogin(s)
                         restoring = false
                         _isAuthChecked.value = true
                         return@launch
@@ -113,11 +111,11 @@ class AppleAuthViewModel(
                         userEmail = current.user?.email
                         userId = current.user?.id
                         updateAnalyticsAndSupabase(current)
+                        // Centralized device registration: triggered here for all login methods
                         val isAuthenticated = status::class.simpleName == "Authenticated"
-                        if (isAuthenticated && !lastSessionStatusAuthenticated) {
-                            registerDeviceAfterLogin(current, reason = "session-status")
+                        if (isAuthenticated && !deviceRegistrationCompleted) {
+                            registerDeviceAfterLogin(current)
                         }
-                        lastSessionStatusAuthenticated = isAuthenticated
                         isAppleLoading = false
                     } else {
                         _loginState.value = AppleLoginState.Idle
@@ -164,7 +162,6 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         updateAnalyticsAndSupabase(session)
-                        registerDeviceAfterLogin(session, reason = "import-tokens")
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -205,7 +202,6 @@ class AppleAuthViewModel(
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
-                        registerDeviceAfterLogin(session, reason = "apple-id-token")
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -253,7 +249,6 @@ class AppleAuthViewModel(
                         userId = session.user?.id
                         Log.d("AppleAuthViewModel", "User data extracted - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
-                        registerDeviceAfterLogin(session, reason = "apple-code")
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -292,7 +287,6 @@ class AppleAuthViewModel(
                         userEmail = session.user?.email
                         userId = session.user?.id
                         updateAnalyticsAndSupabase(session)
-                        registerDeviceAfterLogin(session, reason = "google-id-token")
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -327,7 +321,6 @@ class AppleAuthViewModel(
                         userId = session.user?.id ?: "anonymous_${System.currentTimeMillis()}"
                         Log.d("AppleAuthViewModel", "Anonymous user data - Email: $userEmail, ID: $userId")
                         updateAnalyticsAndSupabase(session)
-                        registerDeviceAfterLogin(session, reason = "anonymous")
                         AppleLoginState.Success(session)
                     },
                     onFailure = { exception ->
@@ -399,7 +392,6 @@ class AppleAuthViewModel(
                         serverInternalMode = false
                         deviceRegistrationCompleted = false
                         deviceRegistrationInProgress = false
-                        lastSessionStatusAuthenticated = false
                         Analytics.resetAndRegister(effectiveInternalMode(context))
                     },
                     onFailure = { exception ->
@@ -427,7 +419,6 @@ class AppleAuthViewModel(
                 serverInternalMode = false
                 deviceRegistrationCompleted = false
                 deviceRegistrationInProgress = false
-                lastSessionStatusAuthenticated = false
                 Analytics.resetAndRegister(effectiveInternalMode(context))
             }
         }
@@ -459,14 +450,8 @@ class AppleAuthViewModel(
         updateAnalyticsAndSupabase(session)
     }
 
-    private fun registerDeviceAfterLogin(session: UserSession, reason: String = "login") {
-        if (deviceRegistrationCompleted || deviceRegistrationInProgress) {
-            Log.d(
-                "AppleAuthViewModel",
-                "registerDeviceAfterLogin($reason): already registered or in progress, skipping"
-            )
-            return
-        }
+    private fun registerDeviceAfterLogin(session: UserSession) {
+        if (deviceRegistrationCompleted || deviceRegistrationInProgress) return
 
         deviceRegistrationInProgress = true
         viewModelScope.launch {
@@ -476,19 +461,10 @@ class AppleAuthViewModel(
             if (shouldForceInternal) {
                 setInternalUser(true, session)
             }
-            Log.d(
-                "AppleAuthViewModel",
-                "registerDeviceAfterLogin($reason): sessionUser=${session.user?.id}, deviceId=$deviceId, " +
-                        "shouldForceInternal=$shouldForceInternal"
-            )
 
             runCatching {
                 deviceRepository.registerDevice(deviceId, shouldForceInternal)
                 deviceRegistrationCompleted = true
-                Log.d(
-                    "AppleAuthViewModel",
-                    "registerDeviceAfterLogin: device registration request finished (shouldForceInternal=$shouldForceInternal)"
-                )
                 if (!shouldForceInternal) {
                     refreshDeviceInternalStatus()
                 }
