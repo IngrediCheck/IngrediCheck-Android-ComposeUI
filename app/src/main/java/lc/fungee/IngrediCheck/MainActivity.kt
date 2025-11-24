@@ -9,7 +9,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
+import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.viewmodel.LoginAuthViewModelFactory
@@ -65,7 +67,17 @@ class MainActivity : ComponentActivity() {
             supabaseUrl = supabaseUrl,
             supabaseAnonKey = supabaseAnonKey
         )
-        val vmFactory = LoginAuthViewModelFactory(repository)
+        val preferenceRepository = PreferenceRepository(
+            context = applicationContext,
+            supabaseClient = repository.supabaseClient,
+            functionsBaseUrl = AppConstants.Functions.base,
+            anonKey = supabaseAnonKey
+        )
+        val deviceRepository = DeviceRepository(
+            supabaseClient = repository.supabaseClient,
+            functionsBaseUrl = AppConstants.Functions.base
+        )
+        val vmFactory = LoginAuthViewModelFactory(repository, deviceRepository)
         authViewModel = ViewModelProvider(this, vmFactory)
             .get(AppleAuthViewModel::class.java)
 
