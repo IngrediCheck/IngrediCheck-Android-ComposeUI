@@ -76,8 +76,18 @@ class MlKitBarcodeScanner : BarcodeScannerService {
             val image = InputImage.fromBitmap(bmp, 0)
             val scanner = BarcodeScanning.getClient()
             val barcodes = scanner.process(image).await()
-            barcodes.firstOrNull { it.rawValue?.isNotBlank() == true &&
-                (it.format == Barcode.FORMAT_EAN_8 || it.format == Barcode.FORMAT_EAN_13)
+            barcodes.firstOrNull {
+                it.rawValue?.isNotBlank() == true &&
+                    (
+                        it.format == Barcode.FORMAT_EAN_8 ||
+                        it.format == Barcode.FORMAT_EAN_13 ||
+                        it.format == Barcode.FORMAT_CODE_128 ||
+                        it.format == Barcode.FORMAT_CODE_39 ||
+                        it.format == Barcode.FORMAT_CODE_93 ||
+                        it.format == Barcode.FORMAT_UPC_E ||
+                        it.format == Barcode.FORMAT_QR_CODE
+                    )
+                //added  more types of barcode to scan and  + QR code
             }?.rawValue
         } catch (t: Throwable) {
             Log.e("Barcode", "Error detecting barcode from image", t)
