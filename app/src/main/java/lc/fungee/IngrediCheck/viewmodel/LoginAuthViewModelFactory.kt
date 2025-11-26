@@ -4,15 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.model.repository.PingRepository
 
 class LoginAuthViewModelFactory(
     private val repository: LoginAuthRepository,
-    private val deviceRepository: DeviceRepository
+    private val deviceRepository: DeviceRepository,
+    private val pingRepository: PingRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AppleAuthViewModel::class.java)) {
-            return AppleAuthViewModel(repository, deviceRepository) as T
+            return AppleAuthViewModel(repository, deviceRepository, pingRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

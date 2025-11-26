@@ -168,4 +168,14 @@ object Analytics {
     fun reset() {
         PostHog.reset()
     }
+
+    // Edge ping latency tracking
+    fun trackEdgePing(properties: Map<String, Any>) {
+        android.util.Log.d("Analytics", "trackEdgePing() called with properties:")
+        properties.forEach { (key, value) ->
+            android.util.Log.d("Analytics", "  $key = $value")
+        }
+        capture(event = "edge_ping", properties = properties)
+        android.util.Log.i("Analytics", "✓ PostHog.capture() called for event 'edge_ping'")
+    }
 }

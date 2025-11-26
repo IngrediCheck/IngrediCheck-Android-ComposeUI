@@ -12,6 +12,7 @@ import lc.fungee.IngrediCheck.ui.theme.IngrediCheckTheme
 import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
 import lc.fungee.IngrediCheck.model.repository.PreferenceRepository
+import lc.fungee.IngrediCheck.model.repository.PingRepository
 import lc.fungee.IngrediCheck.viewmodel.AppleAuthViewModel
 import lc.fungee.IngrediCheck.viewmodel.AppleLoginState
 import lc.fungee.IngrediCheck.viewmodel.LoginAuthViewModelFactory
@@ -77,7 +78,11 @@ class MainActivity : ComponentActivity() {
             supabaseClient = repository.supabaseClient,
             functionsBaseUrl = AppConstants.Functions.base
         )
-        val vmFactory = LoginAuthViewModelFactory(repository, deviceRepository)
+        val pingRepository = PingRepository(
+            functionsBaseUrl = AppConstants.Functions.base,
+            anonKey = supabaseAnonKey
+        )
+        val vmFactory = LoginAuthViewModelFactory(repository, deviceRepository, pingRepository)
         authViewModel = ViewModelProvider(this, vmFactory)
             .get(AppleAuthViewModel::class.java)
 

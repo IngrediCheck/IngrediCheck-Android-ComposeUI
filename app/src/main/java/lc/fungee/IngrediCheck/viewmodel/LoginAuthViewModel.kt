@@ -19,8 +19,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.model.repository.PingRepository
 import lc.fungee.IngrediCheck.analytics.Analytics
 import lc.fungee.IngrediCheck.IngrediCheckApp
+import lc.fungee.IngrediCheck.model.utils.NetworkInfo
+import android.content.pm.PackageManager
 
 sealed class AppleLoginState {
     object Idle : AppleLoginState()
@@ -32,7 +35,8 @@ sealed class AppleLoginState {
 
 class AppleAuthViewModel(
     private val repository: LoginAuthRepository,
-    private val deviceRepository: DeviceRepository
+    private val deviceRepository: DeviceRepository,
+    private val pingRepository: PingRepository
 ) : ViewModel() {
     var userEmail by mutableStateOf<String?>(null)
         private set
@@ -378,10 +382,12 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        // Clear login provider
-                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                            .edit()
+                        // Clear login provider but preserve ping flag (once per app lifecycle)
+                        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
+                        prefs.edit()
                             .clear()
+                            .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                             .apply()
                         serverInternalMode = false
                         deviceRegistrationCompleted = false
@@ -394,9 +400,11 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                            .edit()
+                        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
+                        prefs.edit()
                             .clear()
+                            .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                             .apply()
                     }
                 )
@@ -406,9 +414,11 @@ class AppleAuthViewModel(
                 userEmail = null
                 userId = null
                 _loginState.value = AppleLoginState.Idle
-                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                    .edit()
+                val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
+                prefs.edit()
                     .clear()
+                    .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                     .apply()
                 serverInternalMode = false
                 deviceRegistrationCompleted = false
@@ -456,10 +466,98 @@ class AppleAuthViewModel(
                 val isInternal = deviceRepository.registerDevice(deviceId, markInternal)
                 deviceRegistrationCompleted = true
                 setInternalUser(isInternal)
+                // Call ping after successful device registration
+                callPingOnce(ctx, session)
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to register device", it)
             }.also {
                 deviceRegistrationInProgress = false
+            }
+        }
+    }
+
+    private fun callPingOnce(context: Context, session: UserSession) {
+        Log.d("AppleAuthViewModel", "callPingOnce() called")
+        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
+        
+        if (pingCalled) {
+            Log.d("AppleAuthViewModel", "Ping already called in this app lifecycle, skipping")
+            return
+        }
+
+        Log.d("AppleAuthViewModel", "Ping not called yet, proceeding with ping call")
+        viewModelScope.launch {
+            try {
+                Log.d("AppleAuthViewModel", "Starting ping call in coroutine")
+                val token = session.accessToken
+                Log.d("AppleAuthViewModel", "Got access token, length: ${token.length}")
+                
+                Log.d("AppleAuthViewModel", "Calling pingRepository.ping()...")
+                val latencyMs = pingRepository.ping(token)
+                
+                if (latencyMs != null) {
+                    Log.i("AppleAuthViewModel", "✓ Ping successful! Latency: ${latencyMs}ms")
+                    
+                    // Collect network metadata and app info
+                    Log.d("AppleAuthViewModel", "Collecting metadata...")
+                    val appVersion = try {
+                        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                        val version = packageInfo.versionName ?: "unknown"
+                        Log.d("AppleAuthViewModel", "App version: $version")
+                        version
+                    } catch (e: Exception) {
+                        Log.w("AppleAuthViewModel", "Failed to get app version: ${e.message}")
+                        "unknown"
+                    }
+                    
+                    val deviceModel = Build.MODEL
+                    Log.d("AppleAuthViewModel", "Device model: $deviceModel")
+                    
+                    Log.d("AppleAuthViewModel", "Getting network type...")
+                    val networkType = NetworkInfo.getNetworkType(context)
+                    Log.d("AppleAuthViewModel", "Network type: $networkType")
+                    
+                    Log.d("AppleAuthViewModel", "Getting cellular generation...")
+                    val cellularGeneration = NetworkInfo.getCellularGeneration(context)
+                    Log.d("AppleAuthViewModel", "Cellular generation: $cellularGeneration")
+                    
+                    Log.d("AppleAuthViewModel", "Getting carrier...")
+                    val carrier = NetworkInfo.getCarrier(context)
+                    Log.d("AppleAuthViewModel", "Carrier: ${carrier ?: "null"}")
+
+                    val properties = mutableMapOf<String, Any>(
+                        "client_latency_ms" to latencyMs,
+                        "app_version" to appVersion,
+                        "device_model" to deviceModel,
+                        "network_type" to networkType,
+                        "cellular_generation" to cellularGeneration
+                    )
+
+                    if (!carrier.isNullOrBlank()) {
+                        properties["carrier"] = carrier
+                        Log.d("AppleAuthViewModel", "Added carrier to properties: $carrier")
+                    }
+
+                    Log.i("AppleAuthViewModel", "edge_ping properties collected:")
+                    properties.forEach { (key, value) ->
+                        Log.i("AppleAuthViewModel", "  $key = $value")
+                    }
+                    
+                    Log.d("AppleAuthViewModel", "Calling Analytics.trackEdgePing()...")
+                    Analytics.trackEdgePing(properties)
+                    Log.i("AppleAuthViewModel", "✓ PostHog event 'edge_ping' sent successfully!")
+
+                    // Mark ping as called
+                    prefs.edit().putBoolean(AppConstants.Prefs.KEY_PING_CALLED, true).apply()
+                    Log.d("AppleAuthViewModel", "Marked ping as called in SharedPreferences")
+                } else {
+                    Log.w("AppleAuthViewModel", "✗ Ping failed, not logging to PostHog")
+                }
+            } catch (e: Exception) {
+                Log.e("AppleAuthViewModel", "✗ Exception in callPingOnce", e)
+                Log.e("AppleAuthViewModel", "Exception type: ${e.javaClass.simpleName}, message: ${e.message}")
+                e.printStackTrace()
             }
         }
     }
