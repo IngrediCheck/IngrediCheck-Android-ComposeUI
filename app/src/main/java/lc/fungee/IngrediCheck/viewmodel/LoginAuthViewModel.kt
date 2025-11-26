@@ -64,6 +64,8 @@ class AppleAuthViewModel(
     private var deviceRegistrationCompleted = false
     @Volatile
     private var deviceRegistrationInProgress = false
+    @Volatile
+    private var pingCalled = false
 
     // Observable state for effective internal mode
     private val _effectiveInternalMode = MutableStateFlow(false)
@@ -382,12 +384,10 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        // Clear login provider but preserve ping flag (once per app lifecycle)
-                        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
-                        prefs.edit()
+                        // Clear login provider
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                            .edit()
                             .clear()
-                            .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                             .apply()
                         serverInternalMode = false
                         deviceRegistrationCompleted = false
@@ -400,11 +400,9 @@ class AppleAuthViewModel(
                         userEmail = null
                         userId = null
                         _loginState.value = AppleLoginState.Idle
-                        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
-                        prefs.edit()
+                        context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                            .edit()
                             .clear()
-                            .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                             .apply()
                     }
                 )
@@ -477,9 +475,6 @@ class AppleAuthViewModel(
     }
 
     private fun callPingOnce(context: Context, session: UserSession) {
-        val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-        val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
-        
         if (pingCalled) {
             return
         }
@@ -516,8 +511,8 @@ class AppleAuthViewModel(
 
                     Analytics.trackEdgePing(properties)
 
-                    // Mark ping as called
-                    prefs.edit().putBoolean(AppConstants.Prefs.KEY_PING_CALLED, true).apply()
+                    // Mark ping as called (in-memory only, resets on app restart)
+                    pingCalled = true
                 }
             } catch (e: Exception) {
                 Log.e("AppleAuthViewModel", "Ping API call failed", e)
