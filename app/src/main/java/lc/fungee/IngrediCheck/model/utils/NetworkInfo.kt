@@ -5,7 +5,6 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.telephony.TelephonyManager
-import android.util.Log
 
 object NetworkInfo {
     /**
@@ -15,26 +14,15 @@ object NetworkInfo {
         val connectivityManager =
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-        val network = connectivityManager.activeNetwork
-        if (network == null) {
-            Log.d("NetworkInfo", "No active network found, returning 'none'")
-            return "none"
-        }
-        
-        val capabilities = connectivityManager.getNetworkCapabilities(network)
-        if (capabilities == null) {
-            Log.d("NetworkInfo", "No network capabilities found, returning 'none'")
-            return "none"
-        }
+        val network = connectivityManager.activeNetwork ?: return "none"
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return "none"
 
-        val networkType = when {
+        return when {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "other"
             else -> "none"
         }
-        Log.d("NetworkInfo", "Detected network type: $networkType")
-        return networkType
     }
 
     /**
@@ -42,23 +30,15 @@ object NetworkInfo {
      */
     fun getCellularGeneration(context: Context): String {
         val networkType = getNetworkType(context)
-        if (networkType != "cellular") {
-            Log.d("NetworkInfo", "Not on cellular network, returning 'none' for cellular generation")
-            return "none"
-        }
+        if (networkType != "cellular") return "none"
 
         val telephonyManager =
             context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-        if (telephonyManager == null) {
-            Log.w("NetworkInfo", "TelephonyManager not available, returning 'unknown'")
-            return "unknown"
-        }
+                ?: return "unknown"
 
-        val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11+ (API 30+)
-            val networkTypeValue = telephonyManager.dataNetworkType
-            Log.d("NetworkInfo", "Android 11+, dataNetworkType: $networkTypeValue")
-            when (networkTypeValue) {
+            when (telephonyManager.dataNetworkType) {
                 TelephonyManager.NETWORK_TYPE_GPRS,
                 TelephonyManager.NETWORK_TYPE_EDGE,
                 TelephonyManager.NETWORK_TYPE_CDMA,
@@ -80,9 +60,7 @@ object NetworkInfo {
         } else {
             // Android 10 and below
             @Suppress("DEPRECATION")
-            val networkTypeValue = telephonyManager.networkType
-            Log.d("NetworkInfo", "Android 10-, networkType: $networkTypeValue")
-            when (networkTypeValue) {
+            when (telephonyManager.networkType) {
                 TelephonyManager.NETWORK_TYPE_GPRS,
                 TelephonyManager.NETWORK_TYPE_EDGE,
                 TelephonyManager.NETWORK_TYPE_CDMA,
@@ -102,8 +80,6 @@ object NetworkInfo {
                 else -> "unknown"
             }
         }
-        Log.d("NetworkInfo", "Detected cellular generation: $generation")
-        return generation
     }
 
     /**
@@ -111,26 +87,17 @@ object NetworkInfo {
      */
     fun getCarrier(context: Context): String? {
         val networkType = getNetworkType(context)
-        if (networkType != "cellular") {
-            Log.d("NetworkInfo", "Not on cellular network, returning null for carrier")
-            return null
-        }
+        if (networkType != "cellular") return null
 
         val telephonyManager =
             context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-        if (telephonyManager == null) {
-            Log.w("NetworkInfo", "TelephonyManager not available, returning null for carrier")
-            return null
-        }
+                ?: return null
 
         return try {
             @Suppress("DEPRECATION")
-            val carrierName = telephonyManager.networkOperatorName?.takeIf { it.isNotBlank() }
-            Log.d("NetworkInfo", "Detected carrier: ${carrierName ?: "null/empty"}")
-            carrierName
+            telephonyManager.networkOperatorName?.takeIf { it.isNotBlank() }
         } catch (e: SecurityException) {
             // READ_PHONE_STATE permission may not be granted
-            Log.w("NetworkInfo", "SecurityException getting carrier (permission denied): ${e.message}")
             null
         }
     }
