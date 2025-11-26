@@ -31,7 +31,6 @@ object AppConstants {
         const val KEY_LOGIN_PROVIDER = "login_provider"
         const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
         const val KEY_DEVICE_ID = "device_id"
-        const val KEY_PING_CALLED = "ping_called"
     }
 
     object Providers {
