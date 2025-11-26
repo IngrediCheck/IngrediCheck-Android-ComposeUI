@@ -412,11 +412,9 @@ class AppleAuthViewModel(
                 userEmail = null
                 userId = null
                 _loginState.value = AppleLoginState.Idle
-                val prefs = context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
-                val pingCalled = prefs.getBoolean(AppConstants.Prefs.KEY_PING_CALLED, false)
-                prefs.edit()
+                context.getSharedPreferences(AppConstants.Prefs.USER_SESSION, Context.MODE_PRIVATE)
+                    .edit()
                     .clear()
-                    .putBoolean(AppConstants.Prefs.KEY_PING_CALLED, pingCalled)
                     .apply()
                 serverInternalMode = false
                 deviceRegistrationCompleted = false
