@@ -14,7 +14,8 @@ enum class SafeEatsEndpoint(private val pathFormat: String) {
     PREFERENCE_LISTS_DEFAULT_ITEMS("preferencelists/default/%s"),
     DEVICES_REGISTER("devices/register"),
     DEVICES_MARK_INTERNAL("devices/mark-internal"),
-    DEVICES_IS_INTERNAL("devices/%s/is-internal");
+    DEVICES_IS_INTERNAL("devices/%s/is-internal"),
+    PING("ping");
 
     fun format(vararg args: String): String = if (args.isEmpty()) pathFormat else String.format(pathFormat, *args)
 }

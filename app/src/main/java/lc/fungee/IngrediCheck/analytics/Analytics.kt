@@ -168,4 +168,9 @@ object Analytics {
     fun reset() {
         PostHog.reset()
     }
+
+    // Edge ping latency tracking
+    fun trackEdgePing(properties: Map<String, Any>) {
+        capture(event = "edge_ping", properties = properties)
+    }
 }

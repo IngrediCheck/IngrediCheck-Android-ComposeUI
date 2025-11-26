@@ -19,8 +19,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import lc.fungee.IngrediCheck.model.repository.DeviceRepository
 import lc.fungee.IngrediCheck.model.repository.LoginAuthRepository
+import lc.fungee.IngrediCheck.model.repository.PingRepository
 import lc.fungee.IngrediCheck.analytics.Analytics
 import lc.fungee.IngrediCheck.IngrediCheckApp
+import lc.fungee.IngrediCheck.model.utils.NetworkInfo
+import android.content.pm.PackageManager
 
 sealed class AppleLoginState {
     object Idle : AppleLoginState()
@@ -32,7 +35,8 @@ sealed class AppleLoginState {
 
 class AppleAuthViewModel(
     private val repository: LoginAuthRepository,
-    private val deviceRepository: DeviceRepository
+    private val deviceRepository: DeviceRepository,
+    private val pingRepository: PingRepository
 ) : ViewModel() {
     var userEmail by mutableStateOf<String?>(null)
         private set
@@ -60,6 +64,8 @@ class AppleAuthViewModel(
     private var deviceRegistrationCompleted = false
     @Volatile
     private var deviceRegistrationInProgress = false
+    @Volatile
+    private var pingCalled = false
 
     // Observable state for effective internal mode
     private val _effectiveInternalMode = MutableStateFlow(false)
@@ -456,10 +462,58 @@ class AppleAuthViewModel(
                 val isInternal = deviceRepository.registerDevice(deviceId, markInternal)
                 deviceRegistrationCompleted = true
                 setInternalUser(isInternal)
+                // Call ping after successful device registration
+                callPingOnce(ctx, session)
             }.onFailure {
                 Log.e("AppleAuthViewModel", "Failed to register device", it)
             }.also {
                 deviceRegistrationInProgress = false
+            }
+        }
+    }
+
+    private fun callPingOnce(context: Context, session: UserSession) {
+        if (pingCalled) {
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val token = session.accessToken
+                val latencyMs = pingRepository.ping(token)
+                
+                if (latencyMs != null) {
+                    // Collect network metadata and app info
+                    val appVersion = try {
+                        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                        packageInfo.versionName ?: "unknown"
+                    } catch (e: Exception) {
+                        "unknown"
+                    }
+                    val deviceModel = Build.MODEL
+                    val networkType = NetworkInfo.getNetworkType(context)
+                    val cellularGeneration = NetworkInfo.getCellularGeneration(context)
+                    val carrier = NetworkInfo.getCarrier(context)
+
+                    val properties = mutableMapOf<String, Any>(
+                        "client_latency_ms" to latencyMs,
+                        "app_version" to appVersion,
+                        "device_model" to deviceModel,
+                        "network_type" to networkType,
+                        "cellular_generation" to cellularGeneration
+                    )
+
+                    if (!carrier.isNullOrBlank()) {
+                        properties["carrier"] = carrier
+                    }
+
+                    Analytics.trackEdgePing(properties)
+
+                    // Mark ping as called (in-memory only, resets on app restart)
+                    pingCalled = true
+                }
+            } catch (e: Exception) {
+                Log.e("AppleAuthViewModel", "Ping API call failed", e)
             }
         }
     }
