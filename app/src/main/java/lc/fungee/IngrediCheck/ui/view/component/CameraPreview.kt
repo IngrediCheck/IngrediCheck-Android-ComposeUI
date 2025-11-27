@@ -158,8 +158,7 @@ fun CameraPreview(
                 Barcode.FORMAT_CODE_128,
                 Barcode.FORMAT_CODE_39,
                 Barcode.FORMAT_CODE_93,
-                Barcode.FORMAT_UPC_E,
-                Barcode.FORMAT_QR_CODE
+                Barcode.FORMAT_UPC_E
             )
             .build()
     }

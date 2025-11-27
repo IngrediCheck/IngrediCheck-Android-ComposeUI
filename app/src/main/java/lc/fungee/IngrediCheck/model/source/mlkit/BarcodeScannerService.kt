@@ -84,8 +84,7 @@ class MlKitBarcodeScanner : BarcodeScannerService {
                         it.format == Barcode.FORMAT_CODE_128 ||
                         it.format == Barcode.FORMAT_CODE_39 ||
                         it.format == Barcode.FORMAT_CODE_93 ||
-                        it.format == Barcode.FORMAT_UPC_E ||
-                        it.format == Barcode.FORMAT_QR_CODE
+                        it.format == Barcode.FORMAT_UPC_E
                     )
                 //added  more types of barcode to scan and  + QR code
             }?.rawValue
