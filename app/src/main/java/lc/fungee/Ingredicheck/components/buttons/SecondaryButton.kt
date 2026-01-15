@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -91,7 +92,7 @@ fun SecondaryButton(
                     Modifier.width(width)
                 }
             )
-            .height(height)
+            .defaultMinSize(minHeight = height)
             .shadow(
                 elevation = 4.dp,
                 shape = shape,
@@ -112,6 +113,7 @@ fun SecondaryButton(
         contentAlignment = Alignment.Center
     ) {
         Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -133,7 +135,10 @@ fun SecondaryButton(
 
                 Text(
                     text = title,
-                    style = resolvedTextStyle
+                    style = resolvedTextStyle,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

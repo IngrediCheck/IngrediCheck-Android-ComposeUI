@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -65,7 +66,7 @@ fun PrimaryButton(
                     Modifier.width(width)
                 }
             )
-            .height(height)
+            .defaultMinSize(minHeight = height)
             .primaryButtonEffect(isDisabled = isDisabled, shape = shape)
             .alpha(if (isDisabled) 0.6f else 1f)
             .clip(shape)
@@ -79,6 +80,7 @@ fun PrimaryButton(
         contentAlignment = Alignment.Center
     ) {
         Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -100,7 +102,10 @@ fun PrimaryButton(
 
                 Text(
                     text = title,
-                    style = resolvedTextStyle
+                    style = resolvedTextStyle,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
