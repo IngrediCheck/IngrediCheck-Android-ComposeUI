@@ -37,13 +37,13 @@ fun PrimaryButton(
     iconWidth: Dp = 20.dp,
     iconHeight: Dp = 20.dp,
     width: Dp = 152.dp,
-    height: Dp = 52.dp,
+    height: Dp = 60.dp,
     takeFullWidth: Boolean = true,
     isLoading: Boolean = false,
     isDisabled: Boolean = false,
-    textStyle: TextStyle = NunitoBold.copy(
-        fontSize =20.sp,
-        color = Greyscale10
+    disabledBackgroundColor: Color = Greyscale40,
+    textStyle: TextStyle = NunitoSemiBold.copy(
+        fontSize = 20.sp
     )
 ) {
     val enabled = !isDisabled && !isLoading && onClick != null
@@ -67,7 +67,11 @@ fun PrimaryButton(
                 }
             )
             .defaultMinSize(minHeight = height)
-            .primaryButtonEffect(isDisabled = isDisabled, shape = shape)
+            .primaryButtonEffect(
+                isDisabled = isDisabled,
+                shape = shape,
+                disabledBackgroundColor = disabledBackgroundColor
+            )
             .alpha(if (isDisabled) 0.6f else 1f)
             .clip(shape)
             .then(
@@ -114,7 +118,8 @@ fun PrimaryButton(
 
 fun Modifier.primaryButtonEffect(
     isDisabled: Boolean,
-    shape: RoundedCornerShape
+    shape: RoundedCornerShape,
+    disabledBackgroundColor: Color
 ) = this.drawBehind {
     val size = size
     val outline = shape.createOutline(size, layoutDirection, this)
@@ -123,12 +128,12 @@ fun Modifier.primaryButtonEffect(
         // Disabled: grayScale40 fill and grayScale40 border (as per iOS logic)
         drawOutline(
             outline = outline,
-            color = Color(0xFFE9E9E9) // Greyscale40
+            color = disabledBackgroundColor
         )
         // Border
         drawOutline(
             outline = outline,
-            color = Color(0xFFE9E9E9),
+            color = disabledBackgroundColor,
             style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
         )
     } else {
@@ -229,24 +234,24 @@ fun Modifier.primaryButtonEffect(
 @Preview(showBackground = true)
 @Composable
 private fun PrimaryButtonPreview() {
-    Box(modifier = Modifier.padding(20.dp)) {
+    Box(modifier = Modifier.padding(20.dp).padding(top = 200.dp)) {
         PrimaryButton(
             title = "Get Started",
-            takeFullWidth = false,
+            takeFullWidth = true,
             onClick = {}
         )
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun PrimaryButtonDisabledPreview() {
-    Box(modifier = Modifier.padding(20.dp)) {
-        PrimaryButton(
-            title = "Get Started",
-            takeFullWidth = false,
-            isDisabled = true,
-            onClick = {}
-        )
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//private fun PrimaryButtonDisabledPreview() {
+//    Box(modifier = Modifier.padding(20.dp)) {
+//        PrimaryButton(
+//            title = "Get Started",
+//            takeFullWidth = false,
+//            isDisabled = true,
+//            onClick = {}
+//        )
+//    }
+//}

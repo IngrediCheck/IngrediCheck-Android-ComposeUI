@@ -1,5 +1,4 @@
 package lc.fungee.Ingredicheck.components
-
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -51,7 +49,7 @@ fun NonDraggableBottomSheet(
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
-            dismissOnClickOutside = true
+            dismissOnClickOutside = false
         )
     ) {
         val view = LocalView.current
@@ -68,7 +66,7 @@ fun NonDraggableBottomSheet(
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null
-                ) { onDismissRequest() },
+                ) { },
             contentAlignment = Alignment.BottomCenter
         ) {
             Box(
