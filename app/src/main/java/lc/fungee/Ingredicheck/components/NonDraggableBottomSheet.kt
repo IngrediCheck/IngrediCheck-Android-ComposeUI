@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.unit.Dp
 import lc.fungee.Ingredicheck.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.components.buttons.SecondaryButton
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
@@ -39,6 +40,7 @@ import lc.fungee.Ingredicheck.ui.theme.Nunito
 @Composable
 fun NonDraggableBottomSheet(
     onDismissRequest: () -> Unit,
+    sheetHeight: Dp = 243.dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -72,7 +74,7 @@ fun NonDraggableBottomSheet(
             Box(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(243.dp)
+                    .height(sheetHeight)
                     .shadow(
                         elevation = 27.5.dp,
                         shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),

@@ -16,8 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import lc.fungee.Ingredicheck.components.InviteCodeBottomSheet
+import lc.fungee.Ingredicheck.onboarding.ui.OnboardingHost
 import lc.fungee.Ingredicheck.ui.theme.IngrediCheckTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +26,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             IngrediCheckTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ButtonTestScreen(modifier = Modifier.padding(innerPadding))
+                    AppRoot(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
@@ -35,22 +34,20 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ButtonTestScreen(modifier: Modifier = Modifier) {
-    var showSheet by remember { mutableStateOf(true) }
+fun AppRoot(modifier: Modifier = Modifier) {
+    var showOnboarding by remember { mutableStateOf(true) }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        // Intentionally empty background content for now.
-    }
-
-    if (showSheet) {
-        InviteCodeBottomSheet(
-            onPrimaryClick = { showSheet = false },
-            onSecondaryClick = { showSheet = false },
-            onDismissRequest = { showSheet = false }
+    if (showOnboarding) {
+        OnboardingHost(
+            onExitOnboarding = { showOnboarding = false }
         )
+    } else {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Intentionally empty background content for now.
+        }
     }
 }
 
@@ -58,7 +55,7 @@ fun ButtonTestScreen(modifier: Modifier = Modifier) {
 @Composable
 fun ButtonTestPreview() {
     IngrediCheckTheme {
-        ButtonTestScreen()
+        AppRoot()
     }
 }
 
