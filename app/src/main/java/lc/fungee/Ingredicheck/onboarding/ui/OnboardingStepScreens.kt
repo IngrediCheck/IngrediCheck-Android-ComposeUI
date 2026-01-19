@@ -7,17 +7,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,6 +50,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Devices
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.R
@@ -65,65 +68,84 @@ internal fun SignInBackground(
     imageRes: Int,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    SignInBackgroundTunable(
+        imageRes = imageRes,
+        modifier = modifier,
+        mockWidthFraction = 0.85f,
+        mockAspectRatio = 8f / 16f
+    )
+}
+
+@Composable
+private fun SignInBackgroundTunable(
+    imageRes: Int,
+    mockWidthFraction: Float,
+    mockAspectRatio: Float,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFFFFFFFF),
-                        Color(0xF7F7F7F7)
-                    )
+               Color.White
                 )
-            )
-            .windowInsetsPadding(WindowInsets.systemBars)
+
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = 68.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 44.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ingredicheck_text_logo),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(40.dp),
-                contentScale = ContentScale.Fit
-            )
+        val heightPx = constraints.maxHeight.toFloat()
 
-            Spacer(modifier = Modifier.height(44.dp))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 44.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ingredicheck_text_logo),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                Spacer(modifier = Modifier.height(44.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                    ,
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Image(
+                        painter = painterResource(id = imageRes),
+                        contentDescription = null,
+                        modifier = Modifier
+//                           .fillMaxWidth(mockWidthFraction)
+                            .aspectRatio(mockAspectRatio)
+                            .fillMaxWidth()
+//
+                            ,
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
 
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(450.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(450.dp)
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 223.dp)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color(0xFFFFFFFF))
+                    .matchParentSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color(0xFFFFFFFF)),
+                            startY = heightPx * 0.55f,
+                            endY = heightPx
+                        )
                     )
-                )
-        )
+            )
+        }
     }
 }
 
@@ -136,7 +158,7 @@ internal fun GetStartedBackground(
         modifier = modifier
             .fillMaxSize()
             .background(Color.White)
-            .windowInsetsPadding(WindowInsets.systemBars)
+            .windowInsetsPadding(WindowInsets.statusBars)
             .padding(top = 16.dp)
             .padding(horizontal = 14.dp)
     ) {
@@ -230,7 +252,7 @@ internal fun SignInInitialSheet(
                 onClick = onStartNew
             )
         }
-        
+
 }
 
 @Composable
@@ -699,4 +721,34 @@ private fun OptionChip(
             )
         )
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_4A)
+@Composable
+private fun SignInBackgroundPreview_Pixel4a_Ratio9x16() {
+    SignInBackgroundTunable(
+        imageRes = R.drawable.iphone_app_img,
+        mockWidthFraction = 0.85f,
+        mockAspectRatio = 9f / 16f
+    )
+}
+
+@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_8_PRO)
+@Composable
+private fun SignInBackgroundPreview_Pixel8Pro_Ratio9x16() {
+    SignInBackgroundTunable(
+        imageRes = R.drawable.iphone_app_img,
+        mockWidthFraction = 0.85f,
+        mockAspectRatio = 9f / 16f
+    )
+}
+
+@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_8_PRO)
+@Composable
+private fun SignInBackgroundPreview_Pixel8Pro_Ratio10x16() {
+    SignInBackgroundTunable(
+        imageRes = R.drawable.iphone_app_img,
+        mockWidthFraction = 0.88f,
+        mockAspectRatio = 9f / 16f
+    )
 }

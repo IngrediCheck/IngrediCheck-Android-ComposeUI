@@ -39,7 +39,7 @@ fun OnboardingHost(
     }
 
     val sheetHeight = when (step) {
-        OnboardingStep.SIGN_IN_INITIAL -> 243.dp
+        OnboardingStep.SIGN_IN_INITIAL -> 248.dp
         OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 330.dp
         OnboardingStep.SIGN_IN_INVITE_CODE -> 330.dp
         OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> 460.dp
@@ -88,9 +88,8 @@ fun OnboardingHost(
                         (fadeOut(animationSpec = tween(180)) + slideOutVertically(animationSpec = tween(180)) { it / 8 })
                 }
             ) { s ->
-                Column() {
+                Column {
                     when (s) {
-
                         OnboardingStep.SIGN_IN_INITIAL -> {
                             SignInInitialSheet(
                                 onExistingUserContinue = {

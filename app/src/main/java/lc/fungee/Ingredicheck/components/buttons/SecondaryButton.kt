@@ -68,7 +68,7 @@ fun SecondaryButton(
     textColor: Color = Primary800,
     disabledTextColor: Color = Greyscale110,
     textStyle: TextStyle = NunitoBold.copy(
-        fontSize = 20.sp,
+        fontSize = 16.sp,
         color = textColor
     )
 ) {

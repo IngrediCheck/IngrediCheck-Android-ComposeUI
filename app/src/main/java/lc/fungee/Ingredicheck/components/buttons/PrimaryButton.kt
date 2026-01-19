@@ -37,7 +37,7 @@ fun PrimaryButton(
     iconWidth: Dp = 20.dp,
     iconHeight: Dp = 20.dp,
     width: Dp = 152.dp,
-    height: Dp = 60.dp,
+    height: Dp = 52.dp,
     takeFullWidth: Boolean = true,
     isLoading: Boolean = false,
     isDisabled: Boolean = false,
