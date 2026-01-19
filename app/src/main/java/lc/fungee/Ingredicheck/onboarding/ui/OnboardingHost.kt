@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -87,61 +88,65 @@ fun OnboardingHost(
                         (fadeOut(animationSpec = tween(180)) + slideOutVertically(animationSpec = tween(180)) { it / 8 })
                 }
             ) { s ->
-                when (s) {
-                    OnboardingStep.SIGN_IN_INITIAL -> {
-                        SignInInitialSheet(
-                            onExistingUserContinue = {
-                                vm.navigateTo(OnboardingStep.SIGN_IN_SOCIAL_LOGIN)
-                            },
-                            onStartNew = {
-                                vm.navigateTo(OnboardingStep.SIGN_IN_INVITE_CODE)
-                            }
-                        )
-                    }
+                Column() {
+                    when (s) {
 
-                    OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> {
-                        SignInSocialLoginSheet(
-                            onBackClick = { vm.back() },
-                            onGoogleClick = { /* TODO */ },
-                            onAppleClick = { /* TODO */ }
-                        )
-                    }
+                        OnboardingStep.SIGN_IN_INITIAL -> {
+                            SignInInitialSheet(
+                                onExistingUserContinue = {
+                                    vm.navigateTo(OnboardingStep.SIGN_IN_SOCIAL_LOGIN)
+                                },
+                                onStartNew = {
+                                    vm.navigateTo(OnboardingStep.SIGN_IN_INVITE_CODE)
+                                }
+                            )
+                        }
 
-                    OnboardingStep.SIGN_IN_INVITE_CODE -> {
-                        SignInInviteCodeSheet(
-                            onBackClick = { vm.back() },
-                            onEnterInviteCode = {
-                                vm.navigateTo(OnboardingStep.SIGN_IN_ENTER_INVITE_CODE)
-                            },
-                            onNoContinue = {
-                                vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
-                            }
-                        )
-                    }
+                        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> {
+                            SignInSocialLoginSheet(
+                                onBackClick = { vm.back() },
+                                onGoogleClick = { /* TODO */ },
+                                onAppleClick = { /* TODO */ }
+                            )
+                        }
 
-                    OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
-                        SignInEnterInviteCodeSheet(
-                            inviteCode = vm.inviteCode,
-                            onInviteCodeChange = { vm.inviteCode = it },
-                            onBackClick = { vm.back() },
-                            onVerifyContinue = {
-                                vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
-                            }
-                        )
-                    }
+                        OnboardingStep.SIGN_IN_INVITE_CODE -> {
+                            SignInInviteCodeSheet(
+                                onBackClick = { vm.back() },
+                                onEnterInviteCode = {
+                                    vm.navigateTo(OnboardingStep.SIGN_IN_ENTER_INVITE_CODE)
+                                },
+                                onNoContinue = {
+                                    vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
+                                }
+                            )
+                        }
 
-                    OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
-                        SignInWhoIsThisForSheet(
-                            onBackClick = { vm.back() },
-                            onJustMe = { onExitOnboarding() },
-                            onAddFamily = { onExitOnboarding() }
-                        )
-                    }
+                        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
+                            SignInEnterInviteCodeSheet(
+                                inviteCode = vm.inviteCode,
+                                onInviteCodeChange = { vm.inviteCode = it },
+                                onBackClick = { vm.back() },
+                                onVerifyContinue = {
+                                    vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
+                                }
+                            )
+                        }
 
-                    OnboardingStep.GET_STARTED -> {
+                        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
+                            SignInWhoIsThisForSheet(
+                                onBackClick = { vm.back() },
+                                onJustMe = { onExitOnboarding() },
+                                onAddFamily = { onExitOnboarding() }
+                            )
+                        }
+
+                        OnboardingStep.GET_STARTED -> {
+                        }
                     }
                 }
             }
         }
+
     )
 }

@@ -180,55 +180,57 @@ internal fun SignInInitialSheet(
     onExistingUserContinue: () -> Unit,
     onStartNew: () -> Unit
 ) {
-    Text(
-        text = "Are you an existing user?",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
-            color = Greyscale150
-        )
-    )
 
-    Spacer(modifier = Modifier.height(6.dp))
-
-    Text(
-        text = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110,
-            lineHeight = 18.sp
-        )
-    )
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SecondaryButton(
-            title = "Yes, continue",
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onExistingUserContinue,
-            textColor = Primary800,
-            borderColor = Greyscale40,
-            disabledBackgroundColor = Greyscale40
+        Text(
+            text = "Are you an existing user?",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                color = Greyscale150
+            )
         )
 
-        PrimaryButton(
-            title = "No, start new",
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onStartNew
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new.",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale110,
+                lineHeight = 18.sp
+            )
         )
-    }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SecondaryButton(
+                title = "Yes, continue",
+                modifier = Modifier.weight(1f),
+                takeFullWidth = true,
+                width = 0.dp,
+                onClick = onExistingUserContinue,
+                textColor = Primary800,
+                borderColor = Greyscale40,
+                disabledBackgroundColor = Greyscale40
+            )
+
+            PrimaryButton(
+                title = "No, start new",
+                modifier = Modifier.weight(1f),
+                takeFullWidth = true,
+                width = 0.dp,
+                onClick = onStartNew
+            )
+        }
+        
 }
 
 @Composable
