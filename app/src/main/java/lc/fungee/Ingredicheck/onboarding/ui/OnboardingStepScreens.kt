@@ -69,6 +69,7 @@ import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
 import androidx.compose.ui.platform.LocalConfiguration
+import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
 
 @Composable
 internal fun SignInBackground(
@@ -351,6 +352,9 @@ internal fun SignInSocialLoginSheet(
     ) {
         SecondaryButton(
             title = "Google",
+            icon = R.drawable.google_logo,
+            iconTint = Color.Unspecified,
+            iconHeight =  (buttonIconSize()-2.dp),
             modifier = Modifier.weight(1f),
             takeFullWidth = true,
             width = 0.dp,
@@ -360,14 +364,14 @@ internal fun SignInSocialLoginSheet(
             textStyle = TextStyle(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp ,
-
-
+                fontSize = 18.sp
             )
         )
 
         SecondaryButton(
             title = "Apple",
+            icon = R.drawable.apple_logo,
+            iconTint = Color.Unspecified,
             modifier = Modifier.weight(1f),
             takeFullWidth = true,
             width = 0.dp,

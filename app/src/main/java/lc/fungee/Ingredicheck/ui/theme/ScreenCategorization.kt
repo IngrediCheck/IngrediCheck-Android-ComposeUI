@@ -92,9 +92,9 @@ fun buttonTextSize(): androidx.compose.ui.unit.TextUnit {
 @Composable
 fun buttonIconSize(): Dp {
     return when (rememberScreenCategory()) {
-        ScreenCategory.Small -> 18.dp
-        ScreenCategory.Normal -> 20.dp
-        ScreenCategory.Large -> 24.dp
+        ScreenCategory.Small -> 24.dp
+        ScreenCategory.Normal -> 26.dp
+        ScreenCategory.Large -> 28.dp
     }
 }
 

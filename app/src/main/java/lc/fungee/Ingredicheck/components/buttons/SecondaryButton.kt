@@ -70,6 +70,7 @@ fun SecondaryButton(
     borderColor: Color = Greyscale40,
     textColor: Color = Primary800,
     disabledTextColor: Color = Greyscale110,
+    iconTint: Color? = null,
     textStyle: TextStyle = NunitoBold.copy(
         fontSize = buttonTextSize(),
         color = textColor
@@ -84,6 +85,12 @@ fun SecondaryButton(
         textStyle.copy(color = disabledTextColor)
     } else {
         textStyle.copy(color = textColor)
+    }
+
+    val resolvedIconTint = when {
+        isDisabled -> disabledTextColor
+        iconTint != null -> iconTint
+        else -> resolvedTextStyle.color
     }
 
     Box(
@@ -131,7 +138,7 @@ fun SecondaryButton(
                     Icon(
                         painter = painterResource(id = icon),
                         contentDescription = null,
-                        tint = resolvedTextStyle.color,
+                        tint = resolvedIconTint,
                         modifier = Modifier.size(width = iconWidth, height = iconHeight)
                     )
                 }
