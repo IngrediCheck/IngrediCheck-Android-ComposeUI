@@ -1,7 +1,7 @@
 package lc.fungee.Ingredicheck.onboarding.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,26 +50,32 @@ fun OnboardingHost(
         OnboardingStep.GET_STARTED -> responsiveSheetHeight(243f)
     }
 
+    val backgroundKey = when (step) {
+        OnboardingStep.SIGN_IN_INITIAL,
+        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 1
+        OnboardingStep.SIGN_IN_INVITE_CODE,
+        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> 2
+        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> 3
+        else -> 0
+    }
+
     OnboardingShell(
         onDismissRequest = onExitOnboarding,
         sheetHeight = sheetHeight,
         backgroundContent = {
             AnimatedContent(
-                targetState = step,
+                targetState = backgroundKey,
                 label = "onboardingBackground",
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(180)) togetherWith
-                        fadeOut(animationSpec = tween(180))
+                    fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
+                        fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
                 }
-            ) { s ->
-                when (s) {
-                    OnboardingStep.SIGN_IN_INITIAL,
-                    OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> {
+            ) { k ->
+                when (k) {
+                    1 -> {
                         SignInBackground(imageRes = R.drawable.iphone_app_img, showLogo = true)
                     }
-
-                    OnboardingStep.SIGN_IN_INVITE_CODE,
-                    OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
+                    2 -> {
                         SignInBackground(
                             imageRes = R.drawable.welcome_family_img,
                             showLogo = false,
@@ -78,8 +84,7 @@ fun OnboardingHost(
                             aspectRatio = 1f
                         )
                     }
-
-                    OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
+                    3 -> {
                         SignInBackground(
                             imageRes = R.drawable.welcome_family_and_me_img,
                             showLogo = false,
@@ -87,9 +92,6 @@ fun OnboardingHost(
                             subtitle = "Create a space for yourself or the people\nyou care about.",
                             aspectRatio = 1f
                         )
-                    }
-
-                    OnboardingStep.GET_STARTED -> {
                     }
                 }
             }
@@ -99,8 +101,10 @@ fun OnboardingHost(
                 targetState = step,
                 label = "onboardingSheet",
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(180)) + slideInVertically(animationSpec = tween(180)) { it / 8 }) togetherWith
-                        (fadeOut(animationSpec = tween(180)) + slideOutVertically(animationSpec = tween(180)) { it / 8 })
+                    val duration = 300
+                    val easing = FastOutSlowInEasing
+                    (fadeIn(animationSpec = tween(duration, easing = easing)) + slideInVertically(animationSpec = tween(duration, easing = easing)) { it / 8 }) togetherWith
+                        (fadeOut(animationSpec = tween(duration, easing = easing)) + slideOutVertically(animationSpec = tween(duration, easing = easing)) { it / 8 })
                 }
             ) { s ->
                 Column {
