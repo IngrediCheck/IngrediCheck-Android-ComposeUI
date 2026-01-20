@@ -1,4 +1,5 @@
 package lc.fungee.Ingredicheck.components
+import android.view.WindowManager
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -37,11 +39,12 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Nunito
+import lc.fungee.Ingredicheck.ui.theme.responsiveSheetHeight
 
 @Composable
 fun NonDraggableBottomSheet(
     onDismissRequest: () -> Unit,
-    sheetHeight: Dp = LocalConfiguration.current.screenHeightDp.dp * (243f / 350f * 0.45f),
+    sheetHeight: Dp = responsiveSheetHeight(243f),
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -61,6 +64,8 @@ fun NonDraggableBottomSheet(
             window?.setDimAmount(0f)
             window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
             window?.decorView?.setPadding(0, 0, 0, 0)
+            // Ignore system navigation and status bar limits
+            window?.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         }
 
         Box(
@@ -72,6 +77,45 @@ fun NonDraggableBottomSheet(
                 ) { },
             contentAlignment = Alignment.BottomCenter
         ) {
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            // Soft gradient fade behind the sheet
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(sheetHeight + 161.dp)
+                    .background(
+
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0f),
+                                    Color.White.copy(alpha = 1f)
+                                ),
+                                startY = 0f,
+                                endY = with(density) { 161.dp.toPx() }
+                            )
+
+
+                    )
+
+            )
+
+            // Focused grey shadow (30dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(sheetHeight + 30.dp)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFD9D9D9).copy(alpha = 0f),
+                                Color(0xFFD9D9D9).copy(alpha = 0.2f)
+                            ),
+                            startY = 0f,
+                            endY = with(density) { 30.dp.toPx() }
+                        )
+                    )
+            )
+
             Box(
                 modifier = modifier
                     .fillMaxWidth()
@@ -94,7 +138,7 @@ fun NonDraggableBottomSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(start = 20.dp, top = 42.dp, end = 20.dp, bottom = 32.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
                     content()

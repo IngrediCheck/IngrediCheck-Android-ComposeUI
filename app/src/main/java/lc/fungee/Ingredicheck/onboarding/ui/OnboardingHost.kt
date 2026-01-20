@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
+import lc.fungee.Ingredicheck.ui.theme.responsiveSheetHeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
@@ -41,12 +42,12 @@ fun OnboardingHost(
 
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val sheetHeight = when (step) {
-        OnboardingStep.SIGN_IN_INITIAL -> screenHeight * (248f / 350f * 0.45f)
-        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> screenHeight * (236f / 350f * 0.45f)
-        OnboardingStep.SIGN_IN_INVITE_CODE -> screenHeight * (220f / 350f * 0.45f)
-        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> screenHeight * (370f / 350f * 0.45f)
-        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> screenHeight * (265f / 350f * 0.45f)
-        OnboardingStep.GET_STARTED -> screenHeight * (243f / 350f * 0.45f)
+        OnboardingStep.SIGN_IN_INITIAL -> responsiveSheetHeight(248f)
+        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> responsiveSheetHeight(236f)
+        OnboardingStep.SIGN_IN_INVITE_CODE -> responsiveSheetHeight(220f)
+        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> responsiveSheetHeight(370f)
+        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> responsiveSheetHeight(265f)
+        OnboardingStep.GET_STARTED -> responsiveSheetHeight(243f)
     }
 
     OnboardingShell(

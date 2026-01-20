@@ -97,3 +97,61 @@ fun buttonIconSize(): Dp {
         ScreenCategory.Large -> 24.dp
     }
 }
+
+@Composable
+fun sheetTitleTextStyle(): TextStyle {
+    return when (rememberScreenCategory()) {
+        ScreenCategory.Small -> TextStyle(
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            lineHeight = 24.sp
+        )
+        ScreenCategory.Normal -> TextStyle(
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            lineHeight = 26.sp
+        )
+        ScreenCategory.Large -> TextStyle(
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            lineHeight = 28.sp
+        )
+    }
+}
+
+@Composable
+fun sheetSubtitleTextStyle(): TextStyle {
+    return when (rememberScreenCategory()) {
+        ScreenCategory.Small -> TextStyle(
+            fontFamily = Manrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+        ScreenCategory.Normal -> TextStyle(
+            fontFamily = Manrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            lineHeight = 18.sp
+        )
+        ScreenCategory.Large -> TextStyle(
+            fontFamily = Manrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
+fun responsiveSheetHeight(baseFigmaHeight: Float): Dp {
+    val category = rememberScreenCategory()
+    
+    return when (category) {
+        ScreenCategory.Small -> (LocalConfiguration.current.screenHeightDp * (baseFigmaHeight / 812f)).dp
+        ScreenCategory.Normal, ScreenCategory.Large -> baseFigmaHeight.dp
+    }
+}

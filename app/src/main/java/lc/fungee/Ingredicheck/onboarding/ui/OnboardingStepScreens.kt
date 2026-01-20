@@ -66,6 +66,8 @@ import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
+import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
+import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
 import androidx.compose.ui.platform.LocalConfiguration
 
 @Composable
@@ -241,37 +243,67 @@ internal fun GetStartedSheet(
 }
 
 @Composable
+private fun SheetHeader(
+    title: String,
+    subtitle: String? = null,
+    onBackClick: (() -> Unit)? = null
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = title,
+            style = sheetTitleTextStyle(),
+            maxLines = 1,
+            color = Greyscale150,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (onBackClick != null) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = (21 - 12).dp) // Adjusting for IconButton default 48dp size (12dp internal padding)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp),
+                    tint = Greyscale150
+                )
+            }
+        }
+    }
+
+    if (subtitle != null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            style = sheetSubtitleTextStyle(),
+            color = Greyscale110,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
 internal fun SignInInitialSheet(
     onExistingUserContinue: () -> Unit,
     onStartNew: () -> Unit
 ) {
+    SheetHeader(
+        title = "Are you an existing user?",
+        subtitle = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new."
+    )
 
-        Text(
-            text = "Are you an existing user?",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Greyscale150
-            )
-        )
+    Spacer(modifier = Modifier.height(40.dp))
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new.",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                color = Greyscale110,
-                lineHeight = 18.sp
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
+    Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -304,44 +336,10 @@ internal fun SignInSocialLoginSheet(
     onGoogleClick: () -> Unit,
     onAppleClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Back",
-                modifier = Modifier.size(32.dp),
-                tint = Greyscale150
-            )
-        }
-
-        Text(
-            text = "Welcome back !",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 32.sp,
-                color = Greyscale150
-            ),
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Text(
-        text = "Log in to your existing IngrediCheck account.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            color = Greyscale110
-        ),
-        textAlign = TextAlign.Center
+    SheetHeader(
+        title = "Welcome back !",
+        subtitle = "Log in to your existing IngrediCheck account.",
+        onBackClick = onBackClick
     )
 
     Spacer(modifier = Modifier.height(24.dp))
@@ -362,7 +360,9 @@ internal fun SignInSocialLoginSheet(
             textStyle = TextStyle(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp
+                fontSize = 18.sp ,
+
+
             )
         )
 
@@ -389,44 +389,10 @@ internal fun SignInInviteCodeSheet(
     onEnterInviteCode: () -> Unit,
     onNoContinue: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Back",
-                modifier = Modifier.size(32.dp),
-                tint = Greyscale150
-            )
-        }
-
-        Text(
-            text = "Do you have an invite code?",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Greyscale150
-            ),
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Text(
-        text = "Got a family invite to IngrediFam? Enter code.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110
-        ),
-        textAlign = TextAlign.Center
+    SheetHeader(
+        title = "Do you have an invite code?",
+        subtitle = "Got a family invite to IngrediFam? Enter code.",
+        onBackClick = onBackClick
     )
 
     Spacer(modifier = Modifier.height(24.dp))
@@ -474,46 +440,10 @@ internal fun SignInEnterInviteCodeSheet(
         focusRequester.requestFocus()
     }
 
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Back",
-                modifier = Modifier.size(32.dp),
-                tint = Greyscale150
-            )
-        }
-
-        Text(
-            text = "Enter your invite code",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = Greyscale150
-            ),
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Text(
-        text = "This connects you to your family or shared IngrediCheck space.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110,
-            lineHeight = 18.sp
-        ),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = 16.dp)
+    SheetHeader(
+        title = "Enter your invite code",
+        subtitle = "This connects you to your family or shared IngrediCheck space.",
+        onBackClick = onBackClick
     )
 
     Spacer(modifier = Modifier.height(24.dp))
@@ -656,46 +586,10 @@ internal fun SignInWhoIsThisForSheet(
     onJustMe: () -> Unit,
     onAddFamily: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        IconButton(
-            onClick = onBackClick,
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Back",
-                modifier = Modifier.size(32.dp),
-                tint = Greyscale150
-            )
-        }
-
-        Text(
-            text = "Hey there! Who’s this for?",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = Greyscale150
-            ),
-            modifier = Modifier.align(Alignment.Center)
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Text(
-        text = "Is it just you, or your whole IngrediFam — family, friends, anyone you care about?",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110,
-            lineHeight = 18.sp
-        ),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = 16.dp)
+    SheetHeader(
+        title = "Hey there! Who’s this for?",
+        subtitle = "Is it just you, or your whole IngrediFam — family, friends, anyone you care about?",
+        onBackClick = onBackClick
     )
 
     Spacer(modifier = Modifier.height(24.dp))
