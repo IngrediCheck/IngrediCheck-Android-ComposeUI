@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -61,18 +62,29 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Nunito
+import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Primary800
+import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
+import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
+import androidx.compose.ui.platform.LocalConfiguration
 
 @Composable
 internal fun SignInBackground(
     imageRes: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showLogo: Boolean = true,
+    title: String? = null,
+    subtitle: String? = null,
+    aspectRatio: Float = 8f / 16f
 ) {
     SignInBackgroundTunable(
         imageRes = imageRes,
         modifier = modifier,
         mockWidthFraction = 0.85f,
-        mockAspectRatio = 8f / 16f
+        mockAspectRatio = aspectRatio,
+        showLogo = showLogo,
+        title = title,
+        subtitle = subtitle
     )
 }
 
@@ -81,7 +93,10 @@ private fun SignInBackgroundTunable(
     imageRes: Int,
     mockWidthFraction: Float,
     mockAspectRatio: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showLogo: Boolean = true,
+    title: String? = null,
+    subtitle: String? = null
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -91,7 +106,7 @@ private fun SignInBackgroundTunable(
                 )
 
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 68.dp)
+            .padding(horizontal = if (showLogo) 68.dp else 0.dp)
     ) {
         val heightPx = constraints.maxHeight.toFloat()
 
@@ -102,35 +117,62 @@ private fun SignInBackgroundTunable(
                     .padding(top = 44.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ingredicheck_text_logo),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(40.dp),
-                    contentScale = ContentScale.Fit
-                )
-
-                Spacer(modifier = Modifier.height(44.dp))
+                if (showLogo) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ingredicheck_text_logo),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth(mockWidthFraction)
+                            .height(40.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.height(44.dp))
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                    ,
+                        .weight(1f),
                     contentAlignment = Alignment.TopCenter
                 ) {
+
+
                     Image(
                         painter = painterResource(id = imageRes),
                         contentDescription = null,
                         modifier = Modifier
-//                           .fillMaxWidth(mockWidthFraction)
                             .aspectRatio(mockAspectRatio)
-                            .fillMaxWidth()
-//
-                            ,
+                            .fillMaxWidth(),
                         contentScale = ContentScale.Fit
                     )
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+
+                    ) {
+                        if (title != null) {
+                            Text(
+                                text = title,
+                                style = titleTextStyle(),
+                                color = Greyscale150,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        if (subtitle != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = subtitle,
+                                style = subtitleTextStyle(),
+                                maxLines = 2,
+                                color = Greyscale110,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 20.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -172,6 +214,7 @@ internal fun GetStartedBackground(
                 .weight(1f)
                 .padding(top = 18.dp, bottom = 18.dp)
         ) {
+
             Image(
                 painter = painterResource(id = R.drawable.onbording_getstartedimg),
                 contentDescription = null,

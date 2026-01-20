@@ -11,6 +11,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.viewmodel.compose.viewModel
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
@@ -38,13 +39,14 @@ fun OnboardingHost(
         return
     }
 
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val sheetHeight = when (step) {
-        OnboardingStep.SIGN_IN_INITIAL -> 248.dp
-        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 330.dp
-        OnboardingStep.SIGN_IN_INVITE_CODE -> 330.dp
-        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> 460.dp
-        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> 360.dp
-        OnboardingStep.GET_STARTED -> 243.dp
+        OnboardingStep.SIGN_IN_INITIAL -> screenHeight * (248f / 350f * 0.45f)
+        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> screenHeight * (236f / 350f * 0.45f)
+        OnboardingStep.SIGN_IN_INVITE_CODE -> screenHeight * (220f / 350f * 0.45f)
+        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> screenHeight * (370f / 350f * 0.45f)
+        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> screenHeight * (265f / 350f * 0.45f)
+        OnboardingStep.GET_STARTED -> screenHeight * (243f / 350f * 0.45f)
     }
 
     OnboardingShell(
@@ -62,16 +64,28 @@ fun OnboardingHost(
                 when (s) {
                     OnboardingStep.SIGN_IN_INITIAL,
                     OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> {
-                        SignInBackground(imageRes = R.drawable.iphone_app_img)
+                        SignInBackground(imageRes = R.drawable.iphone_app_img, showLogo = true)
                     }
 
                     OnboardingStep.SIGN_IN_INVITE_CODE,
                     OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
-                        SignInBackground(imageRes = R.drawable.welcome_family_img)
+                        SignInBackground(
+                            imageRes = R.drawable.welcome_family_img,
+                            showLogo = false,
+                            title = "Welcome to IngrediFam !",
+                            subtitle = "Join your family space and personalize\nfood choices together.",
+                            aspectRatio = 1f
+                        )
                     }
 
                     OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
-                        SignInBackground(imageRes = R.drawable.welcome_family_and_me_img)
+                        SignInBackground(
+                            imageRes = R.drawable.welcome_family_and_me_img,
+                            showLogo = false,
+                            title = "Welcome to Ingredicheck",
+                            subtitle = "Create a space for yourself or the people\nyou care about.",
+                            aspectRatio = 1f
+                        )
                     }
 
                     OnboardingStep.GET_STARTED -> {

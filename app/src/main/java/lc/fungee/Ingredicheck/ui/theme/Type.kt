@@ -28,6 +28,15 @@ val Nunito = FontFamily(
     Font(R.font.nunito_extralight_italic, FontWeight.ExtraLight, FontStyle.Italic)
 )
 
+val Manrope = FontFamily(
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_light, FontWeight.Light),
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_extrabold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold)
+)
+
 val NunitoRegular = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Normal)
 val NunitoMedium = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Medium)
 val NunitoSemiBold = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.SemiBold)

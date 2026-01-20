@@ -44,6 +44,9 @@ import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.NunitoBold
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
 import lc.fungee.Ingredicheck.ui.theme.Primary800
+import lc.fungee.Ingredicheck.ui.theme.buttonHeight
+import lc.fungee.Ingredicheck.ui.theme.buttonTextSize
+import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
@@ -55,10 +58,10 @@ fun SecondaryButton(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     icon: Int? = null,
-    iconWidth: Dp = 20.dp,
-    iconHeight: Dp = 20.dp,
+    iconWidth: Dp = buttonIconSize(),
+    iconHeight: Dp = buttonIconSize(),
     width: Dp = 152.dp,
-    height: Dp = 52.dp,
+    height: Dp = buttonHeight(),
     takeFullWidth: Boolean = true,
     isLoading: Boolean = false,
     isDisabled: Boolean = false,
@@ -68,7 +71,7 @@ fun SecondaryButton(
     textColor: Color = Primary800,
     disabledTextColor: Color = Greyscale110,
     textStyle: TextStyle = NunitoBold.copy(
-        fontSize = 16.sp,
+        fontSize = buttonTextSize(),
         color = textColor
     )
 ) {

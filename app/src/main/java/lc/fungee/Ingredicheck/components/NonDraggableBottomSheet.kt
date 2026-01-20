@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,7 +41,7 @@ import lc.fungee.Ingredicheck.ui.theme.Nunito
 @Composable
 fun NonDraggableBottomSheet(
     onDismissRequest: () -> Unit,
-    sheetHeight: Dp = 243.dp,
+    sheetHeight: Dp = LocalConfiguration.current.screenHeightDp.dp * (243f / 350f * 0.45f),
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {

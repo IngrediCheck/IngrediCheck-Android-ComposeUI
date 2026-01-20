@@ -27,6 +27,9 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.NunitoBold
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
+import lc.fungee.Ingredicheck.ui.theme.buttonHeight
+import lc.fungee.Ingredicheck.ui.theme.buttonTextSize
+import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
 
 @Composable
 fun PrimaryButton(
@@ -34,16 +37,16 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     icon: Int? = null,
-    iconWidth: Dp = 20.dp,
-    iconHeight: Dp = 20.dp,
+    iconWidth: Dp = buttonIconSize(),
+    iconHeight: Dp = buttonIconSize(),
     width: Dp = 152.dp,
-    height: Dp = 52.dp,
+    height: Dp = buttonHeight(),
     takeFullWidth: Boolean = true,
     isLoading: Boolean = false,
     isDisabled: Boolean = false,
     disabledBackgroundColor: Color = Greyscale40,
     textStyle: TextStyle = NunitoSemiBold.copy(
-        fontSize = 20.sp
+        fontSize = buttonTextSize()
     )
 ) {
     val enabled = !isDisabled && !isLoading && onClick != null
