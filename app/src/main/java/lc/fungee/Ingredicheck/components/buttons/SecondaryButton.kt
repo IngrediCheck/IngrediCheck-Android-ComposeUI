@@ -3,6 +3,7 @@ package lc.fungee.Ingredicheck.components.buttons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,7 @@ import lc.fungee.Ingredicheck.ui.theme.buttonHeight
 import lc.fungee.Ingredicheck.ui.theme.buttonTextSize
 import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
 import androidx.compose.foundation.border
+import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
 
@@ -115,7 +117,11 @@ fun SecondaryButton(
             .alpha(if (isDisabled) 0.6f else 1f)
             .then(
                 if (enabled) {
-                    Modifier.clickable(onClick = onClick!!)
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClick!!
+                    )
                 } else {
                     Modifier
                 }

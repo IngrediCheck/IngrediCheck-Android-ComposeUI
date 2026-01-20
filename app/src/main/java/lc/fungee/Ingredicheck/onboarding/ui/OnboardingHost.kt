@@ -2,8 +2,7 @@ package lc.fungee.Ingredicheck.onboarding.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.EaseOutQuart
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,9 +68,8 @@ fun OnboardingHost(
                 targetState = backgroundKey,
                 label = "onboardingBackground",
                 transitionSpec = {
-                    val duration = 400
-                    fadeIn(animationSpec = tween(duration, easing = EaseOutQuart)) togetherWith
-                        fadeOut(animationSpec = tween(duration, easing = EaseOutQuart))
+                    fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) togetherWith
+                        fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
                 }
             ) { k ->
                 when (k) {
@@ -104,10 +102,10 @@ fun OnboardingHost(
                 targetState = step,
                 label = "onboardingSheet",
                 transitionSpec = {
-                    val duration = 400
-                    val easing = EaseOutQuart
-                    (fadeIn(animationSpec = tween(duration, easing = easing)) + slideInVertically(animationSpec = tween(duration, easing = easing)) { it / 12 }) togetherWith
-                        (fadeOut(animationSpec = tween(duration, easing = easing)) + slideOutVertically(animationSpec = tween(duration, easing = easing)) { it / 12 })
+                    val duration = 300
+                    val easing = FastOutSlowInEasing
+                    fadeIn(animationSpec = tween(duration, easing = easing)) togetherWith
+                        fadeOut(animationSpec = tween(duration, easing = easing))
                 }
             ) { s ->
                 Column {

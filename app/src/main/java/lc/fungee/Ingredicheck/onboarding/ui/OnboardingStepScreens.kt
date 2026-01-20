@@ -270,7 +270,7 @@ private fun SheetHeader(
                     .padding(start = (21 - 12).dp) // Adjusting for IconButton default 48dp size (12dp internal padding)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    painter = painterResource(id = R.drawable.ion_chevron_back),
                     contentDescription = "Back",
                     modifier = Modifier.size(24.dp),
                     tint = Greyscale150
@@ -603,16 +603,42 @@ internal fun SignInWhoIsThisForSheet(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        OptionChip(
+        SecondaryButton(
             title = "Just Me",
             onClick = onJustMe,
-            modifier = Modifier.weight(1f)
+            icon = R.drawable.user_green,
+            iconHeight = buttonIconSize() - 4.dp,
+            iconWidth = buttonIconSize() - 4.dp,
+            iconTint = Color.Unspecified,
+            modifier = Modifier.weight(1f),
+            takeFullWidth = true,
+            width = 0.dp,
+            textColor = Greyscale150,
+            borderColor = Greyscale40,
+            textStyle = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp
+            )
         )
 
-        OptionChip(
+        SecondaryButton(
             title = "Add Family",
             onClick = onAddFamily,
-            modifier = Modifier.weight(1f)
+            icon = R.drawable.users_group,
+            iconHeight = buttonIconSize() - 4.dp,
+            iconWidth = buttonIconSize() - 4.dp,
+            iconTint = Color.Unspecified,
+            modifier = Modifier.weight(1f),
+            takeFullWidth = true,
+            width = 0.dp,
+            textColor = Greyscale150,
+            borderColor = Greyscale40,
+            textStyle = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp
+            )
         )
     }
 

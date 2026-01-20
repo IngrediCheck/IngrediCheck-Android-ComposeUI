@@ -1,8 +1,8 @@
 package lc.fungee.Ingredicheck.onboarding.ui
 
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,10 +23,7 @@ fun OnboardingShell(
 ) {
     val animatedSheetHeight by animateDpAsState(
         targetValue = sheetHeight,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
+        animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "onboardingSheetHeight"
     )
 
