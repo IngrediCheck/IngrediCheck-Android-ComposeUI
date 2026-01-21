@@ -17,22 +17,14 @@ import lc.fungee.Ingredicheck.components.NonDraggableBottomSheet
 fun OnboardingShell(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetHeight: Dp = 243.dp,
     backgroundContent: @Composable BoxScope.() -> Unit,
     sheetContent: @Composable () -> Unit
 ) {
-    val animatedSheetHeight by animateDpAsState(
-        targetValue = sheetHeight,
-        animationSpec = tween(300, easing = FastOutSlowInEasing),
-        label = "onboardingSheetHeight"
-    )
-
     Box(modifier = modifier.fillMaxSize()) {
         backgroundContent()
 
         NonDraggableBottomSheet(
-            onDismissRequest = onDismissRequest,
-            sheetHeight = animatedSheetHeight
+            onDismissRequest = onDismissRequest
         ) {
             sheetContent()
         }

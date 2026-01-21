@@ -67,5 +67,8 @@ class OnboardingViewModel(
         set(value) {
             inviteCodeState = value
             savedStateHandle[KEY_INVITE_CODE] = value
+            inviteCodeError = false
         }
+
+    var inviteCodeError by mutableStateOf(false)
 }

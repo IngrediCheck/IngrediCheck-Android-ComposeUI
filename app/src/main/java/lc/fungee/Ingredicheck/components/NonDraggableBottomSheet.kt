@@ -1,17 +1,20 @@
 package lc.fungee.Ingredicheck.components
-import android.view.WindowManager
 import android.graphics.drawable.ColorDrawable
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.width
@@ -32,6 +35,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.Dp
 import lc.fungee.Ingredicheck.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.components.buttons.SecondaryButton
@@ -39,12 +50,13 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Nunito
+import lc.fungee.Ingredicheck.ui.theme.rememberScreenCategory
+import lc.fungee.Ingredicheck.ui.theme.ScreenCategory
 import lc.fungee.Ingredicheck.ui.theme.responsiveSheetHeight
 
 @Composable
 fun NonDraggableBottomSheet(
     onDismissRequest: () -> Unit,
-    sheetHeight: Dp = responsiveSheetHeight(243f),
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -64,8 +76,7 @@ fun NonDraggableBottomSheet(
             window?.setDimAmount(0f)
             window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
             window?.decorView?.setPadding(0, 0, 0, 0)
-            // Ignore system navigation and status bar limits
-            window?.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            window?.let { WindowCompat.setDecorFitsSystemWindows(it, false) }
         }
 
         Box(
@@ -78,11 +89,14 @@ fun NonDraggableBottomSheet(
             contentAlignment = Alignment.BottomCenter
         ) {
             val density = androidx.compose.ui.platform.LocalDensity.current
+            var measuredHeight by remember { mutableStateOf(0.dp) }
+            val currentSheetHeight = measuredHeight
+
             // Soft gradient fade behind the sheet
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(sheetHeight + 161.dp)
+                    .height(currentSheetHeight + 161.dp)
                     .background(
 
                             brush = Brush.verticalGradient(
@@ -103,7 +117,7 @@ fun NonDraggableBottomSheet(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(sheetHeight + 30.dp)
+                    .height(currentSheetHeight + 30.dp)
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -119,7 +133,13 @@ fun NonDraggableBottomSheet(
             Box(
                 modifier = modifier
                     .fillMaxWidth()
-                    .height(sheetHeight)
+                    .wrapContentHeight()
+                    .animateContentSize(
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        measuredHeight = with(density) { coordinates.size.height.toDp() }
+                    }
                     .shadow(
                         elevation = 27.5.dp,
                         shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
@@ -135,13 +155,54 @@ fun NonDraggableBottomSheet(
                         indication = null
                     ) { }
             ) {
+                val category = rememberScreenCategory()
+                
+                val startPadding = when (category) {
+                    ScreenCategory.Large -> 24.dp
+                    else -> 20.dp
+                }
+                val endPadding = when (category) {
+                    ScreenCategory.Large -> 24.dp
+                    ScreenCategory.Normal -> 20.dp
+                    ScreenCategory.Small -> 18.dp
+                }
+                val topPadding = when (category) {
+                    ScreenCategory.Large -> 26.dp
+                    ScreenCategory.Normal -> 24.dp
+                    ScreenCategory.Small -> 22.dp
+                }
+                val baseBottomPadding = when (category) {
+                    ScreenCategory.Large -> 34.dp
+                    ScreenCategory.Normal -> 32.dp
+                    ScreenCategory.Small -> 30.dp
+                }
+
+                // Add navigation bar height to ensure content is above system buttons
+                val navBarPadding = androidx.compose.foundation.layout.WindowInsets.navigationBars
+                    .asPaddingValues().calculateBottomPadding()
+                val totalBottomPadding = baseBottomPadding + navBarPadding
+
+                val contentPadding = PaddingValues(
+                    start = startPadding,
+                    top = topPadding,
+                    end = endPadding,
+                    bottom = 0.dp
+                )
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, top = 42.dp, end = 20.dp, bottom = 32.dp),
+                        .padding(contentPadding),
                     horizontalAlignment = Alignment.Start
                 ) {
                     content()
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(totalBottomPadding)
+
+                    )
                 }
             }
         }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Dp
 import lc.fungee.Ingredicheck.ui.theme.responsiveSheetHeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import lc.fungee.Ingredicheck.R
@@ -41,16 +42,6 @@ fun OnboardingHost(
         return
     }
 
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val sheetHeight = when (step) {
-        OnboardingStep.SIGN_IN_INITIAL -> responsiveSheetHeight(248f)
-        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> responsiveSheetHeight(236f)
-        OnboardingStep.SIGN_IN_INVITE_CODE -> responsiveSheetHeight(220f)
-        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> responsiveSheetHeight(370f)
-        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> responsiveSheetHeight(265f)
-        OnboardingStep.GET_STARTED -> responsiveSheetHeight(243f)
-    }
-
     val backgroundKey = when (step) {
         OnboardingStep.SIGN_IN_INITIAL,
         OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 1
@@ -62,7 +53,6 @@ fun OnboardingHost(
 
     OnboardingShell(
         onDismissRequest = onExitOnboarding,
-        sheetHeight = sheetHeight,
         backgroundContent = {
             AnimatedContent(
                 targetState = backgroundKey,
@@ -144,10 +134,15 @@ fun OnboardingHost(
                         OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
                             SignInEnterInviteCodeSheet(
                                 inviteCode = vm.inviteCode,
+                                isError = vm.inviteCodeError,
                                 onInviteCodeChange = { vm.inviteCode = it },
                                 onBackClick = { vm.back() },
                                 onVerifyContinue = {
-                                    vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
+                                    if (vm.inviteCode == "ABCXYZ") {
+                                        vm.inviteCodeError = true
+                                    } else {
+                                        vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
+                                    }
                                 }
                             )
                         }

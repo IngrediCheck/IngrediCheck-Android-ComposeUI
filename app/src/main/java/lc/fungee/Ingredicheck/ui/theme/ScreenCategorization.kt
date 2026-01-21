@@ -1,5 +1,7 @@
 package lc.fungee.Ingredicheck.ui.theme
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
@@ -128,19 +130,19 @@ fun sheetSubtitleTextStyle(): TextStyle {
         ScreenCategory.Small -> TextStyle(
             fontFamily = Manrope,
             fontWeight = FontWeight.Medium,
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             lineHeight = 16.sp
         )
         ScreenCategory.Normal -> TextStyle(
             fontFamily = Manrope,
             fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
+            fontSize = 13.sp,
             lineHeight = 18.sp
         )
         ScreenCategory.Large -> TextStyle(
             fontFamily = Manrope,
             fontWeight = FontWeight.Medium,
-            fontSize = 13.sp,
+            fontSize = 14.sp,
             lineHeight = 20.sp
         )
     }
@@ -149,9 +151,13 @@ fun sheetSubtitleTextStyle(): TextStyle {
 @Composable
 fun responsiveSheetHeight(baseFigmaHeight: Float): Dp {
     val category = rememberScreenCategory()
+    val navBarHeight = androidx.compose.foundation.layout.WindowInsets.navigationBars
+        .asPaddingValues().calculateBottomPadding()
     
-    return when (category) {
+    val baseHeight = when (category) {
         ScreenCategory.Small -> (LocalConfiguration.current.screenHeightDp * (baseFigmaHeight / 812f)).dp
         ScreenCategory.Normal, ScreenCategory.Large -> baseFigmaHeight.dp
     }
+    
+    return baseHeight + navBarHeight
 }

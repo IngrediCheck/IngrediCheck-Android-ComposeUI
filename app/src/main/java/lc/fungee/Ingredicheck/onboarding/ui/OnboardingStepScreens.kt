@@ -31,6 +31,8 @@ import androidx.compose.material.icons.sharp.AccountCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,11 +42,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +57,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.R
@@ -62,6 +67,8 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Nunito
+import lc.fungee.Ingredicheck.ui.theme.Fail100
+import lc.fungee.Ingredicheck.ui.theme.Fail25
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
@@ -69,7 +76,9 @@ import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
 import androidx.compose.ui.platform.LocalConfiguration
+import lc.fungee.Ingredicheck.ui.theme.ScreenCategory
 import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
+import lc.fungee.Ingredicheck.ui.theme.rememberScreenCategory
 
 @Composable
 internal fun SignInBackground(
@@ -89,6 +98,19 @@ internal fun SignInBackground(
         title = title,
         subtitle = subtitle
     )
+}
+
+@Composable
+private fun responsiveSpacerHeight(
+    small: Dp,
+    medium: Dp,
+    large: Dp
+): Dp {
+    return when (rememberScreenCategory()) {
+        ScreenCategory.Small -> small
+        ScreenCategory.Normal -> medium
+        ScreenCategory.Large -> large
+    }
 }
 
 @Composable
@@ -266,8 +288,8 @@ private fun SheetHeader(
             IconButton(
                 onClick = onBackClick,
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = (21 - 12).dp) // Adjusting for IconButton default 48dp size (12dp internal padding)
+                    .align(Alignment.TopStart)
+//                    .padding(start = 21 .dp) // Adjusting for IconButton default 48dp size (12dp internal padding)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ion_chevron_back),
@@ -302,7 +324,7 @@ internal fun SignInInitialSheet(
         subtitle = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new."
     )
 
-    Spacer(modifier = Modifier.height(40.dp))
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
 
     Row(
             modifier = Modifier.fillMaxWidth(),
@@ -343,7 +365,7 @@ internal fun SignInSocialLoginSheet(
         onBackClick = onBackClick
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -399,7 +421,7 @@ internal fun SignInInviteCodeSheet(
         onBackClick = onBackClick
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -434,6 +456,7 @@ internal fun SignInInviteCodeSheet(
 @Composable
 internal fun SignInEnterInviteCodeSheet(
     inviteCode: String,
+    isError: Boolean = false,
     onInviteCodeChange: (String) -> Unit,
     onBackClick: () -> Unit,
     onVerifyContinue: () -> Unit
@@ -450,8 +473,7 @@ internal fun SignInEnterInviteCodeSheet(
         onBackClick = onBackClick
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
-
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
     Box(contentAlignment = Alignment.Center) {
         BasicTextField(
             value = inviteCode,
@@ -462,10 +484,10 @@ internal fun SignInEnterInviteCodeSheet(
             },
             modifier = Modifier
                 .size(1.dp)
+                .drawWithContent { } // Alternative to alpha(0f) to ensure no cursor is drawn
                 .focusRequester(focusRequester),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Ascii,
-                capitalization = KeyboardCapitalization.Characters
             )
         )
 
@@ -480,7 +502,8 @@ internal fun SignInEnterInviteCodeSheet(
             repeat(3) { index ->
                 InviteCodeBox(
                     index = index,
-                    inviteCode = inviteCode
+                    inviteCode = inviteCode,
+                    isError = isError
                 )
             }
 
@@ -490,14 +513,15 @@ internal fun SignInEnterInviteCodeSheet(
                     fontFamily = Nunito,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = Greyscale40
+                    color = if (isError) Fail25 else Greyscale40
                 )
             )
 
             repeat(3) { index ->
                 InviteCodeBox(
                     index = index + 3,
-                    inviteCode = inviteCode
+                    inviteCode = inviteCode,
+                    isError = isError
                 )
             }
         }
@@ -505,18 +529,29 @@ internal fun SignInEnterInviteCodeSheet(
 
     Spacer(modifier = Modifier.height(16.dp))
 
-    Text(
-        text = "You can add this later if you receive one.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110.copy(alpha = 0.6f)
+    if (isError) {
+        Text(
+            text = "We couldn’t verify your code. Please try again..",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                color = Fail100
+            )
         )
-    )
+    } else {
+        Text(
+            text = "You can add this later if you receive one.",
+            style = TextStyle(
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale110.copy(alpha = 0.6f)
+            )
+        )
+    }
 
-    Spacer(modifier = Modifier.height(32.dp))
-
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
     PrimaryButton(
         title = "Verify & Continue",
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -531,12 +566,11 @@ internal fun SignInEnterInviteCodeSheet(
         horizontalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
     ) {
-        Icon(
-            imageVector = Icons.Sharp.AccountCircle,
-            contentDescription = null,
-            tint = Greyscale110.copy(alpha = 0.6f),
-            modifier = Modifier.size(16.dp)
-        )
+       Image(
+           painter = painterResource(R.drawable.shield_half),
+           contentDescription = null,
+           modifier = Modifier.size(16.dp)
+       )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = "By continuing, you agree to our Terms & Privacy Policy.",
@@ -550,16 +584,23 @@ internal fun SignInEnterInviteCodeSheet(
     }
 }
 
+
+
 @Composable
 private fun InviteCodeBox(
     index: Int,
-    inviteCode: String
+    inviteCode: String,
+    isError: Boolean = false
 ) {
     Box(
         modifier = Modifier
-            .size(48.dp, 60.dp)
+            .size(44.dp, 50.dp)
             .background(
-                color = if (inviteCode.length == index) Color(0xFFFFF7EB) else Greyscale40.copy(alpha = 0.3f),
+                color = when {
+                    isError -> Fail25
+                    inviteCode.length == index -> Color(0xFFFFF7EB)
+                    else -> Greyscale40.copy(alpha = 0.3f)
+                },
                 shape = RoundedCornerShape(12.dp)
             ),
         contentAlignment = Alignment.Center
@@ -570,14 +611,26 @@ private fun InviteCodeBox(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
-                color = Greyscale150
+                color = if (isError) Fail100 else Greyscale150
             )
         )
         if (inviteCode.length == index) {
+            val infiniteTransition = rememberInfiniteTransition(label = "cursorAnimation")
+            val alpha by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 0f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(500, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "cursorAlpha"
+            )
+
             Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(24.dp)
+                    .graphicsLayer(alpha = alpha)
                     .background(Color.Black)
             )
         }
@@ -596,8 +649,7 @@ internal fun SignInWhoIsThisForSheet(
         onBackClick = onBackClick
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
-
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -643,7 +695,7 @@ internal fun SignInWhoIsThisForSheet(
     }
 
     Spacer(modifier = Modifier.height(24.dp))
-
+Row (modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center){
     Text(
         text = "You can always add or edit members later.",
         style = TextStyle(
@@ -654,6 +706,8 @@ internal fun SignInWhoIsThisForSheet(
         ),
         textAlign = TextAlign.Center
     )
+}
+
 }
 
 @Composable
