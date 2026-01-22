@@ -53,7 +53,7 @@ fun PrimaryButton(
 ) {
     val enabled = !isDisabled && !isLoading && onClick != null
     val shape = RoundedCornerShape(percent = 50)
-
+    val clickAction = onClick
     val resolvedTextStyle = if (isDisabled) {
         textStyle.copy(color = Greyscale110)
     } else {
@@ -84,7 +84,7 @@ fun PrimaryButton(
                     Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onClick!!
+                        onClick = clickAction
                     )
                 } else {
                     Modifier
