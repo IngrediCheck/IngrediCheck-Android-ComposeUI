@@ -1,4 +1,4 @@
-package lc.fungee.Ingredicheck.onboarding.ui
+    package lc.fungee.Ingredicheck.onboarding.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

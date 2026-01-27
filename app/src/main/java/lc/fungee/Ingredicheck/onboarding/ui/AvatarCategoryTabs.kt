@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -129,27 +130,46 @@ private fun SelectedSummaryBar(
     onGenerateClick: () -> Unit,
     backgroundColor: Color
 ) {
+    val selectedLabelFontSize = selectedSummaryLabelFontSize()
+    val selectedIconSize = selectedSummaryIconSize()
+    val selectedIconSpacing = selectedSummaryIconSpacing()
+    val generateButtonWidth = when (rememberAvatarScreenCategory()) {
+        AvatarScreenCategory.Large -> 190.dp
+        AvatarScreenCategory.Small,
+        AvatarScreenCategory.Normal -> 170.dp
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundColor)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Selected",
-                color = Greyscale110,
+                color = Greyscale130,
                 fontFamily = Manrope,
                 fontWeight = FontWeight.Medium,
-                fontSize = 12.sp
+                fontSize = selectedLabelFontSize
             )
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+//            Text(
+//                text = "font=${selectedLabelFontSize.value}sp  icon=${selectedIconSize.value}dp  gap=${selectedIconSpacing.value}dp",
+//                color = Greyscale110,
+//                fontFamily = Manrope,
+//                fontWeight = FontWeight.Medium,
+//                fontSize = 10.sp
+//            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(selectedIconSpacing)
+            ) {
                 selected.forEach { member ->
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(selectedIconSize)
                             .clip(CircleShape)
                     ) {
                         Image(
@@ -157,8 +177,8 @@ private fun SelectedSummaryBar(
                             contentDescription = member.label,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(if (member.contentScale == ContentScale.Fit) 3.dp else 0.dp),
-                            contentScale = member.contentScale
+                              ,
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
@@ -168,8 +188,10 @@ private fun SelectedSummaryBar(
         PrimaryButton(
             title = "Generate",
             icon = R.drawable.lucide_stars_,
+            iconWidth = 20.dp,
+            iconHeight = 20.dp,
             takeFullWidth = false,
-            width = 180.dp,
+            width = generateButtonWidth,
             isDisabled = !isGenerateEnabled,
             onClick = if (isGenerateEnabled) onGenerateClick else null
         )
@@ -359,12 +381,10 @@ fun FamilyMemberSelector(
                 // Label (Greyscale110, Manrope Medium 10sp)
                 Text(
                     text = member.label,
-                    style = androidx.compose.ui.text.TextStyle(
-                        fontFamily = Manrope,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 10.sp,
-                        color = Greyscale110
-                    )
+                    style = avatarOptionLabelTextStyle(),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -394,15 +414,6 @@ fun AvatarCreationScreen(
         avatarOptionsForCategory(selectedCategoryIndex)
     }
 
-    LaunchedEffect(selectedCategoryIndex) {
-        if (selectedCategoryIndex == 0) return@LaunchedEffect
-
-        val currentSelectedId = selections[selectedCategoryIndex]
-        if (currentItems.isNotEmpty() && (currentSelectedId == null || currentItems.none { it.id == currentSelectedId })) {
-            selections[selectedCategoryIndex] = currentItems.first().id
-        }
-    }
-
     val selectedForCategory by remember {
         derivedStateOf { selections[selectedCategoryIndex] ?: "" }
     }
@@ -423,7 +434,7 @@ fun AvatarCreationScreen(
             backgroundColor = backgroundColor
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(22.dp))
         
         // Show the same selector UI for categories that have selectable options.
         if (currentItems.isNotEmpty()) {
@@ -436,7 +447,7 @@ fun AvatarCreationScreen(
                 )
             }
         }
-
+//        Spacer(modifier = Modifier.height(22.dp))
         if (!centerContent) {
 
             SelectedSummaryBar(
@@ -502,14 +513,6 @@ fun AvatarCreationScreenPreview() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White),
-                initialSelections = mapOf(
-                    0 to "young_daughter",
-                    1 to "hand_victory",
-                    2 to "hair_long",
-                    3 to "skin_medium",
-                    4 to "acc_cap",
-                    5 to "color_lavender"
-                ),
                 backgroundColor = Color.White,
                 centerContent = false
             )
