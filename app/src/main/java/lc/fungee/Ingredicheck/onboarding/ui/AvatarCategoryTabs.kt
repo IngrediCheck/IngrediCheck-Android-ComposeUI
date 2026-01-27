@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.*
@@ -106,7 +105,7 @@ private fun avatarOptionsForCategory(categoryIndex: Int): List<FamilyMember> {
             FamilyMember("color_warm_pink", R.drawable.warm_pink, "Warm pink", ContentScale.Fit),
             FamilyMember("color_soft_green", R.drawable.soft_green, "Soft green", ContentScale.Fit),
             FamilyMember("color_lavender", R.drawable.lavender, "Lavender", ContentScale.Fit),
-            FamilyMember("color_orange", R.drawable.orange, "Orange", ContentScale.Fit),
+            FamilyMember("color_orange", R.drawable.orange_fruits, "Orange", ContentScale.Fit),
             FamilyMember("color_yellow", R.drawable.yellow, "Yellow", ContentScale.Fit),
             FamilyMember("color_transparent", R.drawable.transprint, "Transparent", ContentScale.Fit),
         )
