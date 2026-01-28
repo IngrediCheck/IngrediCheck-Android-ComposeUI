@@ -54,6 +54,11 @@ fun CapsuleStepperRow(
 
     val clampedActive = activeIndex.coerceIn(0, steps.lastIndex)
 
+    var maxReachedIndex by remember { mutableIntStateOf(clampedActive) }
+    if (clampedActive > maxReachedIndex) {
+        maxReachedIndex = clampedActive
+    }
+
     // Layout model (fixed widths so we can compute the progress fill length deterministically)
     val collapsedHeight = 44.dp
     val collapsedWidth = 64.dp
@@ -61,13 +66,20 @@ fun CapsuleStepperRow(
 
     val itemWidth: (Int) -> Dp = { index -> if (index == clampedActive) expandedWidth else collapsedWidth }
 
-    val fillToStartOfActive by animateDpAsState(
-        targetValue = ((collapsedWidth + itemSpacing) * clampedActive),
+    // Calculate fill width to the max reached index.
+    // If the active item is before the max reached index, we must add the expansion delta 
+    // because the active item (which is wider) pushes the subsequent items (up to max) further to the right.
+    val baseFill = (collapsedWidth + itemSpacing) * maxReachedIndex
+    val expansionDelta = if (clampedActive < maxReachedIndex) (expandedWidth - collapsedWidth) else 0.dp
+    val fillToStartOfActive = baseFill + expansionDelta
+
+    val fillToStartOfActiveState by animateDpAsState(
+        targetValue = fillToStartOfActive,
         animationSpec = tween(animationDurationMs),
         label = "fillToStartOfActive"
     )
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = horizontalPadding)
@@ -76,6 +88,11 @@ fun CapsuleStepperRow(
         val scrollState = rememberScrollState()
         val fillOverlap = lineHeight / 2
         val totalContentWidth = (collapsedWidth * (steps.size - 1)) + expandedWidth + (itemSpacing * (steps.size - 1))
+        
+        // We use the direct calculated value instead of animated state for instant fill as requested previously,
+        // or we can re-introduce animation if "fill fast" allows it.
+        // User previously asked: "fill fast without animatioin"
+        // I will stick to the direct value 'fillToStartOfActive' for the Box width.
         val filledWidth = (fillToStartOfActive + fillOverlap).coerceAtMost(totalContentWidth)
 
         Box(
@@ -111,7 +128,7 @@ fun CapsuleStepperRow(
             ) {
                 steps.forEachIndexed { index, step ->
                     val isActive = index == clampedActive
-                    val isCompleted = index < clampedActive
+                    val isVisited = index <= maxReachedIndex
 
                     val width by animateDpAsState(
                         targetValue = itemWidth(index),
@@ -119,8 +136,8 @@ fun CapsuleStepperRow(
                         label = "capsuleWidth"
                     )
 
-                    val bg = if (isActive || isCompleted) activeColor else inactiveColor
-                    val iconTint = if (isActive || isCompleted) Color.White else Color(0xFFC4E092)
+                    val bg = if (isVisited) activeColor else inactiveColor
+                    val iconTint = if (isVisited) Color.White else Color(0xFFC4E092)
 
                     Row(
                         modifier = Modifier
