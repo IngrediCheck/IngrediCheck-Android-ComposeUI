@@ -9,8 +9,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 
 enum class ScreenCategory {
+    Small, Normal, Large
+}
+
+enum class AvatarScreenCategory {
     Small, Normal, Large
 }
 
@@ -22,6 +27,17 @@ fun rememberScreenCategory(): ScreenCategory {
         screenHeight < 700 -> ScreenCategory.Small
         screenHeight < 820 -> ScreenCategory.Normal
         else -> ScreenCategory.Large
+    }
+}
+
+@Composable
+fun rememberAvatarScreenCategory(): AvatarScreenCategory {
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+
+    return when {
+        screenWidth < 360 -> AvatarScreenCategory.Small
+        screenWidth < 410 -> AvatarScreenCategory.Normal
+        else -> AvatarScreenCategory.Large
     }
 }
 
@@ -98,6 +114,49 @@ fun buttonIconSize(): Dp {
         ScreenCategory.Normal -> 26.dp
         ScreenCategory.Large -> 28.dp
     }
+}
+
+@Composable
+fun selectedSummaryLabelFontSize(): TextUnit {
+    return when (rememberAvatarScreenCategory()) {
+        AvatarScreenCategory.Small -> 12.sp
+        AvatarScreenCategory.Normal -> 14.sp
+        AvatarScreenCategory.Large -> 16.sp
+    }
+}
+
+@Composable
+fun selectedSummaryIconSize(): Dp {
+    return when (rememberAvatarScreenCategory()) {
+        AvatarScreenCategory.Small -> 18.dp
+        AvatarScreenCategory.Normal -> 20.dp
+        AvatarScreenCategory.Large -> 22.dp
+    }
+}
+
+@Composable
+fun selectedSummaryIconSpacing(): Dp {
+    return when (rememberAvatarScreenCategory()) {
+        AvatarScreenCategory.Small -> 6.dp
+        AvatarScreenCategory.Normal -> 8.dp
+        AvatarScreenCategory.Large -> 12.dp
+    }
+}
+
+@Composable
+fun avatarOptionLabelTextStyle(): TextStyle {
+    val fontSize = when (rememberAvatarScreenCategory()) {
+        AvatarScreenCategory.Small -> 10.sp
+        AvatarScreenCategory.Normal -> 12.sp
+        AvatarScreenCategory.Large -> 14.sp
+    }
+
+    return TextStyle(
+        fontFamily = Manrope,
+        fontWeight = FontWeight.Medium,
+        fontSize = fontSize,
+        color = Greyscale110
+    )
 }
 
 @Composable
