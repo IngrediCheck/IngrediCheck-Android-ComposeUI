@@ -36,8 +36,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -57,6 +57,7 @@ import lc.fungee.Ingredicheck.ui.theme.responsiveSheetHeight
 @Composable
 fun NonDraggableBottomSheet(
     onDismissRequest: () -> Unit,
+    horizontalPaddingEnabled: Boolean = true,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -135,7 +136,11 @@ fun NonDraggableBottomSheet(
                     .fillMaxWidth()
                     .wrapContentHeight()
                     .animateContentSize(
-                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessHigh
+                        ),
+                        alignment = Alignment.BottomCenter
                     )
                     .onGloballyPositioned { coordinates ->
                         measuredHeight = with(density) { coordinates.size.height.toDp() }
@@ -157,14 +162,22 @@ fun NonDraggableBottomSheet(
             ) {
                 val category = rememberScreenCategory()
                 
-                val startPadding = when (category) {
-                    ScreenCategory.Large -> 24.dp
-                    else -> 20.dp
+                val startPadding = if (horizontalPaddingEnabled) {
+                    when (category) {
+                        ScreenCategory.Large -> 24.dp
+                        else -> 20.dp
+                    }
+                } else {
+                    0.dp
                 }
-                val endPadding = when (category) {
-                    ScreenCategory.Large -> 24.dp
-                    ScreenCategory.Normal -> 20.dp
-                    ScreenCategory.Small -> 18.dp
+                val endPadding = if (horizontalPaddingEnabled) {
+                    when (category) {
+                        ScreenCategory.Large -> 24.dp
+                        ScreenCategory.Normal -> 20.dp
+                        ScreenCategory.Small -> 18.dp
+                    }
+                } else {
+                    0.dp
                 }
                 val topPadding = when (category) {
                     ScreenCategory.Large -> 26.dp
@@ -192,7 +205,9 @@ fun NonDraggableBottomSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(contentPadding),
+
+                        .padding(contentPadding)
+                     ,
                     horizontalAlignment = Alignment.Start
                 ) {
                     content()

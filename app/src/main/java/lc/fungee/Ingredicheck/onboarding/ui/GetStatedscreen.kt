@@ -41,6 +41,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.viewinterop.AndroidView
+import app.rive.runtime.kotlin.RiveAnimationView
+import app.rive.runtime.kotlin.core.Alignment as RiveAlignment
+import app.rive.runtime.kotlin.core.Fit as RiveFit
+import kotlinx.coroutines.delay
 
 
 @Composable
@@ -52,7 +57,7 @@ fun FillingPipeLine(
     LaunchedEffect(Unit) {
         progress.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 5_000, easing = LinearEasing)
+            animationSpec = tween(durationMillis = 18_000, easing = LinearEasing)
         )
         onComplete()
     }
@@ -112,14 +117,28 @@ fun GetStatedScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(top = 18.dp, bottom = 18.dp)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.onbording_getstartedimg),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
 
+        ) {
+            var riveView: RiveAnimationView? by remember { mutableStateOf(null) }
+
+            LaunchedEffect(Unit) {
+                delay(20_000)
+                riveView?.pause()
+            }
+
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    RiveAnimationView(context).also {
+                        riveView = it
+                        it.setRiveResource(
+                            resId = R.raw.ingridecheck,
+                            stateMachineName = null,
+                            alignment = RiveAlignment.CENTER,
+                            fit = RiveFit.COVER
+                        )
+                    }
+                }
             )
         }
 

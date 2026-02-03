@@ -48,17 +48,17 @@ data class FamilyMember(
     val contentScale: ContentScale = ContentScale.Crop
 )
 
-private fun avatarOptionsForCategory(categoryIndex: Int): List<FamilyMember> {
+internal fun avatarOptionsForCategory(categoryIndex: Int): List<FamilyMember> {
     return when (categoryIndex) {
         0 -> listOf(
-            FamilyMember("baby_boy", R.drawable.baby_boy, "Age (0-4)", ContentScale.Crop),
-            FamilyMember("baby_girl", R.drawable.baby_girl, "Age (0-4)", ContentScale.Crop),
-            FamilyMember("young_son", R.drawable.young_son, "Age (4-25)", ContentScale.Crop),
-            FamilyMember("young_daughter", R.drawable.young_daughter, "Age (4-25)", ContentScale.Crop),
-            FamilyMember("mom", R.drawable.mom, "Age (25-55)", ContentScale.Crop),
-            FamilyMember("father", R.drawable.father, "Age (25-55)", ContentScale.Crop),
-            FamilyMember("grandfather", R.drawable.grand_father, "Age (55+)", ContentScale.Crop),
-            FamilyMember("grandmother", R.drawable.grand_mother, "Age (55+)", ContentScale.Crop),
+            FamilyMember("baby_boy", R.drawable.family_member_baby, "Age (0-4)", ContentScale.Fit),
+            FamilyMember("baby_girl", R.drawable.family_member_baby_girl, "Age (0-4)", ContentScale.Fit),
+            FamilyMember("young_son", R.drawable.family_member_young_son, "Age (4-25)", ContentScale.Fit),
+            FamilyMember("young_daughter", R.drawable.family_member_young_daugther, "Age (4-25)", ContentScale.Fit),
+            FamilyMember("mom", R.drawable.family_member_mom, "Age (25-55)", ContentScale.Fit),
+            FamilyMember("father", R.drawable.family_member_father, "Age (25-55)", ContentScale.Fit),
+            FamilyMember("grandfather", R.drawable.family_member_grand_father, "Age (55+)", ContentScale.Fit),
+            FamilyMember("grandmother", R.drawable.family_member_grand_mother, "Age (55+)", ContentScale.Fit),
         )
 
         1 -> listOf(
@@ -177,7 +177,7 @@ private fun SelectedSummaryBar(
                             modifier = Modifier
                                 .fillMaxSize()
                               ,
-                            contentScale = ContentScale.Fit
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
@@ -307,6 +307,7 @@ fun FamilyMemberSelector(
     selectedId: String,
     onMemberSelected: (String) -> Unit,
     items: List<FamilyMember>,
+    showInnerRing: Boolean,
     backgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
@@ -358,17 +359,33 @@ fun FamilyMemberSelector(
                 ) {
                     // Avatar Image (44x44, circular, Greyscale40 border)
 
+
                         Box(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
+                                .then(
+                                    if (showInnerRing) {
+                                        Modifier.border(
+                                            (4.5).dp,
+                                            shape = CircleShape,
+                                            color = Color(color = 0xFFF9F9F9)
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         ) {
                             Image(
                                 painter = painterResource(id = member.iconRes),
                                 contentDescription = member.label,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(if (member.contentScale == ContentScale.Fit) 6.dp else 0.dp),
+                                    .padding(
+                                        if (member.id == "young_daughter") 0.dp
+                                        else if (member.contentScale == ContentScale.Fit) 6.dp
+                                        else 0.dp
+                                    ),
                                 contentScale = member.contentScale
                             )
 
@@ -442,6 +459,7 @@ fun AvatarCreationScreen(
                     selectedId = selectedForCategory,
                     onMemberSelected = { selections[selectedCategoryIndex] = it },
                     items = currentItems,
+                    showInnerRing = selectedCategoryIndex == 0,
                     backgroundColor = backgroundColor
                 )
             }

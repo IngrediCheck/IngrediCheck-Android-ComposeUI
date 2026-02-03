@@ -17,6 +17,7 @@ import lc.fungee.Ingredicheck.components.NonDraggableBottomSheet
 fun OnboardingShell(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    horizontalPaddingEnabled: Boolean = true,
     backgroundContent: @Composable BoxScope.() -> Unit,
     sheetContent: @Composable () -> Unit
 ) {
@@ -24,7 +25,8 @@ fun OnboardingShell(
         backgroundContent()
 
         NonDraggableBottomSheet(
-            onDismissRequest = onDismissRequest
+            onDismissRequest = onDismissRequest,
+            horizontalPaddingEnabled = horizontalPaddingEnabled
         ) {
             sheetContent()
         }

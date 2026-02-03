@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+.kotlin/
+app/src/main/res/a
+
+app/src/main/java/lc/fungee/Ingredicheck/AppConfig.kt
