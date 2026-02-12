@@ -1,8 +1,7 @@
-package lc.fungee.Ingredicheck.components
+package lc.fungee.Ingredicheck.onboarding.ui.components
 
-
-import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -39,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -46,6 +45,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,10 +53,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale140
+import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Nunito
-
 
 data class StackCardChip(
     val id: String,
@@ -78,7 +77,7 @@ fun StackCards(
     isChipSelected: (StackCard, StackCardChip) -> Boolean = { _, _ -> false },
     onChipTap: (StackCard, StackCardChip) -> Unit = { _, _ -> },
     onSwipe: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     val stateCards = remember(cards) { mutableStateListOf<StackCard>().apply { addAll(cards) } }
     val totalCardCount = stateCards.size
@@ -133,11 +132,11 @@ fun StackCards(
                     height = cardHeight,
                     isChipSelected = isChipSelected,
                     onChipTap = onChipTap,
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                         .shadow(elevation = 2.dp, shape = shape)
-                        .border(1.dp, Color.White.copy(alpha = 0.35f), shape)
-                        .blur(4.dp, edgeTreatment = androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded)
+                        .border(1.dp, Color.Companion.White.copy(alpha = 0.35f), shape)
+                        .blur(4.dp, edgeTreatment = BlurredEdgeTreatment.Companion.Unbounded)
                         .alpha(0.52f)
                         .graphicsLayer { rotationZ = 4f }
                 )
@@ -153,7 +152,7 @@ fun StackCards(
                     height = cardHeight,
                     isChipSelected = isChipSelected,
                     onChipTap = onChipTap,
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .graphicsLayer {
                             translationX = dragX
                             rotationZ = dragRotationZ
@@ -173,7 +172,10 @@ fun StackCards(
                                                 animate(
                                                     initialValue = dragX,
                                                     targetValue = 0f,
-                                                    animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                                                    animationSpec = tween(
+                                                        durationMillis = 280,
+                                                        easing = FastOutSlowInEasing
+                                                    )
                                                 ) { value, _ ->
                                                     dragX = value
                                                 }
@@ -198,7 +200,7 @@ private fun StackCardSurface(
     height: Dp,
     isChipSelected: (StackCard, StackCardChip) -> Boolean,
     onChipTap: (StackCard, StackCardChip) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     Surface(
         modifier = modifier
@@ -206,11 +208,11 @@ private fun StackCardSurface(
         color = card.color,
         shape = shape
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.Companion.fillMaxSize()) {
             if (showContent) {
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                    modifier = Modifier.Companion
+                        .align(Alignment.Companion.BottomEnd)
                         .padding(end = 10.dp)
                         .offset(y = 17.dp)
                         .alpha(0.5f)
@@ -218,21 +220,21 @@ private fun StackCardSurface(
                     Icon(
                         imageVector = Icons.Filled.Refresh,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(76.dp)
+                        tint = Color.Companion.White,
+                        modifier = Modifier.Companion.size(76.dp)
                     )
                 }
             }
 
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxSize()
                     .padding(horizontal = 12.dp, vertical = 20.dp)
             ) {
                 if (showContent) {
                     Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
+                        modifier = Modifier.Companion
+                            .align(Alignment.Companion.TopEnd)
                     ) {
                         Text(
                             text = progressText,
@@ -242,31 +244,31 @@ private fun StackCardSurface(
                         )
                     }
 
-                    Box(modifier = Modifier.align(Alignment.TopStart)) {
+                    Box(modifier = Modifier.Companion.align(Alignment.Companion.TopStart)) {
                         Text(
                             text = card.title,
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.Black
+                            fontWeight = FontWeight.Companion.Normal,
+                            color = Color.Companion.Black
                         )
                     }
 
                     Text(
                         text = card.subTitle,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
+                        modifier = Modifier.Companion
+                            .align(Alignment.Companion.TopStart)
                             .padding(top = 28.dp)
                             .alpha(0.8f),
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color.Black
+                        fontWeight = FontWeight.Companion.Normal,
+                        color = Color.Companion.Black
                     )
 
                     FlowLayout(
                         horizontalSpacing = 4.dp,
                         verticalSpacing = 8.dp,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
+                        modifier = Modifier.Companion
+                            .align(Alignment.Companion.TopStart)
                             .padding(top = 72.dp)
                     ) {
                         card.chips.forEach { chip ->
@@ -281,8 +283,8 @@ private fun StackCardSurface(
                 } else {
                     Text(
                         text = progressText,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
+                        modifier = Modifier.Companion
+                            .align(Alignment.Companion.TopEnd)
                             .alpha(0f),
                         fontFamily = Nunito,
                         fontSize = 14.sp,
@@ -300,10 +302,10 @@ private fun StackCardChipPill(
     icon: String?,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     val shape = RoundedCornerShape(percent = 50)
-    val bg = if (isSelected) Color(0xFFF2F2F2) else Color.White
+    val bg = if (isSelected) Color(0xFFF2F2F2) else Color.Companion.White
     Row(
         modifier = modifier
             .clip(shape)
@@ -311,18 +313,18 @@ private fun StackCardChipPill(
             .border(1.dp, Greyscale40, shape)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Companion.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         if (!icon.isNullOrBlank()) {
             Text(text = icon, fontSize = 16.sp)
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.Companion.width(8.dp))
         }
         Text(
             text = title,
             fontFamily = Nunito,
             fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Companion.Normal,
             color = Color(0xFF303030)
         )
     }
@@ -332,10 +334,10 @@ private fun StackCardChipPill(
 private fun FlowLayout(
     horizontalSpacing: Dp,
     verticalSpacing: Dp,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     content: @Composable () -> Unit
 ) {
-    androidx.compose.ui.layout.Layout(
+    Layout(
         content = content,
         modifier = modifier
     ) { measurables, constraints ->
@@ -343,7 +345,8 @@ private fun FlowLayout(
         val hSpace = horizontalSpacing.roundToPx()
         val vSpace = verticalSpacing.roundToPx()
 
-        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val placeables =
+            measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
 
         var x = 0
         var y = 0
@@ -418,13 +421,16 @@ private fun StackCardsPreview() {
     )
 
     MaterialTheme {
-        Column(modifier = Modifier.fillMaxSize() , verticalArrangement = Arrangement.Center) {
+        Column(
+            modifier = Modifier.Companion.fillMaxSize(),
+            verticalArrangement = Arrangement.Center
+        ) {
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .background(Color(0xFFF5F5F0))
                     .padding(16.dp)
             ) {
-                StackCards(cards = sample, modifier = Modifier)
+                StackCards(cards = sample, modifier = Modifier.Companion)
             }
         }
     }

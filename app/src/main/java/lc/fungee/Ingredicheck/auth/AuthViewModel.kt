@@ -10,9 +10,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import lc.fungee.Ingredicheck.family.CreateFamilyRequest
+import lc.fungee.Ingredicheck.family.FamilyDto
+import lc.fungee.Ingredicheck.family.FamilyRepository
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.memoji.MemojiRepository
-import lc.fungee.Ingredicheck.memoji.MemojiRequest
+import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
+import lc.fungee.Ingredicheck.family.FamilyMemberDto
 
 enum class AuthProvider {
     Google,
@@ -38,12 +42,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = AuthRepository(app.applicationContext)
     private val memojiRepository = MemojiRepository()
+    private val familyRepository = FamilyRepository()
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
 
     private val _debugLog = MutableStateFlow<List<String>>(emptyList())
     val debugLog: StateFlow<List<String>> = _debugLog.asStateFlow()
+
+    private val _currentFamily = MutableStateFlow<FamilyDto?>(null)
+    val currentFamily: StateFlow<FamilyDto?> = _currentFamily.asStateFlow()
 
     private val _memojiState = MutableStateFlow<MemojiGenState>(MemojiGenState.Idle)
     val memojiState: StateFlow<MemojiGenState> = _memojiState.asStateFlow()
@@ -54,36 +62,152 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         Log.d("AuthDebug", message)
     }
 
+    fun addFamilyMember(member: FamilyMemberDto, onResult: (Result<FamilyDto>) -> Unit) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                onResult(Result.failure(IllegalStateException("Not signed in")))
+                return@launch
+            }
+            pushDebug("Family addMember started id=${member.id}, name=${member.name}")
+            val result = familyRepository.addMember(accessToken = accessToken, member = member)
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    val ids = buildList {
+                        add(family.selfMember.id)
+                        addAll(family.otherMembers.map { it.id })
+                    }
+                    pushDebug("Family addMember success members=${ids.joinToString(",")}")
+                },
+                onFailure = { e ->
+                    pushDebug("Family addMember failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+            onResult(result)
+        }
+    }
+
+    fun createFamily(request: CreateFamilyRequest, onResult: (Result<FamilyDto>) -> Unit) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                onResult(Result.failure(IllegalStateException("Not signed in")))
+                return@launch
+            }
+            pushDebug("Family createFamily started name=${request.name} others=${request.otherMembers?.size ?: 0}")
+            val result = familyRepository.createFamily(accessToken = accessToken, request = request)
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    val ids = buildList {
+                        add(family.selfMember.id)
+                        addAll(family.otherMembers.map { it.id })
+                    }
+                    pushDebug("Family createFamily success members=${ids.joinToString(",")}")
+                },
+                onFailure = { e ->
+                    pushDebug("Family createFamily failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+            onResult(result)
+        }
+    }
+
+    fun joinFamily(inviteCode: String, onResult: (Result<FamilyDto>) -> Unit) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                onResult(Result.failure(IllegalStateException("Not signed in")))
+                return@launch
+            }
+            pushDebug("Family joinFamily started code=$inviteCode")
+            val result = familyRepository.joinFamily(accessToken = accessToken, inviteCode = inviteCode)
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    pushDebug("Family joinFamily success name=${family.name} self=${family.selfMember.id}")
+                },
+                onFailure = { e ->
+                    pushDebug("Family joinFamily failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+            onResult(result)
+        }
+    }
+
+    fun leaveFamily(onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                onResult(Result.failure(IllegalStateException("Not signed in")))
+                return@launch
+            }
+            pushDebug("Family leaveFamily started")
+            val result = familyRepository.leaveFamily(accessToken = accessToken)
+            result.fold(
+                onSuccess = {
+                    _currentFamily.value = null
+                    pushDebug("Family leaveFamily success")
+                },
+                onFailure = { e ->
+                    pushDebug("Family leaveFamily failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+            onResult(result)
+        }
+    }
+
+    fun inviteFamilyMember(memberId: String, onResult: (Result<String>) -> Unit) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                onResult(Result.failure(IllegalStateException("Not signed in")))
+                return@launch
+            }
+            val familySnapshot = _currentFamily.value
+            if (familySnapshot == null) {
+                pushDebug("Family invite started memberId=$memberId but currentFamily is null (no members known client-side)")
+            } else {
+                val allMembers = buildList {
+                    add("self=${familySnapshot.selfMember.id},joined=${familySnapshot.selfMember.joined}")
+                    addAll(
+                        familySnapshot.otherMembers.map {
+                            "other=${it.id},joined=${it.joined ?: false}"
+                        }
+                    )
+                }
+                val contains = (familySnapshot.selfMember.id == memberId) ||
+                    familySnapshot.otherMembers.any { it.id == memberId }
+                pushDebug(
+                    "Family invite started memberId=$memberId; inFamily=$contains; members=[${allMembers.joinToString("; ")}]"
+                )
+            }
+            val result = familyRepository.invite(accessToken = accessToken, memberId = memberId)
+            result.fold(
+                onSuccess = { code ->
+                    pushDebug("Family invite success code=$code")
+                },
+                onFailure = { e ->
+                    pushDebug("Family invite failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+            onResult(result)
+        }
+    }
+
     fun setError(message: String) {
         _state.value = AuthState.Error(message)
         pushDebug("ERROR: $message")
     }
 
-    private fun mapColorThemeToApi(id: String?): String? {
-        if (id.isNullOrBlank()) return null
-        val raw = id.removePrefix("color_")
-        return raw.replace('_', '-').lowercase()
-    }
-
-    private fun mapHairToApi(id: String): String {
-        val raw = id.removePrefix("hair_")
-        return when (raw) {
-            "short" -> "short"
-            "long" -> "long"
-            "curly" -> "curly"
-            "medium_curls" -> "curly"
-            "short_spiky" -> "short spiky"
-            "braided" -> "braided"
-            "ponytail" -> "ponytail"
-            "bun" -> "bun"
-            "bald" -> "bald"
-            else -> raw.replace('_', ' ').lowercase()
+    /**
+     * Used to restore a previously generated memoji URL after process death.
+     */
+    fun restoreMemojiSuccess(imageUrl: String) {
+        if (imageUrl.isNotBlank()) {
+            _memojiState.value = MemojiGenState.Success(imageUrl)
         }
-    }
-
-    private fun mapGestureToApi(id: String): String {
-        // Backend currently expects whatever iOS sends; keep stable by removing known prefix.
-        return id.removePrefix("hand_")
     }
 
     fun generateAddFamilyMemoji(selections: Map<Int, String>) {
@@ -95,26 +219,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            val familyType = selections[0].orEmpty()
-            val gesture = selections[1].orEmpty()
-            val hair = selections[2].orEmpty()
-            val skinTone = selections[3].orEmpty()
-            val accessory = selections[4]
-            val colorTheme = selections[5]
-
-            val request = MemojiRequest(
-                familyType = familyType,
-                gesture = mapGestureToApi(gesture),
-                hair = mapHairToApi(hair),
-                skinTone = skinTone,
-                accessories = accessory?.let { listOf(it) } ?: emptyList(),
-                background = "transparent",
-                size = "1024x1024",
-                model = "gpt-image-1",
-                subscriptionTier = "monthly_basic",
-                colorTheme = mapColorThemeToApi(colorTheme),
-                mood = null
-            )
+            val request = MemojiRequestMapper.fromSelections(selections)
 
             memojiRepository.generateMemoji(accessToken = accessToken, request = request)
                 .fold(
@@ -323,7 +428,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             OnboardingStep.ADD_FAMILY_WELCOME,
             OnboardingStep.ADD_FAMILY_NAME,
             OnboardingStep.ADD_FAMILY_AVATAR_PICKER,
-            OnboardingStep.ADD_FAMILY_AVATAR_GENERATING -> "pre_onboarding"
+            OnboardingStep.ADD_FAMILY_AVATAR_GENERATING,
+            OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE,
+            OnboardingStep.ADD_FAMILY_EDIT_MEMBER,
+            OnboardingStep.ADD_FAMILY_FALLING_CAPSULES,
+            OnboardingStep.ADD_FAMILY_ALLERGIES -> "pre_onboarding"
         }
 
         viewModelScope.launch {

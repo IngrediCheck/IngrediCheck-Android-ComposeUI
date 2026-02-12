@@ -1,5 +1,6 @@
-package lc.fungee.Ingredicheck.components
+package lc.fungee.Ingredicheck.onboarding.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -7,14 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,24 +28,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.PaintingStyle
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.cos
-import kotlin.math.floor
-import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlin.math.sin
 import lc.fungee.Ingredicheck.ui.theme.GrayScale10
 import lc.fungee.Ingredicheck.ui.theme.GrayScale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
@@ -56,6 +46,11 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Primary300
 import lc.fungee.Ingredicheck.ui.theme.Primary800
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 fun MatchingRateCard(
@@ -63,7 +58,7 @@ fun MatchingRateCard(
     uncertainCount: Int = 0,
     unmatchedCount: Int = 0,
     increaseValue: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     val totalCount = matchedCount + uncertainCount + unmatchedCount
     val isEmptyState = totalCount <= 0
@@ -81,9 +76,9 @@ fun MatchingRateCard(
             .height(289.dp)
             .then(
                 if (isEmptyState) {
-                    Modifier
+                    Modifier.Companion
                 } else {
-                    Modifier.shadow(
+                    Modifier.Companion.shadow(
                         elevation = 9.dp,
                         shape = shape,
                         ambientColor = Color(0xFFECECEC),
@@ -97,55 +92,55 @@ fun MatchingRateCard(
         Text(
             text = "Matching Rate",
             fontFamily = Manrope,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Companion.Medium,
             fontSize = 16.sp,
             color = Greyscale150,
-            modifier = Modifier
-                .align(Alignment.TopStart)
+            modifier = Modifier.Companion
+                .align(Alignment.Companion.TopStart)
                 .padding(14.dp)
         )
 
         Box(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .fillMaxSize()
                 .padding(top = 44.dp, bottom = 14.dp)
 
         ) {
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxWidth()
                     .height(168.dp)
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.Companion.TopCenter)
             ) {
                 MatchingRateProgressBar(
                     matchedCount = matchedCount,
                     uncertainCount = uncertainCount,
                     unmatchedCount = unmatchedCount,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                    modifier = Modifier.Companion
+                        .align(Alignment.Companion.BottomCenter)
                         .fillMaxWidth()
                         .height(150.dp)
                 )
 
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.align(Alignment.Center)
+                    horizontalAlignment = Alignment.Companion.CenterHorizontally,
+                    modifier = Modifier.Companion.align(Alignment.Companion.Center)
                         .padding(top = 120.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.Bottom,
+                        verticalAlignment = Alignment.Companion.Bottom,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = "$matchedPercentage",
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Companion.SemiBold,
                             color = Greyscale150
                         )
                         Text(
                             text = "%",
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Companion.SemiBold,
                             color = Greyscale150
                         )
                     }
@@ -153,7 +148,7 @@ fun MatchingRateCard(
                     Text(
                         text = "Matched",
                         fontFamily = Manrope,
-                        fontWeight = FontWeight.Normal,
+                        fontWeight = FontWeight.Companion.Normal,
                         fontSize = 13.15.sp,
                         color = Greyscale100
                     )
@@ -197,12 +192,12 @@ fun MatchingRateCard(
 
 @Composable
 private fun MatchingRateLegendRow(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Companion.CenterVertically
     ) {
         MatchingRateLegendItem(color = Color(0xFF82B611), label = "Matched")
         MatchingRateLegendItem(color = Color(0xFFFFBE18), label = "Uncertain")
@@ -214,15 +209,15 @@ private fun MatchingRateLegendRow(
 private fun MatchingRateLegendItem(
     color: Color,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Companion.CenterVertically
     ) {
         Box(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .size(8.dp)
                 .clip(CircleShape)
                 .background(color)
@@ -230,7 +225,7 @@ private fun MatchingRateLegendItem(
         Text(
             text = label,
             fontFamily = Manrope,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Companion.Normal,
             fontSize = 10.sp,
             color = Greyscale120
         )
@@ -240,47 +235,51 @@ private fun MatchingRateLegendItem(
 @Composable
 private fun MatchingRateIncreasePill(
     increaseValue: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     Row(
         modifier = modifier
             .height(32.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .border(0.5.dp, Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(24.dp))
+            .border(
+                0.5.dp,
+                Color.Companion.Gray.copy(alpha = 0.3f),
+                androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+            )
             .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Companion.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "Your matching rate increased by",
             fontFamily = Manrope,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Companion.Normal,
             fontSize = 10.sp,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            overflow = TextOverflow.Companion.Ellipsis,
             color = Greyscale150
         )
 
         Row(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .clip(CircleShape)
                 .background(Primary300)
                 .padding(vertical = 6.dp)
                 .padding(horizontal = 12.dp)
                 .height(24.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Companion.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 imageVector = Icons.Filled.Build,
                 contentDescription = null,
                 tint = Primary800,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.Companion.size(16.dp)
             )
             Text(
                 text = "+$increaseValue",
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Companion.Bold,
                 color = Primary800
             )
         }
@@ -300,7 +299,7 @@ private fun MatchingRateProgressBar(
     matchedCount: Int,
     uncertainCount: Int,
     unmatchedCount: Int,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     totalSegments: Int = 12
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -325,14 +324,14 @@ private fun MatchingRateProgressBar(
             totalSegments = totalSegments
         )
 
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxWidth().height(maxHeight)) {
+        Canvas(modifier = Modifier.Companion.fillMaxWidth().height(maxHeight)) {
             val center = Offset(size.width / 2f, size.height)
             val cornerPx = 4.dp.toPx()
-            val pathEffect = PathEffect.cornerPathEffect(cornerPx)
+            val pathEffect = PathEffect.Companion.cornerPathEffect(cornerPx)
 
             drawIntoCanvas { canvas ->
                 val paint = Paint().apply {
-                    style = PaintingStyle.Fill
+                    style = PaintingStyle.Companion.Fill
                     this.pathEffect = pathEffect
                 }
 
@@ -445,19 +444,18 @@ private fun taperedSegmentPath(
 @Preview(showBackground = true)
 @Composable
 private fun MatchingRateCardFilledPreview() {
-    Column(modifier = Modifier.background(Color(0x1A000000))) {
-        Box(modifier = Modifier.padding(20.dp)) {
+    Column(modifier = Modifier.Companion.background(Color(0x1A000000))) {
+        Box(modifier = Modifier.Companion.padding(20.dp)) {
             MatchingRateCard(
                 matchedCount = 0,
                 uncertainCount = 0,
                 unmatchedCount = 47,
 
 
-
                 increaseValue = 20
             )
         }
-        Box(modifier = Modifier.padding(20.dp)) {
+        Box(modifier = Modifier.Companion.padding(20.dp)) {
             MatchingRateCard(
                 matchedCount = 0,
                 uncertainCount = 0,
@@ -468,5 +466,3 @@ private fun MatchingRateCardFilledPreview() {
 
     }
 }
-
-

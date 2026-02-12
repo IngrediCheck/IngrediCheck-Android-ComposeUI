@@ -1,15 +1,36 @@
-@file:Suppress("PackageName")
+package lc.fungee.Ingredicheck.onboarding.ui.components
 
-package lc.fungee.Ingredicheck.components
-
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,7 +59,7 @@ fun AnimatedProgressLine(
     progress: Float,
     backgroundColor: Color = Color(0xFFE5E5E5),
     fillColor: Color = Color(0xFFFBCB7F),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     // Icon transition: 0% to 10% progress maps to 0f to 1f alpha/visibility
     val iconTransitionProgress = (progress / 0.1f).coerceIn(0f, 1f)
@@ -69,38 +90,38 @@ fun AnimatedProgressLine(
 
         // Background line (rounded corners)
         Box(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .fillMaxWidth()
                 .height(24.dp)
-                .align(Alignment.BottomStart)
+                .align(Alignment.Companion.BottomStart)
         ) {
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(backgroundColor)
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.Companion.CenterStart)
             )
 
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxWidth(clampedProgress)
                     .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
                     .background(fillColor)
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.Companion.CenterStart)
             )
         }
 
         // Moving VStack (percentage + icon) that travels with progress
         Column(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .offset(x = iconOffsetXDp)
                 .widthIn(min = iconWidth)
-                .wrapContentWidth(Alignment.CenterHorizontally)
-                .align(Alignment.BottomStart),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .wrapContentWidth(Alignment.Companion.CenterHorizontally)
+                .align(Alignment.Companion.BottomStart),
+            horizontalAlignment = Alignment.Companion.CenterHorizontally
         ) {
             if (snappedPercent >= 10) {
                 Text(
@@ -111,13 +132,13 @@ fun AnimatedProgressLine(
                     ),
                     maxLines = 1,
                     softWrap = false,
-                    overflow = TextOverflow.Clip
+                    overflow = TextOverflow.Companion.Clip
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.Companion.height(2.dp))
             }
 
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .width(iconWidth)
                     .height(animatedIconHeight)
             ) {
@@ -126,7 +147,11 @@ fun AnimatedProgressLine(
                     targetState = iconTransitionProgress >= 0.5f,
                     label = "iconTransition",
                     transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                            animationSpec = tween(
+                                300
+                            )
+                        )
                     }
                 ) { showScope ->
                     Icon(
@@ -134,8 +159,8 @@ fun AnimatedProgressLine(
                             id = if (showScope) R.drawable.orange_fruits_scope else R.drawable.orange_fruits
                         ),
                         contentDescription = null,
-                        tint = Color.Unspecified,
-                        modifier = Modifier.fillMaxSize()
+                        tint = Color.Companion.Unspecified,
+                        modifier = Modifier.Companion.fillMaxSize()
                     )
                 }
             }
@@ -147,7 +172,7 @@ fun AnimatedProgressLine(
 @Composable
 private fun AnimatedProgressLinePreview() {
     var progress by remember { mutableFloatStateOf(0f) }
-    
+
     // Animate progress from 0 to 1 over 7 seconds, then loop
     LaunchedEffect(Unit) {
         while (true) {
@@ -162,18 +187,18 @@ private fun AnimatedProgressLinePreview() {
             progress = 0f
         }
     }
-    
+
     Column(
-        modifier = Modifier
+        modifier = Modifier.Companion
             .fillMaxWidth()
             .padding(16.dp)
-            .padding(top =  200.dp) ,
+            .padding(top = 200.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
         AnimatedProgressLine(
             progress = progress,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+            modifier = Modifier.Companion.align(Alignment.Companion.CenterHorizontally)
         )
     }
 }

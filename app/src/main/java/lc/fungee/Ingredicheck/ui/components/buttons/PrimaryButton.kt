@@ -1,4 +1,4 @@
-package lc.fungee.Ingredicheck.components.buttons
+package lc.fungee.Ingredicheck.ui.components.buttons
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -17,17 +17,19 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
-import lc.fungee.Ingredicheck.ui.theme.NunitoBold
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
 import lc.fungee.Ingredicheck.ui.theme.buttonHeight
 import lc.fungee.Ingredicheck.ui.theme.buttonTextSize
@@ -143,7 +145,7 @@ fun Modifier.primaryButtonEffect(
         drawOutline(
             outline = outline,
             color = disabledBackgroundColor,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+            style = Stroke(width = 1.dp.toPx())
         )
     } else {
         // 1. Drop Shadow
@@ -170,8 +172,8 @@ fun Modifier.primaryButtonEffect(
         // We'll approximate 143.74 deg as top-leading to bottom-trailing stop points
         val brush = Brush.linearGradient(
             colors = listOf(Color(0xFF9DCF10), Color(0xFF6B8E06)),
-            start = androidx.compose.ui.geometry.Offset(0f, 0f),
-            end = androidx.compose.ui.geometry.Offset(size.width, size.height)
+            start = Offset(0f, 0f),
+            end = Offset(size.width, size.height)
         )
         drawOutline(outline, brush)
 
@@ -179,9 +181,9 @@ fun Modifier.primaryButtonEffect(
         drawIntoCanvas { canvas ->
             val path = Path().apply {
                 addRoundRect(
-                    androidx.compose.ui.geometry.RoundRect(
-                        rect = androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2)
+                    RoundRect(
+                        rect = Rect(0f, 0f, size.width, size.height),
+                        cornerRadius = CornerRadius(size.height / 2)
                     )
                 )
             }
@@ -235,7 +237,7 @@ fun Modifier.primaryButtonEffect(
         drawOutline(
             outline = outline,
             color = Color.White,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+            style = Stroke(width = 1.dp.toPx())
         )
     }
 }

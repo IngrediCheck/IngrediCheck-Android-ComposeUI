@@ -1,4 +1,4 @@
-    package lc.fungee.Ingredicheck.components.buttons
+package lc.fungee.Ingredicheck.ui.components.buttons
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,7 +43,6 @@ fun SecondaryButton(
     icon: Int? = null,
     iconWidth: Dp = buttonIconSize(),
     iconHeight: Dp = buttonIconSize(),
-    iconTint: Color = Greyscale10,
     width: Dp = 152.dp,
     height: Dp = buttonHeight(),
     takeFullWidth: Boolean = true,
@@ -112,8 +111,8 @@ fun SecondaryButton(
                     Icon(
                         painter = painterResource(id = icon),
                         contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(width = iconWidth, height = iconHeight)
+                        modifier = Modifier.size(width = iconWidth, height = iconHeight),
+                        tint = Color.Unspecified
                     )
                 }
                 Text(

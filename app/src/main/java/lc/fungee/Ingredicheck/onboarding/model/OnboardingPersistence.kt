@@ -3,12 +3,17 @@ package lc.fungee.Ingredicheck.onboarding.model
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDataStore(name = "onboarding")
 
@@ -18,11 +23,37 @@ class OnboardingPersistence(
     private companion object {
         private val KEY_CURRENT_STEP = stringPreferencesKey("onboarding_current_step")
         private val KEY_STEP_HISTORY = stringPreferencesKey("onboarding_step_history")
+        private val KEY_ADD_FAMILY_NAME = stringPreferencesKey("onboarding_add_family_name")
+        private val KEY_ADD_FAMILY_AVATAR_ID = stringPreferencesKey("onboarding_add_family_avatar_id")
+        private val KEY_ADD_FAMILY_AVATAR_SELECTIONS = stringPreferencesKey("onboarding_add_family_avatar_selections")
+        private val KEY_ADD_FAMILY_GENERATED_AVATAR_URL = stringPreferencesKey("onboarding_add_family_generated_avatar_url")
+        private val KEY_MEMOJI_GENERATION_COMPLETED = booleanPreferencesKey("onboarding_memoji_generation_completed")
+        private val KEY_FAMILY_OVERVIEW_MEMBERS = stringPreferencesKey("onboarding_family_overview_members")
     }
 
     data class SavedState(
         val currentStep: OnboardingStep,
         val history: List<String>
+    )
+
+    data class AddFamilyState(
+        val name: String,
+        val avatarId: String,
+        val avatarSelections: Map<Int, String>,
+        val generatedAvatarUrl: String,
+        val memojiGenerationCompleted: Boolean,
+        val familyOverviewMembers: List<AddFamilyOverviewMember>
+    )
+
+    @Serializable
+    data class AddFamilyOverviewMember(
+        val id: String = "",
+        val name: String,
+        val avatarId: String,
+        val generatedAvatarUrl: String,
+        val joined: Boolean,
+        val backgroundColorId: String,
+        val colorHex: String = ""
     )
 
     val savedStateFlow: Flow<SavedState> = context.onboardingDataStore.data
@@ -42,6 +73,56 @@ class OnboardingPersistence(
         context.onboardingDataStore.edit { prefs ->
             prefs[KEY_CURRENT_STEP] = currentStep.name
             prefs[KEY_STEP_HISTORY] = history.joinToString("|")
+        }
+    }
+
+    suspend fun getAddFamilyState(): AddFamilyState {
+        val prefs = context.onboardingDataStore.data.first()
+        val name = prefs[KEY_ADD_FAMILY_NAME].orEmpty()
+        val avatarId = prefs[KEY_ADD_FAMILY_AVATAR_ID].orEmpty()
+        val avatarSelectionsJson = prefs[KEY_ADD_FAMILY_AVATAR_SELECTIONS].orEmpty()
+        val avatarSelections = if (avatarSelectionsJson.isNotBlank()) {
+            runCatching {
+                Json.decodeFromString<Map<String, String>>(avatarSelectionsJson)
+                    .mapKeys { it.key.toIntOrNull() ?: -1 }
+                    .filter { it.key >= 0 }
+            }.getOrElse { emptyMap() }
+        } else emptyMap()
+        val generatedAvatarUrl = prefs[KEY_ADD_FAMILY_GENERATED_AVATAR_URL].orEmpty()
+        val memojiGenerationCompleted = prefs[KEY_MEMOJI_GENERATION_COMPLETED] ?: false
+        val membersJson = prefs[KEY_FAMILY_OVERVIEW_MEMBERS].orEmpty()
+        val familyOverviewMembers = if (membersJson.isNotBlank()) {
+            runCatching {
+                Json.decodeFromString<List<AddFamilyOverviewMember>>(membersJson)
+            }.getOrElse { emptyList() }
+        } else emptyList()
+        return AddFamilyState(
+            name = name,
+            avatarId = avatarId,
+            avatarSelections = avatarSelections,
+            generatedAvatarUrl = generatedAvatarUrl,
+            memojiGenerationCompleted = memojiGenerationCompleted,
+            familyOverviewMembers = familyOverviewMembers
+        )
+    }
+
+    suspend fun setAddFamilyState(
+        name: String,
+        avatarId: String,
+        avatarSelections: Map<Int, String>,
+        generatedAvatarUrl: String,
+        memojiGenerationCompleted: Boolean,
+        familyOverviewMembers: List<AddFamilyOverviewMember>
+    ) {
+        context.onboardingDataStore.edit { prefs ->
+            prefs[KEY_ADD_FAMILY_NAME] = name
+            prefs[KEY_ADD_FAMILY_AVATAR_ID] = avatarId
+            prefs[KEY_ADD_FAMILY_AVATAR_SELECTIONS] = Json.encodeToString(
+                avatarSelections.mapKeys { it.key.toString() }
+            )
+            prefs[KEY_ADD_FAMILY_GENERATED_AVATAR_URL] = generatedAvatarUrl
+            prefs[KEY_MEMOJI_GENERATION_COMPLETED] = memojiGenerationCompleted
+            prefs[KEY_FAMILY_OVERVIEW_MEMBERS] = Json.encodeToString(familyOverviewMembers)
         }
     }
 }

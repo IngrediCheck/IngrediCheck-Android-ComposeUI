@@ -1,23 +1,33 @@
-@file:Suppress("PackageName")
-
-package lc.fungee.Ingredicheck.components
+package lc.fungee.Ingredicheck.onboarding.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 
 data class CapsuleStep(
@@ -41,7 +52,7 @@ data class CapsuleStep(
 fun CapsuleStepperRow(
     steps: List<CapsuleStep>,
     activeIndex: Int,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     onStepClick: ((Int) -> Unit)? = null,
     inactiveColor: Color = Color(0xFFF6FCED),
     activeColor: Color = Color(0xFF91B640),
@@ -67,7 +78,7 @@ fun CapsuleStepperRow(
     val itemWidth: (Int) -> Dp = { index -> if (index == clampedActive) expandedWidth else collapsedWidth }
 
     // Calculate fill width to the max reached index.
-    // If the active item is before the max reached index, we must add the expansion delta 
+    // If the active item is before the max reached index, we must add the expansion delta
     // because the active item (which is wider) pushes the subsequent items (up to max) further to the right.
     val baseFill = (collapsedWidth + itemSpacing) * maxReachedIndex
     val expansionDelta = if (clampedActive < maxReachedIndex) (expandedWidth - collapsedWidth) else 0.dp
@@ -87,8 +98,9 @@ fun CapsuleStepperRow(
     ) {
         val scrollState = rememberScrollState()
         val fillOverlap = lineHeight / 2
-        val totalContentWidth = (collapsedWidth * (steps.size - 1)) + expandedWidth + (itemSpacing * (steps.size - 1))
-        
+        val totalContentWidth =
+            (collapsedWidth * (steps.size - 1)) + expandedWidth + (itemSpacing * (steps.size - 1))
+
         // We use the direct calculated value instead of animated state for instant fill as requested previously,
         // or we can re-introduce animation if "fill fast" allows it.
         // User previously asked: "fill fast without animatioin"
@@ -96,35 +108,34 @@ fun CapsuleStepperRow(
         val filledWidth = (fillToStartOfActive + fillOverlap).coerceAtMost(totalContentWidth)
 
         Box(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .fillMaxWidth()
                 .horizontalScroll(scrollState)
-                .align(Alignment.Center)
+                .align(Alignment.Companion.Center)
         ) {
             // Background line (scrolls with content)
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .width(totalContentWidth)
                     .height(lineHeight)
                     .clip(RoundedCornerShape(lineHeight / 2))
                     .background(inactiveColor)
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.Companion.CenterStart)
             )
 
             // Filled line (scrolls with content)
             Box(
-                modifier = Modifier
-                    .width(filledWidth)
+                modifier = Modifier.Companion.width(filledWidth)
                     .height(lineHeight)
-                    .clip(RoundedCornerShape(lineHeight / 2))
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(lineHeight / 2))
                     .background(activeColor)
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.Companion.CenterStart)
             )
 
             Row(
-                modifier = Modifier.width(totalContentWidth),
+                modifier = Modifier.Companion.width(totalContentWidth),
                 horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Companion.CenterVertically
             ) {
                 steps.forEachIndexed { index, step ->
                     val isActive = index == clampedActive
@@ -137,19 +148,19 @@ fun CapsuleStepperRow(
                     )
 
                     val bg = if (isVisited) activeColor else inactiveColor
-                    val iconTint = if (isVisited) Color.White else Color(0xFFC4E092)
+                    val iconTint = if (isVisited) Color.Companion.White else Color(0xFFC4E092)
 
                     Row(
-                        modifier = Modifier
+                        modifier = Modifier.Companion
                             .height(collapsedHeight)
                             .width(width)
-                            .clip(RoundedCornerShape(999.dp))
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
                             .background(bg)
                             .then(
                                 if (isActive) {
-                                    Modifier.padding(horizontal = 12.dp)
+                                    Modifier.Companion.padding(horizontal = 12.dp)
                                 } else {
-                                    Modifier
+                                    Modifier.Companion
                                 }
                             )
                             .clickable(
@@ -157,40 +168,40 @@ fun CapsuleStepperRow(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) { onStepClick?.invoke(index) },
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.Companion.CenterVertically
                     ) {
                         if (isActive) {
                             Box(
-                                modifier = Modifier.size(28.dp),
-                                contentAlignment = Alignment.Center
+                                modifier = Modifier.Companion.size(28.dp),
+                                contentAlignment = Alignment.Companion.Center
                             ) {
                                 Icon(
                                     painter = painterResource(step.iconRes),
                                     contentDescription = null,
                                     tint = iconTint,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.Companion.size(18.dp)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.Companion.width(10.dp))
                             Text(
                                 text = step.title,
                                 fontFamily = Nunito,
-                                fontWeight = FontWeight.SemiBold,
+                                fontWeight = FontWeight.Companion.SemiBold,
                                 fontSize = 14.sp,
-                                color = Color.White,
+                                color = Color.Companion.White,
                                 maxLines = 1
                             )
                         } else {
                             Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                                modifier = Modifier.Companion.fillMaxSize(),
+                                contentAlignment = Alignment.Companion.Center
                             ) {
                                 Icon(
                                     painter = painterResource(step.iconRes),
                                     contentDescription = null,
                                     tint = iconTint,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.Companion.size(18.dp)
                                 )
                             }
                         }
@@ -207,11 +218,10 @@ private fun CapsuleStepperRowPreview() {
     var active by remember { mutableIntStateOf(1) }
 
     Column(
-        modifier = Modifier
+        modifier = Modifier.Companion
             .fillMaxSize()
             .background(Color(0xFFF2F2F7))
-            .padding(top = 200.dp)
-        ,
+            .padding(top = 200.dp),
 
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -219,7 +229,11 @@ private fun CapsuleStepperRowPreview() {
             steps = listOf(
                 CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
                 CapsuleStep("intolerances", "Intolerances", R.drawable.ic_step_intolerances),
-                CapsuleStep("health_conditions", "Health Conditions", R.drawable.ic_step_health_conditions),
+                CapsuleStep(
+                    "health_conditions",
+                    "Health Conditions",
+                    R.drawable.ic_step_health_conditions
+                ),
                 CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
                 CapsuleStep("region", "Region", R.drawable.ic_step_region),
                 CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
@@ -232,19 +246,6 @@ private fun CapsuleStepperRowPreview() {
             onStepClick = { active = it }
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            lc.fungee.Ingredicheck.components.buttons.PrimaryButton(
-                title = "Prev",
-                takeFullWidth = false,
-                width = 120.dp,
-                onClick = { active = (active - 1).coerceAtLeast(0) }
-            )
-            lc.fungee.Ingredicheck.components.buttons.PrimaryButton(
-                title = "Next",
-                takeFullWidth = false,
-                width = 120.dp,
-                onClick = { active = (active + 1).coerceAtMost(9) }
-            )
-        }
+
     }
 }

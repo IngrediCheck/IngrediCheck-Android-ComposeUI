@@ -1,4 +1,4 @@
-package lc.fungee.Ingredicheck.onboarding.ui
+package lc.fungee.Ingredicheck.memoji
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -27,20 +27,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import lc.fungee.Ingredicheck.R
-import lc.fungee.Ingredicheck.components.buttons.PrimaryButton
+import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.GrayScale80
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.viewinterop.AndroidView
 import app.rive.runtime.kotlin.RiveAnimationView
 import app.rive.runtime.kotlin.core.Alignment as RiveAlignment
@@ -88,6 +85,7 @@ fun FillingPipeLine(
 }
 
 
+@Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
 @Composable
 fun GetStatedScreen(
     onGetStarted: () -> Unit = {}
