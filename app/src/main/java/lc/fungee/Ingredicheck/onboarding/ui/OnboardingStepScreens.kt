@@ -1,5 +1,7 @@
 package lc.fungee.Ingredicheck.onboarding.ui
 
+// hello
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,11 +24,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -36,10 +35,17 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -60,40 +67,51 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.auth.MemojiGenState
 import lc.fungee.Ingredicheck.memoji.FillingPipeLine
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
-import lc.fungee.Ingredicheck.onboarding.data.avatarOptionsForCategory
-import lc.fungee.Ingredicheck.onboarding.ui.components.AvatarCategoryTabs
-import lc.fungee.Ingredicheck.onboarding.ui.components.SelectedSummaryBar
-import lc.fungee.Ingredicheck.onboarding.ui.components.FamilyMemberSelector
+import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
+import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
+import lc.fungee.Ingredicheck.memoji.AvatarCategoryTabs
+import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
+import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
+import lc.fungee.Ingredicheck.memoji.SelectedSummaryBar
+import lc.fungee.Ingredicheck.memoji.FamilyMemberSelector
 
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
+import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.Fail100
 import lc.fungee.Ingredicheck.ui.theme.Fail25
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale30
+import lc.fungee.Ingredicheck.ui.theme.Greyscale70
 import lc.fungee.Ingredicheck.ui.theme.Greyscale80
+import lc.fungee.Ingredicheck.ui.theme.Greyscale90
 import lc.fungee.Ingredicheck.ui.theme.Manrope
-import lc.fungee.Ingredicheck.ui.theme.Primary100
 import lc.fungee.Ingredicheck.ui.theme.Primary700
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
@@ -101,26 +119,7 @@ import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
-
-@Composable
-internal fun SignInBackground(
-    imageRes: Int,
-    modifier: Modifier = Modifier,
-    showLogo: Boolean = true,
-    title: String? = null,
-    subtitle: String? = null,
-    aspectRatio: Float = 8f / 16f
-) {
-    SignInBackgroundTunable(
-        imageRes = imageRes,
-        modifier = modifier,
-        mockWidthFraction = 0.85f,
-        mockAspectRatio = aspectRatio,
-        showLogo = showLogo,
-        title = title,
-        subtitle = subtitle
-    )
-}
+import lc.fungee.Ingredicheck.memoji.avatarOptionsForCategory
 
 @Composable
 internal fun AddFamilyAvatarPickerSheet(
@@ -414,7 +413,7 @@ internal fun AddFamilyAvatarGeneratingSheet(
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = state.imageUrl,
                         contentDescription = null,
                         modifier = Modifier
@@ -422,7 +421,27 @@ internal fun AddFamilyAvatarGeneratingSheet(
                             .clip(CircleShape)
                             .background(avatarBackgroundColor),
                         contentScale = ContentScale.Crop
-                    )
+                    ) {
+                        when (painter.state) {
+                            is coil.compose.AsyncImagePainter.State.Loading -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(avatarBackgroundColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(160.dp),
+                                        strokeWidth = 3.dp,
+                                        color = Primary800
+                                    )
+                                }
+                            }
+                            else -> {
+                                SubcomposeAsyncImageContent()
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -436,20 +455,21 @@ internal fun AddFamilyAvatarGeneratingSheet(
 
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                        .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         text = "Selected",
                         style = sheetSubtitleTextStyle(),
-                        color = Greyscale110
+                        color = Greyscale110,
+                        modifier = Modifier.padding(horizontal = 20.dp)
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier
+                            .padding(horizontal = 20.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(Greyscale30)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -460,13 +480,14 @@ internal fun AddFamilyAvatarGeneratingSheet(
                             Box(
                                 modifier = Modifier
                                     .size(30.dp)
-                                    .clip(CircleShape)
                             ) {
                                 Image(
                                     painter = painterResource(id = member.iconRes),
                                     contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(2.dp),
+                                    contentScale = ContentScale.Fit
                                 )
                             }
                         }
@@ -491,16 +512,16 @@ internal fun AddFamilyAvatarGeneratingSheet(
                         SecondaryButton(
                             title = "Regenerate",
                             textColor = Primary800,
-                            icon = R.drawable.two_star_image  ,
+                            icon = R.drawable.two_star_image,
                             takeFullWidth = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
                             onClick = onRegenerate
                         )
 
                         PrimaryButton(
                             title = "Assign",
                             takeFullWidth = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
                             onClick = { onAssign(state.imageUrl) }
                         )
                     }
@@ -535,560 +556,6 @@ internal fun AddFamilyAvatarGeneratingSheet(
             }
         }
     }
-}
-
-@Composable
-private fun SignInBackgroundTunable(
-    imageRes: Int,
-    mockWidthFraction: Float,
-    mockAspectRatio: Float,
-    modifier: Modifier = Modifier,
-    showLogo: Boolean = true,
-    title: String? = null,
-    subtitle: String? = null
-) {
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                Color.White
-            )
-
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = if (showLogo) 68.dp else 0.dp)
-    ) {
-        val heightPx = constraints.maxHeight.toFloat()
-
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 44.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (showLogo) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ingredicheck_text_logo),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth(mockWidthFraction)
-                            .height(40.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(modifier = Modifier.height(44.dp))
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-
-
-                    Image(
-                        painter = painterResource(id = imageRes),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .aspectRatio(mockAspectRatio)
-                            .fillMaxWidth(),
-                        contentScale = ContentScale.Fit
-                    )
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-
-                    ) {
-                        if (title != null) {
-                            Text(
-                                text = title,
-                                style = titleTextStyle(),
-                                color = Greyscale150,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        if (subtitle != null) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = subtitle,
-                                style = subtitleTextStyle(),
-                                maxLines = 2,
-                                color = Greyscale110,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFFFFFFFF)),
-                            startY = heightPx * 0.55f,
-                            endY = heightPx
-                        )
-                    )
-            )
-        }
-    }
-}
-
-@Composable
-internal fun GetStartedBackground(
-    modifier: Modifier = Modifier,
-    onFillComplete: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(top = 16.dp)
-            .padding(horizontal = 14.dp)
-    ) {
-        FillingPipeLine(
-            onComplete = onFillComplete
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(top = 18.dp, bottom = 18.dp)
-        ) {
-
-            Image(
-                painter = painterResource(id = R.drawable.onbording_getstartedimg),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-    }
-}
-
-@Composable
-internal fun GetStartedSheet(
-    isFillingComplete: Boolean,
-    onPrimaryClick: () -> Unit
-) {
-    PrimaryButton(
-        title = "Get Started",
-        takeFullWidth = true,
-        width = 0.dp,
-        isDisabled = !isFillingComplete,
-        disabledBackgroundColor = Greyscale40,
-        onClick = onPrimaryClick
-    )
-}
-
-@Composable
-internal fun SignInInitialSheet(
-    onExistingUserContinue: () -> Unit,
-    onStartNew: () -> Unit
-) {
-    SheetHeader(
-        title = "Are you an existing user?",
-        subtitle = "Have you used IngrediCheck earlier? If yes, continue.\nIf not, start new."
-    )
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-
-    Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SecondaryButton(
-                title = "Yes, continue",
-                modifier = Modifier.weight(1f),
-                takeFullWidth = true,
-                width = 0.dp,
-                onClick = onExistingUserContinue,
-                textColor = Primary800,
-                borderColor = Greyscale40,
-                disabledBackgroundColor = Greyscale40
-            )
-
-            PrimaryButton(
-                title = "No, start new",
-                modifier = Modifier.weight(1f),
-                takeFullWidth = true,
-                width = 0.dp,
-                onClick = onStartNew
-            )
-        }
-
-}
-
-@Composable
-internal fun SignInSocialLoginSheet(
-    onBackClick: () -> Unit,
-    onGoogleClick: () -> Unit,
-    onAppleClick: () -> Unit
-) {
-    SheetHeader(
-        title = "Welcome back !",
-        subtitle = "Log in to your existing IngrediCheck account.",
-        onBackClick = onBackClick
-    )
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SecondaryButton(
-            title = "Google",
-            icon = R.drawable.google_logo,
-            iconHeight =  (buttonIconSize()-2.dp),
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onGoogleClick,
-            textColor = Greyscale150,
-            borderColor = Greyscale40,
-            textStyle = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp
-            )
-        )
-
-        SecondaryButton(
-            title = "Apple",
-            icon = R.drawable.apple_logo,
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onAppleClick,
-            textColor = Greyscale150,
-            borderColor = Greyscale40,
-            textStyle = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp
-            )
-        )
-    }
-}
-
-@Composable
-internal fun SignInInviteCodeSheet(
-    onBackClick: () -> Unit,
-    onEnterInviteCode: () -> Unit,
-    onNoContinue: () -> Unit
-) {
-    SheetHeader(
-        title = "Do you have an invite code?",
-        subtitle = "Got a family invite to IngrediFam? Enter code.",
-        onBackClick = onBackClick
-    )
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-
-    ) {
-        SecondaryButton(
-            title = "Enter invite code",
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onEnterInviteCode,
-            textColor = Greyscale150,
-            borderColor = Greyscale40,
-            textStyle = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-        )
-
-        PrimaryButton(
-            title = "No, Continue",
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            onClick = onNoContinue
-        )
-    }
-}
-
-@Composable
-internal fun SignInEnterInviteCodeSheet(
-    inviteCode: String,
-    isError: Boolean = false,
-    onInviteCodeChange: (String) -> Unit,
-    onBackClick: () -> Unit,
-    onVerifyContinue: () -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    SheetHeader(
-        title = "Enter your invite code",
-        subtitle = "This connects you to your family or shared IngrediCheck space.",
-        onBackClick = onBackClick
-    )
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-    Box(contentAlignment = Alignment.Center) {
-        BasicTextField(
-            value = inviteCode,
-            onValueChange = {
-                if (it.length <= 6) {
-                    onInviteCodeChange(it.uppercase())
-                }
-            },
-            modifier = Modifier
-                .size(1.dp)
-                .drawWithContent { } // Alternative to alpha(0f) to ensure no cursor is drawn
-                .focusRequester(focusRequester),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Ascii,
-            )
-        )
-
-        Row(
-            modifier = Modifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { focusRequester.requestFocus() },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            repeat(3) { index ->
-                InviteCodeBox(
-                    index = index,
-                    inviteCode = inviteCode,
-                    isError = isError
-                )
-            }
-
-            Text(
-                text = "—",
-                style = TextStyle(
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = if (isError) Fail25 else Greyscale40
-                )
-            )
-
-            repeat(3) { index ->
-                InviteCodeBox(
-                    index = index + 3,
-                    inviteCode = inviteCode,
-                    isError = isError
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-    if (isError) {
-        Text(
-            text = "We couldn’t verify your code. Please try again..",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                color = Fail100
-            )
-        )
-    } else {
-        Text(
-            text = "You can add this later if you receive one.",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                color = Greyscale110.copy(alpha = 0.6f)
-            )
-        )
-    }
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-    PrimaryButton(
-        title = "Verify & Continue",
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        onClick = onVerifyContinue,
-        isDisabled = inviteCode.length < 6
-    )
-
-    Spacer(modifier = Modifier.height(24.dp))
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-    ) {
-       Image(
-           painter = painterResource(R.drawable.shield_half),
-           contentDescription = null,
-           modifier = Modifier.size(16.dp)
-       )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = "By continuing, you agree to our Terms & Privacy Policy.",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Normal,
-                fontSize = 12.sp,
-                color = Greyscale110.copy(alpha = 0.6f)
-            )
-        )
-    }
-}
-
-
-
-@Composable
-private fun InviteCodeBox(
-    index: Int,
-    inviteCode: String,
-    isError: Boolean = false
-) {
-    Box(
-        modifier = Modifier
-            .size(44.dp, 50.dp)
-            .background(
-                color = when {
-                    isError -> Fail25
-                    inviteCode.length == index -> Color(0xFFFFF7EB)
-                    else -> Greyscale40.copy(alpha = 0.3f)
-                },
-                shape = RoundedCornerShape(12.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (index < inviteCode.length) inviteCode[index].toString() else "",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = if (isError) Fail100 else Greyscale150
-            )
-        )
-        if (inviteCode.length == index) {
-            val infiniteTransition = rememberInfiniteTransition(label = "cursorAnimation")
-            val alpha by infiniteTransition.animateFloat(
-                initialValue = 1f,
-                targetValue = 0f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(500, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "cursorAlpha"
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .height(24.dp)
-                    .graphicsLayer(alpha = alpha)
-                    .background(Color.Black)
-            )
-        }
-    }
-}
-
-@Composable
-internal fun SignInWhoIsThisForSheet(
-    onBackClick: () -> Unit,
-    isLoading: Boolean,
-    onJustMe: () -> Unit,
-    onAddFamily: () -> Unit
-) {
-    SheetHeader(
-        title = "Hey there! Who’s this for?",
-        subtitle = "Is it just you, or your whole IngrediFam — family, friends, anyone you care about?",
-        onBackClick = onBackClick
-    )
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SecondaryButton(
-            title = "Just Me",
-            onClick = onJustMe,
-            icon = R.drawable.user_green,
-            iconHeight = buttonIconSize() - 4.dp,
-            iconWidth = buttonIconSize() - 4.dp,
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            isLoading = isLoading,
-            isDisabled = isLoading,
-            textColor = Greyscale150,
-            borderColor = Greyscale40,
-            textStyle = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp
-            )
-        )
-
-        SecondaryButton(
-            title = "Add Family",
-            onClick = onAddFamily,
-            icon = R.drawable.users_group,
-            iconHeight = buttonIconSize() - 4.dp,
-            iconWidth = buttonIconSize() - 4.dp,
-            modifier = Modifier.weight(1f),
-            takeFullWidth = true,
-            width = 0.dp,
-            isLoading = isLoading,
-            isDisabled = isLoading,
-            textColor = Greyscale150,
-            borderColor = Greyscale40,
-            textStyle = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp
-            )
-        )
-    }
-
-    Spacer(modifier = Modifier.height(24.dp))
-Row (modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center){
-    Text(
-        text = "You can always add or edit members later.",
-        style = TextStyle(
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale110.copy(alpha = 0.6f)
-        ),
-        textAlign = TextAlign.Center
-    )
-}
-
 }
 
 @Composable
@@ -1141,7 +608,7 @@ internal fun AddFamilyWelcomeSheet(
             text = "Add everyone in here! In the future we can tailor tips and scans just for them.",
             maxLines = 2,
             style = sheetSubtitleTextStyle(),
-            color = Greyscale110.copy(alpha = 0.6f),
+            color = Greyscale120.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
@@ -1213,8 +680,9 @@ internal fun AddFamilyLetsGoSheet(
     Spacer(modifier = Modifier.height(16.dp))
 
     Text(
-        text = "Let's get started with you! We'll create a profile just for\nyou and guide you through personalized food tips.",
+        text = "Let's get started with you! We'll create a profile just foryou and guide you through personalized food tips.",
         style = sheetSubtitleTextStyle(),
+        maxLines = 2,
         color = Greyscale120,
         textAlign = TextAlign.Center,
         modifier = Modifier
@@ -1237,328 +705,7 @@ internal fun AddFamilyLetsGoSheet(
     }
 }
 
-@Composable
-internal fun AddFamilyAllergiesSheet(
-    members: List<lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel.FamilyOverviewMember>,
-    selectedMemberId: String,
-    selectedAllergies: Set<String>,
-    onMemberSelected: (String) -> Unit,
-    onToggleAllergy: (String) -> Unit,
-    onNext: () -> Unit
-) {
-    val fallbackMembers = remember(members) {
-        if (members.isNotEmpty()) members else emptyList()
-    }
-
-    val resolvedSelectedId = remember(selectedMemberId, fallbackMembers) {
-        if (fallbackMembers.any { it.id == selectedMemberId }) selectedMemberId
-        else fallbackMembers.firstOrNull()?.id.orEmpty()
-    }
-
-    Spacer(modifier = Modifier.height(responsiveSpacerHeight(16.dp, 20.dp, 24.dp)))
-
-    Text(
-        text = "Does anyone in your IngrediFam\nhave allergies we should know ?",
-        style = titleTextStyle(),
-        color = Greyscale150,
-        textAlign = TextAlign.Start,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Text(
-        text = "Select all that apply to keep meals worry-free.",
-        style = subtitleTextStyle(),
-        color = Greyscale120,
-        textAlign = TextAlign.Start,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-    )
-
-    Spacer(modifier = Modifier.height(12.dp))
-
-    if (fallbackMembers.isNotEmpty()) {
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items(fallbackMembers) { m ->
-                val isSelected = m.id == resolvedSelectedId
-                val avatarRes = familyAvatarResOrNull(m.avatarId)
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onMemberSelected(m.id) }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White)
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) Primary700 else Greyscale40,
-                                shape = RoundedCornerShape(14.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (avatarRes != null) {
-                            Image(
-                                painter = painterResource(id = avatarRes),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(Greyscale40)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = if (m.name.length > 8) m.name.take(8) + "…" else m.name,
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
-                        color = if (isSelected) Primary700 else Greyscale120,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.bulb_svgrepo_com),
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                contentScale = ContentScale.Fit
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "Select members one by one to personalize their choices.",
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = Greyscale120
-            )
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    val allergies = remember {
-        listOf(
-            "peanuts" to "Peanuts",
-            "tree_nuts" to "Tree nuts",
-            "dairy" to "Dairy",
-            "eggs" to "Eggs",
-            "soy" to "Soy",
-            "wheat" to "Wheat",
-            "fish" to "Fish",
-            "shellfish" to "Shellfish",
-            "sesame" to "Sesame",
-            "celery" to "Celery",
-            "lupin" to "Lupin",
-            "sulphites" to "Sulphites",
-            "mustard" to "Mustard",
-            "molluscs" to "Molluscs",
-            "other" to "Other"
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color.White)
-            .padding(16.dp)
-    ) {
-        Column {
-            SimpleFlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalSpacing = 10.dp,
-                verticalSpacing = 10.dp
-            ) {
-                allergies.forEach { (id, label) ->
-                    val isSelected = selectedAllergies.contains(id)
-                    AllergyChip(
-                        label = label,
-                        selected = isSelected,
-                        onClick = { onToggleAllergy(id) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(Primary700)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onNext() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AllergyChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val shape = RoundedCornerShape(999.dp)
-    Box(
-        modifier = Modifier
-            .clip(shape)
-            .background(if (selected) Primary100 else Color.White)
-            .border(1.dp, Greyscale40, shape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onClick() }
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
-        Text(
-            text = label,
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            color = Greyscale150,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun SimpleFlowRow(
-    modifier: Modifier = Modifier,
-    horizontalSpacing: Dp,
-    verticalSpacing: Dp,
-    content: @Composable () -> Unit
-) {
-    Layout(
-        content = content,
-        modifier = modifier
-    ) { measurables, constraints ->
-        val spacingX = horizontalSpacing.roundToPx()
-        val spacingY = verticalSpacing.roundToPx()
-
-        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
-
-        val maxWidth = constraints.maxWidth
-        var x = 0
-        var y = 0
-        var rowHeight = 0
-
-        val positions = ArrayList<IntArray>(placeables.size)
-
-        placeables.forEach { p ->
-            if (x > 0 && x + p.width > maxWidth) {
-                x = 0
-                y += rowHeight + spacingY
-                rowHeight = 0
-            }
-
-            positions.add(intArrayOf(x, y))
-            x += p.width + spacingX
-            rowHeight = maxOf(rowHeight, p.height)
-        }
-
-        val height = (y + rowHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
-
-        layout(width = maxWidth, height = height) {
-            placeables.forEachIndexed { i, p ->
-                val pos = positions[i]
-                p.placeRelative(pos[0], pos[1])
-            }
-        }
-    }
-}
-
-private fun familyAvatarResOrNull(avatarId: String): Int? {
-    return when (avatarId) {
-        "baby_boy" -> R.drawable.family_member_baby
-        "baby_girl" -> R.drawable.family_member_baby_girl
-        "young_daughter" -> R.drawable.young_daughter_onehand
-        "young_son" -> R.drawable.family_member_young_son
-        "mom" -> R.drawable.family_member_mom
-        "father" -> R.drawable.family_member_father
-        "grand_mother" -> R.drawable.family_member_grand_mother
-        "grand_father" -> R.drawable.family_member_grand_father
-        "dog_avtar" -> R.drawable.avtar_dog
-        "cat_avtar" -> R.drawable.avtar_cat
-        "litch_avtar" -> R.drawable.avtar_lichi
-        "pear_avtar" -> R.drawable.avtar_pear
-        "potato_avtar" -> R.drawable.avtar_potatto
-        "tomato_avtar" -> R.drawable.avtar_tomato
-        else -> null
-    }
-}
-
-private val editSheetAvatarItems = listOf(
-    "baby_boy" to R.drawable.family_member_baby,
-    "baby_girl" to R.drawable.family_member_baby_girl,
-    "young_daughter" to R.drawable.young_daughter_onehand,
-    "young_son" to R.drawable.family_member_young_son,
-    "mom" to R.drawable.family_member_mom,
-    "father" to R.drawable.family_member_father,
-    "grand_mother" to R.drawable.family_member_grand_mother,
-    "grand_father" to R.drawable.family_member_grand_father,
-    "dog_avtar" to R.drawable.avtar_dog,
-    "cat_avtar" to R.drawable.avtar_cat,
-    "litch_avtar" to R.drawable.avtar_lichi,
-    "pear_avtar" to R.drawable.avtar_pear,
-    "potato_avtar" to R.drawable.avtar_potatto,
-    "tomato_avtar" to R.drawable.avtar_tomato
-)
+// AddAllergiesSheet, AllergyChip, FlowRowWithRightAlignedButton, SimpleFlowRow moved to AllergyScreens.kt
 
 @Composable
 fun ChooseAvatarRow(
@@ -1796,7 +943,7 @@ internal fun EditFamilyMemberSheet(
 
     ChooseAvatarRow(
         selectedAvatarId = selectedAvatarId,
-        avatarItems = editSheetAvatarItems,
+        avatarItems = OnboardingChipData.editAvatarItems,
         onAddAvatarClick = onAddAvatarClick,
         onAvatarSelect = onAvatarSelect
     )
@@ -2061,22 +1208,8 @@ internal fun AddFamilyNameSheet(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    val avatarItems = listOf(
-        "baby_boy" to R.drawable.family_member_baby,
-        "baby_girl" to R.drawable.family_member_baby_girl,
-        "young_daughter" to R.drawable.young_daughter_onehand,
-        "young_son" to R.drawable.family_member_young_son,
-        "mom" to R.drawable.family_member_mom,
-        "father" to R.drawable.family_member_father,
-        "grand_mother" to R.drawable.family_member_grand_mother,
-        "grand_father" to R.drawable.family_member_grand_father,
-        "dog_avtar" to R.drawable.avtar_dog,
-        "cat_avtar" to R.drawable.avtar_cat,
-        "litch_avtar" to R.drawable.avtar_lichi,
-        "pear_avtar" to R.drawable.avtar_pear,
-        "potato_avtar" to R.drawable.avtar_potatto,
-        "tomato_avtar" to R.drawable.avtar_tomato
-    )
+    // Use shared avatar list from OnboardingChipData to keep static data out of the UI layer.
+    val avatarItems = OnboardingChipData.baseAvatarItems
 
     ChooseAvatarRow(
         title = "Choose Avatar (Optional)",
@@ -2144,46 +1277,92 @@ private fun AddFamilyNameFullPreview_Empty_Pixel4a() {
         }
     )
 }
-//        backgroundContent = {
-//            SignInBackground(
-//                imageRes = R.drawable.family_img_add_family,
-//                showLogo = false,
-//                title = "Getting Started!",
-//                subtitle = "Add profiles so IngredientCheck can personalize results for each person.",
-//                aspectRatio = 1f
-//            )
-//        },
-//        sheetContent = {
-//            AddFamilyNameSheet(
-//                name = "Alex",
-//                selectedAvatarId = "baby_boy",
-//                onNameChange = { },
-//                onAvatarSelect = { },
-//                onBackClick = { },
-//                onContinue = { }
-//            )
-//        }
-//    )
-//}
 
 
+@Composable
+private fun AddFamilyAllergiesFullPreview_Pixel8Pro() {
+    val members = remember {
+        listOf(
+            lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel.FamilyOverviewMember(
+                id = "preview_member_1",
+                name = "Alex",
+                avatarId = "mom",
+                generatedAvatarUrl = "",
+                joined = true,
+                backgroundColorId = "",
+                colorHex = "#BAFFC9",
+                invitePending = false
+            ),
+            lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel.FamilyOverviewMember(
+                id = "preview_member_2",
+                name = "Sam",
+                avatarId = "dad",
+                generatedAvatarUrl = "",
+                joined = true,
+                backgroundColorId = "",
+                colorHex = "#BAE1FF",
+                invitePending = false
+            )
+        )
+    }
 
-//@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_8_PRO)
-//@Composable
-//private fun SignInBackgroundPreview_Pixel8Pro_Ratio9x16() {
-//    SignInBackgroundTunable(
-//        imageRes = R.drawable.iphone_app_img,
-//        mockWidthFraction = 0.85f,
-//        mockAspectRatio = 9f / 16f
-//    )
-//}
-//
-//@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_8_PRO)
-//@Composable
-//private fun SignInBackgroundPreview_Pixel8Pro_Ratio10x16() {
-//    SignInBackgroundTunable(
-//        imageRes = R.drawable.iphone_app_img,
-//        mockWidthFraction = 0.88f,
-//        mockAspectRatio = 9f / 16f
-//    )
-//}
+    val selectedMemberIdState = remember { mutableStateOf(members.first().id) }
+    val selectedAllergiesState = remember { mutableStateListOf<String>() }
+
+    OnboardingShell(
+        onDismissRequest = { },
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF2F2F7))
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Spacer(modifier = Modifier.height(48.dp))
+                    AnimatedProgressLine(progress = 0.1f)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    CapsuleStepperRow(
+                        steps = listOf(
+                            CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
+                            CapsuleStep("intolerances", "Intolerances", R.drawable.ic_step_intolerances),
+                            CapsuleStep(
+                                "health_conditions",
+                                "Health Conditions",
+                                R.drawable.ic_step_health_conditions
+                            ),
+                            CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
+                            CapsuleStep("region", "Region", R.drawable.ic_step_region),
+                            CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
+                            CapsuleStep(
+                                "life_style",
+                                "Life Style",
+                                R.drawable.ic_step_diet_preferences
+                            ),
+                            CapsuleStep("nutrition", "Nutrition", R.drawable.ic_step_meals),
+                            CapsuleStep("ethical", "Ethical", R.drawable.ic_step_ethical),
+                            CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
+                        ),
+                        activeIndex = 0
+                    )
+                }
+            }
+        },
+        sheetContent = {
+            AddAllergiesSheet(
+                members = members,
+                selectedMemberId = selectedMemberIdState.value,
+                selectedAllergies = selectedAllergiesState.toSet(),
+                onMemberSelected = { selectedMemberIdState.value = it },
+                onToggleAllergy = { allergyId ->
+                    if (selectedAllergiesState.contains(allergyId)) {
+                        selectedAllergiesState.remove(allergyId)
+                    } else {
+                        selectedAllergiesState.add(allergyId)
+                    }
+                },
+                onNext = { },
+                questionStepIndex = 0
+            )
+        }
+    )
+}

@@ -15,8 +15,8 @@ android {
         applicationId = "llc.fungee.IngrediCheck"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 8
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -68,6 +68,8 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:postgrest-kt:3.2.4")
     implementation("io.github.jan-tennert.supabase:storage-kt:3.2.4")
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.ui.unit)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -11,6 +11,7 @@ import androidx.activity.compose.BackHandler
 import lc.fungee.Ingredicheck.R
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,9 +20,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,15 +33,15 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,18 +49,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
@@ -77,11 +73,19 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.draw.shadow
+import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
+import lc.fungee.Ingredicheck.ui.theme.Greyscale10
+import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.auth.AuthEnv
@@ -91,11 +95,10 @@ import lc.fungee.Ingredicheck.auth.GoogleAuthDataSource
 import lc.fungee.Ingredicheck.auth.rememberAppleLoginLauncher
 import lc.fungee.Ingredicheck.auth.rememberGoogleSignInLauncher
 import lc.fungee.Ingredicheck.family.CreateFamilyRequest
-import lc.fungee.Ingredicheck.family.FamilyDto
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
-import lc.fungee.Ingredicheck.family.InviteRequest
 import lc.fungee.Ingredicheck.memoji.GetStatedScreen
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingPersistence
+import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
@@ -104,9 +107,11 @@ import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
+import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
-import lc.fungee.Ingredicheck.ui.theme.Primary700
+import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.ui.theme.Primary800
+import kotlin.random.Random
 
 private fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -149,27 +154,6 @@ private fun buildCreateFamilyRequestFromMembers(
     )
 }
 
-@DrawableRes
-private fun familyAvatarResOrNull(avatarId: String): Int? {
-    return when (avatarId) {
-        "baby_boy" -> R.drawable.family_member_baby
-        "baby_girl" -> R.drawable.family_member_baby_girl
-        "young_daughter" -> R.drawable.young_daughter_onehand
-        "young_son" -> R.drawable.family_member_young_son
-        "mom" -> R.drawable.family_member_mom
-        "father" -> R.drawable.family_member_father
-        "grand_mother" -> R.drawable.family_member_grand_mother
-        "grand_father" -> R.drawable.family_member_grand_father
-        "dog_avtar" -> R.drawable.avtar_dog
-        "cat_avtar" -> R.drawable.avtar_cat
-        "litch_avtar" -> R.drawable.avtar_lichi
-        "pear_avtar" -> R.drawable.avtar_pear
-        "potato_avtar" -> R.drawable.avtar_potatto
-        "tomato_avtar" -> R.drawable.avtar_tomato
-        else -> null
-    }
-}
-
 private fun familyPlaceholderColor(seed: String): Color {
     val palette = listOf(
         Color(0xFF9AD0FF),
@@ -193,6 +177,314 @@ private fun avatarBackgroundColorForId(colorId: String): Color {
         "color_yellow" -> Color(0xFFFFE082)
         "color_transparent" -> Color.Transparent
         else -> Color.White
+    }
+}
+
+
+
+private val SelectedPillBackground = Secondary200
+private val PillShape = RoundedCornerShape(30.dp)
+
+@Composable
+private fun SelectedChipPill(
+    emoji: String,
+    label: String,
+    trailingAvatars: (@Composable () -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .clip(PillShape)
+            .background(SelectedPillBackground)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = emoji.trim(),
+            fontSize = 16.sp,
+            color = Greyscale150
+        )
+        Text(
+            text = label,
+            fontFamily = Manrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = Greyscale150,
+            maxLines = 1
+        )
+        if (trailingAvatars != null) {
+            Spacer(modifier = Modifier.width(6.dp))
+            trailingAvatars()
+        }
+    }
+}
+
+@Composable
+private fun CapsuleEveryoneAvatarSmall() {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(Color.White)
+            .border(
+                width = 1.dp,
+                color = Greyscale40,
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.everyone_seleted_home_icon),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            contentScale = ContentScale.Fit
+        )
+    }
+}
+
+@Composable
+private fun CapsuleMemberAvatarSmall(member: OnboardingViewModel.FamilyOverviewMember) {
+    val avatarRes = OnboardingChipData.avatarResOrNull(member.avatarId)
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(Color.White)
+            .border(
+                width = 1.dp,
+                color = Greyscale40,
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            member.generatedAvatarUrl.trim().isNotBlank() -> {
+                SubcomposeAsyncImage(
+                    model = member.generatedAvatarUrl.trim(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            avatarRes != null -> {
+                Image(
+                    painter = painterResource(id = avatarRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            else -> {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Greyscale40)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapsuleChipMemberAvatars(
+    memberIds: Set<String>,
+    members: List<OnboardingViewModel.FamilyOverviewMember>
+) {
+    if (memberIds.isEmpty()) return
+
+    val everyoneId = "ALL"
+    val hasEveryone = memberIds.contains(everyoneId)
+    val concreteMemberIds = memberIds.filter { it != everyoneId }.toSet()
+    val concreteMembers = members.filter { concreteMemberIds.contains(it.id) }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(-8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        concreteMembers.forEach { m ->
+            CapsuleMemberAvatarSmall(member = m)
+        }
+        if (hasEveryone) {
+            CapsuleEveryoneAvatarSmall()
+        }
+    }
+}
+
+@Composable
+private fun FlowRowChips(
+    modifier: Modifier = Modifier,
+    horizontalSpacing: Dp = 8.dp,
+    verticalSpacing: Dp = 8.dp,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        if (measurables.isEmpty()) {
+            return@Layout layout(0, 0) {}
+        }
+        val density = this
+        val spacingX = with(density) { horizontalSpacing.roundToPx() }
+        val spacingY = with(density) { verticalSpacing.roundToPx() }
+        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val maxWidth = constraints.maxWidth
+        var x = 0
+        var y = 0
+        var rowHeight = 0
+        val positions = placeables.map { p ->
+            if (x > 0 && x + p.width > maxWidth) {
+                x = 0
+                y += rowHeight + spacingY
+                rowHeight = 0
+            }
+            val pos = x to y
+            x += p.width + spacingX
+            rowHeight = maxOf(rowHeight, p.height)
+            pos
+        }
+        val totalHeight = (y + rowHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
+        layout(maxWidth, totalHeight) {
+            placeables.forEachIndexed { i, p ->
+                val (px, py) = positions[i]
+                p.placeRelative(px, py)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapsuleSkeletonBox(
+    modifier: Modifier = Modifier,
+    selectedChipIds: Set<String> = emptySet(),
+    sectionTitle: String = "Allergies",
+    @DrawableRes sectionIconRes: Int = R.drawable.ic_step_allergies,
+    trailingAvatarsForChip: ((String) -> (@Composable () -> Unit)?)? = null
+) {
+    val showSelectedChips = selectedChipIds.isNotEmpty()
+    val resolvedChips = remember(selectedChipIds) {
+        selectedChipIds.mapNotNull { id -> OnboardingChipData.chipForId(id) }
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (showSelectedChips) Modifier.heightIn(min = 130.dp)
+                else Modifier.height(130.dp)
+            )
+            .clip(RoundedCornerShape(20.dp))
+            .border((0.25).dp, Greyscale60, RoundedCornerShape(20.dp))
+            .background(Greyscale10)
+            .padding(12.dp)
+    ) {
+        if (showSelectedChips && resolvedChips.isNotEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Row(modifier = Modifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(sectionIconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Greyscale110
+                    )
+                    Text(
+                        text = sectionTitle,
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = Greyscale110
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRowChips(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalSpacing = 8.dp,
+                    verticalSpacing = 8.dp
+                ) {
+                    resolvedChips.forEach { def ->
+                        val trailing = trailingAvatarsForChip?.invoke(def.id)
+                        SelectedChipPill(
+                            emoji = def.iconPrefix,
+                            label = def.label,
+                            trailingAvatars = trailing
+                        )
+                    }
+                }
+            }
+        } else {
+            val maxWidth = maxWidth
+            val spacing = 8.dp
+            val minFirst = 90.dp
+            val minSecond = 110.dp
+
+            fun randomRowWidths(): Pair<Dp, Dp> {
+                val maxExtra = (maxWidth - spacing - minFirst - minSecond).coerceAtLeast(0.dp)
+                if (maxExtra == 0.dp) {
+                    val second = (maxWidth - spacing - minFirst).coerceAtLeast(minSecond)
+                    return minFirst to second
+                }
+                val extraFraction = Random.nextFloat()
+                val first = minFirst + maxExtra * extraFraction
+                val second = maxWidth - spacing - first
+                return first to second
+            }
+
+            val (row1First, row1Second) = remember(maxWidth) { randomRowWidths() }
+            val (row2First, row2Second) = remember(maxWidth) { randomRowWidths() }
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(165.dp)
+                        .height(13.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Greyscale30)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                CapsuleRow(firstWidth = row1First, secondWidth = row1Second)
+                Spacer(modifier = Modifier.height(8.dp))
+                CapsuleRow(firstWidth = row2First, secondWidth = row2Second)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapsuleRow(
+    firstWidth: Dp,
+    secondWidth: Dp
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(firstWidth)
+                .height(36.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(Greyscale30)
+        )
+        Box(
+            modifier = Modifier
+                .width(secondWidth)
+                .height(36.dp)
+                .clip(RoundedCornerShape(30.dp))
+                .background(Greyscale30)
+        )
     }
 }
 
@@ -273,7 +565,7 @@ private fun FamilyOverviewBackground(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val trimmedUrl = member.generatedAvatarUrl.trim()
-                                    val res = familyAvatarResOrNull(member.avatarId.trim())
+                                    val res = lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData.avatarResOrNull(member.avatarId.trim())
                                     when {
                                         trimmedUrl.isNotBlank() -> {
                                             SubcomposeAsyncImage(
@@ -569,6 +861,26 @@ fun OnboardingHost(
         mutableStateOf(vm.familyOverviewMembers.firstOrNull()?.id.orEmpty())
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
+    // memberKey (\"ALL\" or member.id) -> set of chipIds selected for that member
+    val selectedAllergiesByMember = remember { mutableStateMapOf<String, MutableSet<String>>() }
+
+    // Progress tracking within the fine‑tune flow (allergies, intolerances, etc.)
+    // These same steps drive both the CapsuleStepperRow and the AnimatedProgressLine.
+    val allergySteps = remember {
+        listOf(
+            CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
+            CapsuleStep("intolerances", "Intolerances", R.drawable.ic_step_intolerances),
+            CapsuleStep("health_conditions", "Health Conditions", R.drawable.ic_step_health_conditions),
+            CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
+            CapsuleStep("region", "Region", R.drawable.ic_step_region),
+            CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
+            CapsuleStep("life_style", "Life Style", R.drawable.ic_step_diet_preferences),
+            CapsuleStep("nutrition", "Nutrition", R.drawable.ic_step_meals),
+            CapsuleStep("ethical", "Ethical", R.drawable.ic_step_ethical),
+            CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
+        )
+    }
+    var allergyStepIndex by remember { mutableStateOf(0) }
 
     if (step == OnboardingStep.GET_STARTED) {
         GetStatedScreen(
@@ -605,9 +917,10 @@ fun OnboardingHost(
     Box(modifier = Modifier.fillMaxSize()) {
         OnboardingShell(
             onDismissRequest = onExitOnboarding,
-            horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER,
+            horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER && step != OnboardingStep.ADD_FAMILY_ALLERGIES,
             showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
                 step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
+            baseBottomPaddingOverride = if (step == OnboardingStep.ADD_FAMILY_ALLERGIES) 8.dp else null,
             onSheetHeightChanged = { sheetHeight = it },
             backgroundContent = {
             AnimatedContent(
@@ -686,7 +999,10 @@ fun OnboardingHost(
                         }
                     }
                     5 -> {
-                        FallingCapsulesScreen(modifier = Modifier.fillMaxSize())
+                        FallingCapsulesScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            bottomInset = sheetHeight
+                        )
                     }
                     6 -> {
                         Box(
@@ -694,37 +1010,142 @@ fun OnboardingHost(
                                 .fillMaxSize()
                                 .background(Color(0xFFF2F2F7))
                         ) {
-                            Column(modifier = Modifier.fillMaxSize()) {
+                            Column(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
                                 Spacer(modifier = Modifier.height(48.dp))
-                                AnimatedProgressLine(progress = 0.1f)
-                                Spacer(modifier = Modifier.height(10.dp))
-                                CapsuleStepperRow(
-                                    steps = listOf(
-                                        CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
-                                        CapsuleStep(
-                                            "intolerances",
-                                            "Intolerances",
-                                            R.drawable.ic_step_intolerances
-                                        ),
-                                        CapsuleStep(
-                                            "health_conditions",
-                                            "Health Conditions",
-                                            R.drawable.ic_step_health_conditions
-                                        ),
-                                        CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
-                                        CapsuleStep("region", "Region", R.drawable.ic_step_region),
-                                        CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
-                                        CapsuleStep(
-                                            "life_style",
-                                            "Life Style",
-                                            R.drawable.ic_step_diet_preferences
-                                        ),
-                                        CapsuleStep("nutrition", "Nutrition", R.drawable.ic_step_meals),
-                                        CapsuleStep("ethical", "Ethical", R.drawable.ic_step_ethical),
-                                        CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
-                                    ),
-                                    activeIndex = 0
+
+                                // Animate progress based on current allergyStepIndex.
+                                val rawProgress =
+                                    if (allergySteps.size <= 1) 1f
+                                    else allergyStepIndex.toFloat() / (allergySteps.size - 1).coerceAtLeast(1)
+                                val animatedProgress by animateFloatAsState(
+                                    targetValue = rawProgress.coerceIn(0f, 1f),
+                                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                                    label = "allergyProgress"
                                 )
+
+                                AnimatedProgressLine(
+                                    progress = animatedProgress,
+                                    modifier = Modifier.padding(horizontal = 20.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                CapsuleStepperRow(
+                                    steps = allergySteps,
+                                    activeIndex = allergyStepIndex,
+                                    onStepClick = { clickedIndex ->
+                                        allergyStepIndex = clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Show a scrollable list of CapsuleSkeletonBox cards.
+                                // Steps 0-3 correspond to: Allergies, Intolerances, Health Conditions, Life Stage.
+                                val hasAnySelections = selectedAllergies.isNotEmpty()
+
+                                // Decide which step indices should render cards.
+                                val cardSteps: List<Int> = if (hasAnySelections) {
+                                    // Only steps that have at least one selected chip.
+                                    (0..3).filter { stepIndex ->
+                                        val stepChipIds = OnboardingChipData
+                                            .chipsForStep(stepIndex)
+                                            .map { it.id }
+                                            .toSet()
+                                        selectedAllergies.any { it in stepChipIds }
+                                    }
+                                } else {
+                                    // No selections yet – show all four as empty placeholders.
+                                    (0..3).toList()
+                                }
+
+                                val cardsListState = rememberLazyListState()
+
+                                // Small avatar(s) to show who this capsule applies to (Everyone or a member)
+                                val activeMemberId = selectedAllergyMemberIdState.value
+                                val everyoneIdCaps = "ALL"
+                                val activeMember = vm.familyOverviewMembers
+                                    .firstOrNull { it.id == activeMemberId }
+
+                                val trailingAvatarContent: (@Composable () -> Unit)? =
+                                    when {
+                                        activeMemberId == everyoneIdCaps -> {
+                                            { CapsuleEveryoneAvatarSmall() }
+                                        }
+
+                                        activeMember != null -> {
+                                            { CapsuleMemberAvatarSmall(activeMember) }
+                                        }
+
+                                        else -> null
+                                    }
+
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f, fill = false),
+                                    state = cardsListState,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(horizontal = 20.dp)
+                                ) {
+                                    items(cardSteps) { stepIndex ->
+                                        val stepChipIds = OnboardingChipData
+                                            .chipsForStep(stepIndex)
+                                            .map { it.id }
+                                            .toSet()
+                                        val selectedChipsForStep = selectedAllergies
+                                            .filter { it in stepChipIds }
+                                            .toSet()
+
+                                        CapsuleSkeletonBox(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            selectedChipIds = if (hasAnySelections) {
+                                                // When anything is selected, only show chips for this step.
+                                                selectedChipsForStep
+                                            } else {
+                                                // Initial empty state – show skeletons.
+                                                emptySet()
+                                            },
+                                            sectionTitle = allergySteps
+                                                .getOrNull(stepIndex)
+                                                ?.title ?: "Step ${stepIndex + 1}",
+                                            sectionIconRes = allergySteps
+                                                .getOrNull(stepIndex)
+                                                ?.iconRes ?: R.drawable.ic_step_allergies,
+                                            trailingAvatarsForChip = { chipId ->
+                                                // Derive which members have this chip selected
+                                                val memberIds = selectedAllergiesByMember
+                                                    .mapNotNull { (memberKey, chips) ->
+                                                        if (chips.contains(chipId)) memberKey else null
+                                                    }
+                                                    .toSet()
+                                                if (memberIds.isEmpty()) {
+                                                    null
+                                                } else {
+                                                    {
+                                                        CapsuleChipMemberAvatars(
+                                                            memberIds = memberIds,
+                                                            members = vm.familyOverviewMembers.toList()
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+
+                                // When user switches steps, auto-scroll so that step's card is visible.
+                                LaunchedEffect(allergyStepIndex, cardSteps) {
+                                    if (cardSteps.isEmpty()) return@LaunchedEffect
+
+                                    // Map the active step index to its position in the list.
+                                    val targetStep = allergyStepIndex.coerceIn(0, 3)
+                                    val targetIndex = cardSteps.indexOf(targetStep)
+                                    if (targetIndex >= 0) {
+                                        cardsListState.animateScrollToItem(targetIndex)
+                                    }
+                                }
                             }
                         }
                     }
@@ -752,21 +1173,74 @@ fun OnboardingHost(
                             )
                         }
                         OnboardingStep.ADD_FAMILY_ALLERGIES -> {
-                            AddFamilyAllergiesSheet(
+                            // Compute per-member selections for the bottom sheet:
+                            // the sheet should reflect ONLY what the currently selected member
+                            // (or Everyone) has chosen, not the union across all members.
+                            val activeMemberId = selectedAllergyMemberIdState.value
+                            val activeMemberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+                            val selectedAllergiesForActiveMember: Set<String> =
+                                selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+
+                            Log.d(
+                                "OnboardingAllergies",
+                                "Sheet for memberKey=$activeMemberKey " +
+                                    "selectedAllergiesForActiveMember=$selectedAllergiesForActiveMember " +
+                                    "selectedAllergiesByMember=$selectedAllergiesByMember"
+                            )
+
+                            AddAllergiesSheet(
                                 members = vm.familyOverviewMembers.toList(),
                                 selectedMemberId = selectedAllergyMemberIdState.value,
-                                selectedAllergies = selectedAllergies.toSet(),
+                                selectedAllergies = selectedAllergiesForActiveMember,
                                 onMemberSelected = { selectedAllergyMemberIdState.value = it },
                                 onToggleAllergy = { allergyId ->
-                                    if (selectedAllergies.contains(allergyId)) {
-                                        selectedAllergies.remove(allergyId)
+                                    val activeMemberId = selectedAllergyMemberIdState.value
+                                    val memberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+
+                                    Log.d(
+                                        "OnboardingAllergies",
+                                        "onToggleAllergy START chip=$allergyId memberKey=$memberKey " +
+                                            "beforeChipsForMember=${selectedAllergiesByMember[memberKey]} " +
+                                            "selectedAllergiesByMember=$selectedAllergiesByMember"
+                                    )
+
+                                    val chipsForMember =
+                                        selectedAllergiesByMember.getOrPut(memberKey) { mutableSetOf() }
+                                    if (chipsForMember.contains(allergyId)) {
+                                        chipsForMember.remove(allergyId)
+                                        if (chipsForMember.isEmpty()) {
+                                            selectedAllergiesByMember.remove(memberKey)
+                                        }
                                     } else {
-                                        selectedAllergies.add(allergyId)
+                                        chipsForMember.add(allergyId)
                                     }
+
+                                    // Rebuild the flat selectedAllergies list as the union of all chips
+                                    // selected by any member (used only for background capsules).
+                                    selectedAllergies.clear()
+                                    selectedAllergies.addAll(
+                                        selectedAllergiesByMember.values
+                                            .flatMap { it }
+                                            .toSet()
+                                    )
+
+                                    Log.d(
+                                        "OnboardingAllergies",
+                                        "onToggleAllergy END chip=$allergyId memberKey=$memberKey " +
+                                            "afterChipsForMember=${selectedAllergiesByMember[memberKey]} " +
+                                            "selectedAllergiesByMember=$selectedAllergiesByMember " +
+                                            "selectedAllergies=$selectedAllergies"
+                                    )
                                 },
                                 onNext = {
-                                    onExitOnboarding()
-                                }
+                                    // Advance to next fine‑tune step visually; once at the end, exit onboarding.
+                                    if (allergyStepIndex < allergySteps.lastIndex) {
+                                        allergyStepIndex++
+                                    } else {
+                                        onExitOnboarding()
+                                    }
+                                },
+                                questionStepIndex = allergyStepIndex
                             )
                         }
                         OnboardingStep.SIGN_IN_INITIAL -> {
@@ -1077,7 +1551,7 @@ fun OnboardingHost(
                                 },
                                 largeAvatarContent = {
                                     val trimmedUrl = vm.addFamilyGeneratedAvatarUrl.trim()
-                                    val res = familyAvatarResOrNull(vm.addFamilyAvatarId.trim())
+                                    val res = lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData.avatarResOrNull(vm.addFamilyAvatarId.trim())
                                     val circleBg = editAvatarBg
                                     when {
                                         trimmedUrl.isNotBlank() -> {

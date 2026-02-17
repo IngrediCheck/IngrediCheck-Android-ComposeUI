@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
@@ -53,6 +54,9 @@ fun NonDraggableBottomSheet(
     horizontalPaddingEnabled: Boolean = true,
     showFocusedShadow: Boolean = false,
     modifier: Modifier = Modifier,
+    // Optional override for the base bottom padding used by this sheet.
+    // When null, the default per‑screen category padding is used.
+    baseBottomPaddingOverride: Dp? = null,
     onSheetHeightChanged: ((androidx.compose.ui.unit.Dp) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -142,7 +146,7 @@ fun NonDraggableBottomSheet(
             }
             val endPadding = if (horizontalPaddingEnabled) {
                 when (category) {
-                    ScreenCategory.Large -> 24.dp
+                    ScreenCategory.Large -> 22.dp
                     ScreenCategory.Normal -> 20.dp
                     ScreenCategory.Small -> 18.dp
                 }
@@ -150,11 +154,11 @@ fun NonDraggableBottomSheet(
                 0.dp
             }
             val topPadding = when (category) {
-                ScreenCategory.Large -> 26.dp
-                ScreenCategory.Normal -> 24.dp
-                ScreenCategory.Small -> 22.dp
+                ScreenCategory.Large -> 30.dp
+                ScreenCategory.Normal -> 28.dp
+                ScreenCategory.Small -> 26.dp
             }
-            val baseBottomPadding = when (category) {
+            val baseBottomPadding = baseBottomPaddingOverride ?: when (category) {
                 ScreenCategory.Large -> 34.dp
                 ScreenCategory.Normal -> 32.dp
                 ScreenCategory.Small -> 30.dp
@@ -183,7 +187,10 @@ fun NonDraggableBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(contentPadding),
+
+                    .padding(contentPadding)
+
+                 ,
                 horizontalAlignment = Alignment.Start
             ) {
                 content()

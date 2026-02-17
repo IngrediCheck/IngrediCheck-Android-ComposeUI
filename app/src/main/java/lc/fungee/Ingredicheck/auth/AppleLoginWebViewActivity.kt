@@ -1,8 +1,9 @@
-package lc.fungee.Ingredicheck.onboarding.ui
+package lc.fungee.Ingredicheck.auth
 
 import android.R
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
@@ -161,7 +162,7 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                 return false
             }
 
-            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 if (url != null) {
                     Log.d("AppleWebView", "Page started: ${sanitizeUrl(url)}")

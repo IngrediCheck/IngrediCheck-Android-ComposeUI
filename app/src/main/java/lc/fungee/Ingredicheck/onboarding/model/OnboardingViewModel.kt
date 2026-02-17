@@ -9,6 +9,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class OnboardingViewModel(
@@ -67,9 +70,61 @@ class OnboardingViewModel(
     val isRestored: Boolean
         get() = hasRestoredState
 
+    private val _uiState = MutableStateFlow(OnboardingUiState(
+        currentStep = OnboardingStep.GET_STARTED,
+        stepHistory = emptyList(),
+        inviteCode = "",
+        inviteCodeError = false,
+        addFamilyName = "",
+        addFamilyAvatarId = "",
+        addFamilyAvatarSelections = emptyMap(),
+        addFamilyGeneratedAvatarUrl = "",
+        memojiGenerationCompleted = false,
+        familyOverviewMembers = emptyList(),
+        editingMemberId = null,
+        addFamilyDraftId = UUID.randomUUID().toString(),
+        isRestored = false
+    ))
+    val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
+
+    private fun updateUiState() {
+        _uiState.value = OnboardingUiState(
+            currentStep = currentStepState,
+            stepHistory = history().toList(),
+            inviteCode = inviteCodeState,
+            inviteCodeError = inviteCodeError,
+            addFamilyName = addFamilyNameState,
+            addFamilyAvatarId = addFamilyAvatarState,
+            addFamilyAvatarSelections = addFamilyAvatarSelectionsState.toMap(),
+            addFamilyGeneratedAvatarUrl = addFamilyGeneratedAvatarUrlState,
+            memojiGenerationCompleted = memojiGenerationCompletedState,
+            familyOverviewMembers = familyOverviewMembers.map { m ->
+                OnboardingUiState.FamilyOverviewMember(
+                    id = m.id,
+                    name = m.name,
+                    avatarId = m.avatarId,
+                    generatedAvatarUrl = m.generatedAvatarUrl,
+                    joined = m.joined,
+                    backgroundColorId = m.backgroundColorId,
+                    colorHex = m.colorHex,
+                    invitePending = m.invitePending
+                )
+            },
+            editingMemberId = editingMemberIdState,
+            addFamilyDraftId = addFamilyDraftIdState,
+            isRestored = hasRestoredState
+        )
+    }
+
     // When non-null, indicates we are editing an existing member in the
     // family overview instead of adding a new one.
-    var editingMemberId: String? by mutableStateOf(null)
+    private var editingMemberIdState: String? by mutableStateOf(null)
+    var editingMemberId: String?
+        get() = editingMemberIdState
+        set(value) {
+            editingMemberIdState = value
+            updateUiState()
+        }
 
     init {
         viewModelScope.launch {
@@ -85,6 +140,7 @@ class OnboardingViewModel(
                 if (!hasRestoredState) {
                     hasRestoredState = true
                 }
+                updateUiState()
             }
         }
         viewModelScope.launch {
@@ -116,6 +172,7 @@ class OnboardingViewModel(
                     )
                 }
             )
+            updateUiState()
         }
     }
 
@@ -155,6 +212,7 @@ class OnboardingViewModel(
         savedStateHandle[KEY_STEP_HISTORY] = stack
         savedStateHandle[KEY_CURRENT_STEP] = step.name
         currentStepState = step
+        updateUiState()
 
         viewModelScope.launch {
             persistence.setSavedState(currentStep = step, history = stack)
@@ -169,6 +227,7 @@ class OnboardingViewModel(
         savedStateHandle[KEY_STEP_HISTORY] = stack
         savedStateHandle[KEY_CURRENT_STEP] = previous
         currentStepState = OnboardingStep.valueOf(previous)
+        updateUiState()
 
         viewModelScope.launch {
             persistence.setSavedState(currentStep = currentStepState, history = stack)
@@ -192,6 +251,7 @@ class OnboardingViewModel(
         addFamilyGeneratedAvatarUrlState = ""
         memojiGenerationCompletedState = false
         familyOverviewMembers.clear()
+        updateUiState()
 
         viewModelScope.launch {
             persistence.setSavedState(currentStep = OnboardingStep.GET_STARTED, history = emptyList())
@@ -220,6 +280,7 @@ class OnboardingViewModel(
             inviteCodeState = value
             savedStateHandle[KEY_INVITE_CODE] = value
             inviteCodeError = false
+            updateUiState()
         }
 
     var inviteCodeError by mutableStateOf(false)
@@ -234,6 +295,7 @@ class OnboardingViewModel(
             addFamilyNameState = value
             savedStateHandle[KEY_ADD_FAMILY_NAME] = value
             persistAddFamilyState()
+            updateUiState()
         }
 
     private var addFamilyAvatarState: String by mutableStateOf(
@@ -246,6 +308,7 @@ class OnboardingViewModel(
             addFamilyAvatarState = value
             savedStateHandle[KEY_ADD_FAMILY_AVATAR] = value
             persistAddFamilyState()
+            updateUiState()
         }
 
     private var addFamilyAvatarSelectionsState: HashMap<Int, String> by mutableStateOf(
@@ -273,6 +336,7 @@ class OnboardingViewModel(
             addFamilyAvatarState = familyMember
             savedStateHandle[KEY_ADD_FAMILY_AVATAR] = familyMember
             persistAddFamilyState()
+            updateUiState()
         }
 
     private var addFamilyGeneratedAvatarUrlState: String by mutableStateOf(
@@ -285,6 +349,7 @@ class OnboardingViewModel(
             addFamilyGeneratedAvatarUrlState = value
             savedStateHandle[KEY_ADD_FAMILY_GENERATED_AVATAR_URL] = value
             persistAddFamilyState()
+            updateUiState()
         }
 
     private var memojiGenerationCompletedState: Boolean by mutableStateOf(
@@ -301,6 +366,7 @@ class OnboardingViewModel(
             memojiGenerationCompletedState = value
             savedStateHandle[KEY_MEMOJI_GENERATION_COMPLETED] = value
             persistAddFamilyState()
+            updateUiState()
         }
 
     val familyOverviewMembers = mutableStateListOf<FamilyOverviewMember>()
@@ -337,6 +403,7 @@ class OnboardingViewModel(
         addFamilyDraftIdState = UUID.randomUUID().toString()
         savedStateHandle[KEY_ADD_FAMILY_DRAFT_ID] = addFamilyDraftIdState
         persistAddFamilyState()
+        updateUiState()
     }
 
     fun clearAddFamilyDraft() {
@@ -348,6 +415,7 @@ class OnboardingViewModel(
 
         addFamilyDraftIdState = UUID.randomUUID().toString()
         savedStateHandle[KEY_ADD_FAMILY_DRAFT_ID] = addFamilyDraftIdState
+        updateUiState()
     }
 
     fun regenerateFamilyOverviewMemberIds(): Map<String, String> {
@@ -372,6 +440,7 @@ class OnboardingViewModel(
         savedStateHandle[KEY_ADD_FAMILY_DRAFT_ID] = addFamilyDraftIdState
 
         persistAddFamilyState()
+        updateUiState()
 
         return idMap
     }
@@ -382,6 +451,7 @@ class OnboardingViewModel(
         val current = familyOverviewMembers[idx]
         familyOverviewMembers[idx] = current.copy(invitePending = pending)
         persistAddFamilyState()
+        updateUiState()
     }
 
     fun updateFamilyOverviewMember(updated: FamilyOverviewMember) {
@@ -389,5 +459,6 @@ class OnboardingViewModel(
         if (idx == -1) return
         familyOverviewMembers[idx] = updated
         persistAddFamilyState()
+        updateUiState()
     }
 }

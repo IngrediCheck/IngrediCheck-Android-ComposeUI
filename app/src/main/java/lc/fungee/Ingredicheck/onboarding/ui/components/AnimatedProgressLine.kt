@@ -77,7 +77,7 @@ fun AnimatedProgressLine(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+//            .padding(horizontal = 20.dp)
             .height(44.dp),
     ) {
         val maxWidthPx = with(LocalDensity.current) { maxWidth.toPx() }

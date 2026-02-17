@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -93,10 +95,11 @@ fun CapsuleStepperRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = horizontalPadding)
+//            .padding(horizontal = horizontalPadding)
             .heightIn(min = 64.dp)
     ) {
         val scrollState = rememberScrollState()
+        val density = LocalDensity.current
         val fillOverlap = lineHeight / 2
         val totalContentWidth =
             (collapsedWidth * (steps.size - 1)) + expandedWidth + (itemSpacing * (steps.size - 1))
@@ -107,10 +110,28 @@ fun CapsuleStepperRow(
         // I will stick to the direct value 'fillToStartOfActive' for the Box width.
         val filledWidth = (fillToStartOfActive + fillOverlap).coerceAtMost(totalContentWidth)
 
+        // When the active step changes, gently auto‑scroll so the active capsule stays in view,
+        // but keep the *previous* capsule visible as context (don't scroll too far).
+        LaunchedEffect(clampedActive, totalContentWidth) {
+            // Approximate horizontal offset of the previous capsule's start based on fixed layout model.
+            val stepSpan = collapsedWidth + itemSpacing
+            val previousIndex = (clampedActive - 1).coerceAtLeast(0)
+            val previousStartDp = stepSpan * previousIndex
+            // Scroll so that the previous capsule starts near the left edge (or 0).
+            val desiredScrollDp = previousStartDp.coerceAtLeast(0.dp)
+            val desiredScrollPx = with(density) { desiredScrollDp.toPx() }
+            val target = desiredScrollPx
+                .toInt()
+                .coerceIn(0, scrollState.maxValue)
+            scrollState.animateScrollTo(target)
+        }
+
         Box(
             modifier = Modifier.Companion
                 .fillMaxWidth()
+                // Padding is inside the scrollable content so it scrolls away once the row moves.
                 .horizontalScroll(scrollState)
+                .padding(horizontal = horizontalPadding)
                 .align(Alignment.Companion.Center)
         ) {
             // Background line (scrolls with content)

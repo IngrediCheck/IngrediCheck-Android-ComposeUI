@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
+import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.ScreenCategory
 import lc.fungee.Ingredicheck.ui.theme.rememberScreenCategory
@@ -77,7 +78,7 @@ internal fun SheetHeader(
         Text(
             text = subtitle,
             style = sheetSubtitleTextStyle(),
-            color = Greyscale110,
+            color = Greyscale120,
             maxLines = 2,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()

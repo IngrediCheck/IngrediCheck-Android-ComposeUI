@@ -1,19 +1,41 @@
-@file:Suppress("PackageName")
-
-package lc.fungee.Ingredicheck.onboarding.ui.components
+package lc.fungee.Ingredicheck.memoji
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,17 +49,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import lc.fungee.Ingredicheck.R
-import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
-import lc.fungee.Ingredicheck.onboarding.data.avatarOptionsForCategory
-import lc.fungee.Ingredicheck.onboarding.data.selectedMembersInOrder
 import lc.fungee.Ingredicheck.onboarding.model.CategoryIcon
 import lc.fungee.Ingredicheck.onboarding.model.FamilyMember
-import lc.fungee.Ingredicheck.ui.theme.*
+import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
+import lc.fungee.Ingredicheck.ui.theme.AvatarScreenCategory
+import lc.fungee.Ingredicheck.ui.theme.Greyscale130
+import lc.fungee.Ingredicheck.ui.theme.Greyscale40
+import lc.fungee.Ingredicheck.ui.theme.Greyscale60
+import lc.fungee.Ingredicheck.ui.theme.Manrope
+import lc.fungee.Ingredicheck.ui.theme.PaletteAccent
+import lc.fungee.Ingredicheck.ui.theme.PaletteBackgroundDark
+import lc.fungee.Ingredicheck.ui.theme.avatarOptionLabelTextStyle
+import lc.fungee.Ingredicheck.ui.theme.rememberAvatarScreenCategory
+import lc.fungee.Ingredicheck.ui.theme.selectedSummaryIconSize
+import lc.fungee.Ingredicheck.ui.theme.selectedSummaryIconSpacing
+import lc.fungee.Ingredicheck.ui.theme.selectedSummaryLabelFontSize
 
 @Composable
 internal fun SelectedSummaryBar(
     selected: List<FamilyMember>,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     isGenerateEnabled: Boolean,
     onGenerateClick: () -> Unit,
     backgroundColor: Color
@@ -56,14 +87,14 @@ internal fun SelectedSummaryBar(
             .fillMaxWidth()
             .background(backgroundColor)
             .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Companion.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.Companion.weight(1f)) {
             Text(
                 text = "Selected",
                 color = Greyscale130,
                 fontFamily = Manrope,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Companion.Medium,
                 fontSize = selectedLabelFontSize
             )
 //            Text(
@@ -73,14 +104,14 @@ internal fun SelectedSummaryBar(
 //                fontWeight = FontWeight.Medium,
 //                fontSize = 10.sp
 //            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.Companion.height(8.dp))
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                modifier = Modifier.Companion.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(selectedIconSpacing)
             ) {
                 selected.forEach { member ->
                     Box(
-                        modifier = Modifier
+                        modifier = Modifier.Companion
                             .size(selectedIconSize)
                             .clip(CircleShape)
 
@@ -88,10 +119,9 @@ internal fun SelectedSummaryBar(
                         Image(
                             painter = painterResource(id = member.iconRes),
                             contentDescription = member.label,
-                            modifier = Modifier
-                                .fillMaxSize()
-                              ,
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier.Companion
+                                .fillMaxSize(),
+                            contentScale = ContentScale.Companion.Crop
                         )
                     }
                 }
@@ -120,12 +150,21 @@ fun AvatarCategoryTabs(
     selectedCategoryIndex: Int,
     onCategorySelected: (Int) -> Unit,
     backgroundColor: Color = PaletteBackgroundDark,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     val categories = listOf(
-        CategoryIcon(R.drawable.heroicons_user_group_solid, R.drawable.heroicons_user_group_solid_primary),
-        CategoryIcon(R.drawable.solar_hand_shak_bold_grey, R.drawable.solar_hand_shake_bold_primary),
-        CategoryIcon(R.drawable.mingcute_hair_2_fill_grey, R.drawable.mingcute_hair_2_fill__primary),
+        CategoryIcon(
+            R.drawable.heroicons_user_group_solid,
+            R.drawable.heroicons_user_group_solid_primary
+        ),
+        CategoryIcon(
+            R.drawable.solar_hand_shak_bold_grey,
+            R.drawable.solar_hand_shake_bold_primary
+        ),
+        CategoryIcon(
+            R.drawable.mingcute_hair_2_fill_grey,
+            R.drawable.mingcute_hair_2_fill__primary
+        ),
         CategoryIcon(R.drawable.colors_circle_grey, R.drawable.colors_circle_primary),
         CategoryIcon(R.drawable.sunglasses_grey, R.drawable.sunglasses_primary),
         CategoryIcon(R.drawable.color_palete_grey, R.drawable.color_palate_primary)
@@ -138,11 +177,11 @@ fun AvatarCategoryTabs(
     ) {
         val totalWidth = maxWidth
         val tabWidth = totalWidth / categories.size
-        
+
         // The indicator is a rounded pill centered under the selected icon
-        val indicatorWidth = 40.dp 
+        val indicatorWidth = 40.dp
         val indicatorHeight = 3.dp
-        
+
         val indicatorOffset by animateDpAsState(
             targetValue = (tabWidth * selectedCategoryIndex) + (tabWidth - indicatorWidth) / 2,
             label = "indicatorOffset"
@@ -150,21 +189,21 @@ fun AvatarCategoryTabs(
 
         Column {
             Row(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxWidth()
                     .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Companion.CenterVertically
             ) {
                 categories.forEachIndexed { index, categoryIcon ->
                     val isSelected = index == selectedCategoryIndex
                     Box(
-                        modifier = Modifier
+                        modifier = Modifier.Companion
                             .weight(1f)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) { onCategorySelected(index) },
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Companion.Center
                     ) {
                         Crossfade(
                             targetState = isSelected,
@@ -174,8 +213,8 @@ fun AvatarCategoryTabs(
                             Icon(
                                 painter = painterResource(id = if (selected) categoryIcon.selectedRes else categoryIcon.unselectedRes),
                                 contentDescription = null,
-                                tint = Color.Unspecified, // Don't use tint
-                                modifier = Modifier.size(28.dp)
+                                tint = Color.Companion.Unspecified, // Don't use tint
+                                modifier = Modifier.Companion.size(28.dp)
                             )
                         }
                     }
@@ -183,22 +222,22 @@ fun AvatarCategoryTabs(
             }
 
             Box(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .fillMaxWidth()
                     .height(indicatorHeight)
             ) {
                 // Bottom full-width thin line
                 Box(
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .fillMaxWidth()
                         .height(1.dp)
                         .background(Greyscale60)
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.Companion.BottomCenter)
                 )
 
                 // Animated selection indicator
                 Box(
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .offset(x = indicatorOffset)
                         .width(indicatorWidth)
                         .height(indicatorHeight)
@@ -206,7 +245,7 @@ fun AvatarCategoryTabs(
                             color = PaletteAccent,
                             shape = RoundedCornerShape(4.dp)
                         )
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.Companion.BottomStart)
                 )
             }
         }
@@ -223,9 +262,9 @@ fun FamilyMemberSelector(
     items: List<FamilyMember>,
     showInnerRing: Boolean,
     backgroundColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
-    val cardShape = RoundedCornerShape(12.dp)
+    val cardShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
     val selectedShadowColor = Color(0x805B5B5B)
     val selectedShadowElevationPx = with(LocalDensity.current) { 9.dp.toPx() }
 
@@ -238,10 +277,10 @@ fun FamilyMemberSelector(
     ) {
         items.forEach { member ->
             val isSelected = member.id == selectedId
-            
+
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
+                horizontalAlignment = Alignment.Companion.CenterHorizontally,
+                modifier = Modifier.Companion
                     .width(68.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -250,7 +289,7 @@ fun FamilyMemberSelector(
             ) {
                 // Outer container (Rectangle 64x64, radius 12, border color depends on selection)
                 Box(
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .size(64.dp)
                         .graphicsLayer {
                             if (isSelected) {
@@ -269,52 +308,52 @@ fun FamilyMemberSelector(
                             color = if (isSelected) PaletteAccent else Greyscale40,
                             shape = cardShape
                         ),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Companion.Center
                 ) {
                     // Avatar Image (44x44, circular, Greyscale40 border)
 
 
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .then(
-                                    if (showInnerRing) {
-                                        Modifier.border(
-                                            (4.5).dp,
-                                            shape = CircleShape,
-                                            color = Color(color = 0xFFF9F9F9)
-                                        )
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                        ) {
-                            Image(
-                                painter = painterResource(id = member.iconRes),
-                                contentDescription = member.label,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(
-                                        if (member.id == "young_daughter") 0.dp
-                                        else if (member.contentScale == ContentScale.Fit) 6.dp
-                                        else 0.dp
-                                    ),
-                                contentScale = member.contentScale
+                    Box(
+                        modifier = Modifier.Companion
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .then(
+                                if (showInnerRing) {
+                                    Modifier.Companion.border(
+                                        (4.5).dp,
+                                        shape = CircleShape,
+                                        color = Color(color = 0xFFF9F9F9)
+                                    )
+                                } else {
+                                    Modifier.Companion
+                                }
                             )
+                    ) {
+                        Image(
+                            painter = painterResource(id = member.iconRes),
+                            contentDescription = member.label,
+                            modifier = Modifier.Companion
+                                .fillMaxSize()
+                                .padding(
+                                    if (member.id == "young_daughter") 0.dp
+                                    else if (member.contentScale == ContentScale.Companion.Fit) 6.dp
+                                    else 0.dp
+                                ),
+                            contentScale = member.contentScale
+                        )
 
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
+
+                Spacer(modifier = Modifier.Companion.height(8.dp))
+
                 // Label (Greyscale110, Manrope Medium 10sp)
                 Text(
                     text = member.label,
                     style = avatarOptionLabelTextStyle(),
                     maxLines = 1,
                     softWrap = false,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Companion.Ellipsis
                 )
             }
         }
@@ -326,7 +365,7 @@ fun FamilyMemberSelector(
  */
 @Composable
 fun AvatarCreationScreen(
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
     initialSelections: Map<Int, String> = emptyMap(),
     backgroundColor: Color = PaletteBackgroundDark,
     centerContent: Boolean = false
@@ -363,9 +402,9 @@ fun AvatarCreationScreen(
             onCategorySelected = { selectedCategoryIndex = it },
             backgroundColor = backgroundColor
         )
-        
-        Spacer(modifier = Modifier.height(22.dp))
-        
+
+        Spacer(modifier = Modifier.Companion.height(22.dp))
+
         // Show the same selector UI for categories that have selectable options.
         if (currentItems.isNotEmpty()) {
             key(selectedCategoryIndex) {
@@ -383,7 +422,7 @@ fun AvatarCreationScreen(
 
             SelectedSummaryBar(
                 selected = selectedSummary,
-                modifier = Modifier,
+                modifier = Modifier.Companion,
                 isGenerateEnabled = isGenerateEnabled,
                 onGenerateClick = { },
                 backgroundColor = backgroundColor
@@ -392,61 +431,21 @@ fun AvatarCreationScreen(
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun AvatarCategoryTabsPreview() {
-//    var selectedIndex by remember { mutableIntStateOf(0) }
-//    IngrediCheckTheme(darkTheme = true) {
-//        Column(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .background(PaletteBackgroundDark)
-//                .padding(vertical = 20.dp)
-//        ) {
-//            AvatarCategoryTabs(
-//                selectedCategoryIndex = selectedIndex,
-//                onCategorySelected = { selectedIndex = it }
-//            )
-//        }
-//    }
-//}
-
-//@Preview(showBackground = true)
-//@Composable
-//fun FamilyMemberSelectorPreview() {
-//    var selectedId by remember { mutableStateOf("baby_boy") }
-//    IngrediCheckTheme(darkTheme = true) {
-//        Box(modifier = Modifier.background(PaletteBackgroundDark).padding(vertical = 20.dp)) {
-//            FamilyMemberSelector(
-//                selectedId = selectedId,
-//                onMemberSelected = { selectedId = it }
-//            )
-//        }
-//    }
-//}
-//
-//@Preview(showBackground = true)
-//@Composable
-//fun FamilyMemberRenderPreview() {
-//    FamilyMemberSelectorPreview()
-//}
-
 @Preview(showBackground = true )
 @Composable
 fun AvatarCreationScreenPreview() {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            AvatarCreationScreen(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White),
-                backgroundColor = Color.White,
-                centerContent = false
-            )
-        }
+    Box(
+        modifier = Modifier.Companion
+            .fillMaxSize()
+            .background(Color.Companion.White),
+        contentAlignment = Alignment.Companion.Center
+    ) {
+        AvatarCreationScreen(
+            modifier = Modifier.Companion
+                .fillMaxWidth()
+                .background(Color.Companion.White),
+            backgroundColor = Color.Companion.White,
+            centerContent = false
+        )
     }
-
+    }

@@ -40,11 +40,8 @@ fun rememberAppleLoginLauncher(
         }
 
         !code.isNullOrBlank() -> {
-            Log.e(
-                "AppleSignIn",
-                "Apple login returned code, but this build requires id_token to mimic iOS and avoid server-side code exchange"
-            )
-            authViewModel.setError("Apple login failed: no id_token returned (code-only response)")
+            Log.d("AppleSignIn", "Apple login returned code; exchanging for session")
+            authViewModel.signInWithAppleCode(code)
         }
 
         else -> {

@@ -50,7 +50,8 @@ fun FallingCapsulesScreen(
     seed: Int = remember { Random.nextInt() },
     spawnIntervalMs: Long = 280L, // Slightly faster spawn
     maxCapsules: Int = 22, // More capsules to fill the bottom
-    gravity: Float = 3200f
+    gravity: Float = 3200f,
+    bottomInset: Dp = 0.dp
 ) {
     val bodies = remember { mutableStateListOf<CapsuleBody>() }
     // Ensure we use the provided seed, but it's generated once per composition
@@ -59,7 +60,11 @@ fun FallingCapsulesScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.toPx() }
-        val heightPx = with(density) { maxHeight.toPx() }
+
+        // Effective height is reduced by bottomInset so capsules stop at the
+        // top edge of whatever content sits on top (e.g., a bottom sheet).
+        val effectiveHeightDp = (maxHeight - bottomInset).coerceAtLeast(0.dp)
+        val heightPx = with(density) { effectiveHeightDp.toPx() }
 
         var containerW by remember { mutableFloatStateOf(0f) }
         var containerH by remember { mutableFloatStateOf(0f) }
