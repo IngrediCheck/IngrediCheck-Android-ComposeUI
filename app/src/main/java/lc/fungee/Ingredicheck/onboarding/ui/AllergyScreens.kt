@@ -57,6 +57,7 @@ import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
+import lc.fungee.Ingredicheck.ui.components.buttons.primaryChipEffect
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale70
@@ -360,11 +361,7 @@ private fun AllergyChip(
 ) {
     val shape = RoundedCornerShape(999.dp)
     val baseModifier = if (selected) {
-        Modifier.primaryButtonEffect(
-            isDisabled = false,
-            shape = shape,
-            disabledBackgroundColor = Greyscale40
-        )
+        Modifier.primaryChipEffect(shape)
     } else {
         Modifier.background(Color.White).border(1.dp, lc.fungee.Ingredicheck.ui.theme.Greyscale60, shape)
     }

@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,8 +61,8 @@ fun CapsuleStepperRow(
     inactiveColor: Color = Color(0xFFF6FCED),
     activeColor: Color = Color(0xFF91B640),
     lineHeight: Dp = 15.dp,
-    horizontalPadding: Dp = 20.dp,
-    itemSpacing: Dp = 12.dp,
+    horizontalPadding: Dp = 16.dp,
+    itemSpacing: Dp = 10.dp,
     animationDurationMs: Int = 280
 ) {
     if (steps.isEmpty()) return
@@ -77,7 +79,9 @@ fun CapsuleStepperRow(
     val collapsedWidth = 64.dp
     val expandedWidth = 180.dp
 
-    val itemWidth: (Int) -> Dp = { index -> if (index == clampedActive) expandedWidth else collapsedWidth }
+    // Track the actual measured width of the active capsule so the total line length
+    // matches the real UI instead of the old fixed 180.dp.
+    var activeItemWidth by remember { mutableStateOf(expandedWidth) }
 
     // Calculate fill width to the max reached index.
     // If the active item is before the max reached index, we must add the expansion delta
@@ -99,10 +103,14 @@ fun CapsuleStepperRow(
             .heightIn(min = 64.dp)
     ) {
         val scrollState = rememberScrollState()
-        val density = LocalDensity.current
         val fillOverlap = lineHeight / 2
+        val density = LocalDensity.current
+
+        // Total width: all capsules at collapsed width + extra space contributed
+        // by the active capsule beyond the collapsed width, plus item spacing.
+        val extraWidthFromActive = (activeItemWidth - collapsedWidth).coerceAtLeast(0.dp)
         val totalContentWidth =
-            (collapsedWidth * (steps.size - 1)) + expandedWidth + (itemSpacing * (steps.size - 1))
+            (collapsedWidth * steps.size) + extraWidthFromActive + (itemSpacing * (steps.size - 1))
 
         // We use the direct calculated value instead of animated state for instant fill as requested previously,
         // or we can re-introduce animation if "fill fast" allows it.
@@ -140,7 +148,8 @@ fun CapsuleStepperRow(
                     .width(totalContentWidth)
                     .height(lineHeight)
                     .clip(RoundedCornerShape(lineHeight / 2))
-                    .background(inactiveColor)
+//                    .background(Color.Green)
+                   .background(inactiveColor)
                     .align(Alignment.Companion.CenterStart)
             )
 
@@ -162,19 +171,23 @@ fun CapsuleStepperRow(
                     val isActive = index == clampedActive
                     val isVisited = index <= maxReachedIndex
 
-                    val width by animateDpAsState(
-                        targetValue = itemWidth(index),
-                        animationSpec = tween(animationDurationMs),
-                        label = "capsuleWidth"
-                    )
-
                     val bg = if (isVisited) activeColor else inactiveColor
                     val iconTint = if (isVisited) Color.Companion.White else Color(0xFFC4E092)
 
                     Row(
                         modifier = Modifier.Companion
                             .height(collapsedHeight)
-                            .width(width)
+                            // Inactive capsules keep a fixed width; active capsules wrap content.
+                            .then(
+                                if (isActive) {
+                                    Modifier.Companion.onGloballyPositioned { coordinates ->
+                                        val widthPx = coordinates.size.width
+                                        activeItemWidth = with(density) { widthPx.toDp() }
+                                    }
+                                } else {
+                                    Modifier.Companion.width(collapsedWidth)
+                                }
+                            )
                             .clip(androidx.compose.foundation.shape.RoundedCornerShape(999.dp))
                             .background(bg)
                             .then(
@@ -200,11 +213,11 @@ fun CapsuleStepperRow(
                                     painter = painterResource(step.iconRes),
                                     contentDescription = null,
                                     tint = iconTint,
-                                    modifier = Modifier.Companion.size(18.dp)
+                                    modifier = Modifier.Companion.size(24.dp)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.Companion.width(10.dp))
+                            Spacer(modifier = Modifier.Companion.width(4.dp))
                             Text(
                                 text = step.title,
                                 fontFamily = Nunito,
