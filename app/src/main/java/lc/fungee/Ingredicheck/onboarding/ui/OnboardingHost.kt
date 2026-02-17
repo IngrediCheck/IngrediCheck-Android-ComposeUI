@@ -44,6 +44,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -861,8 +862,12 @@ fun OnboardingHost(
         mutableStateOf(vm.familyOverviewMembers.firstOrNull()?.id.orEmpty())
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
-    // memberKey (\"ALL\" or member.id) -> set of chipIds selected for that member
+    // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
     val selectedAllergiesByMember = remember { mutableStateMapOf<String, MutableSet<String>>() }
+    // Bump on every chip toggle so the sheet reliably recomposes (workaround for SnapshotStateMap).
+    var allergySelectionRevision by remember { mutableStateOf(0) }
+    // Explicitly track selections for the active member to force sheet recomposition
+    var activeMemberSelections by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // Progress tracking within the fine‑tune flow (allergies, intolerances, etc.)
     // These same steps drive both the CapsuleStepperRow and the AnimatedProgressLine.
@@ -1178,70 +1183,109 @@ fun OnboardingHost(
                             // (or Everyone) has chosen, not the union across all members.
                             val activeMemberId = selectedAllergyMemberIdState.value
                             val activeMemberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
-                            val selectedAllergiesForActiveMember: Set<String> =
-                                selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+
+                            // Sync activeMemberSelections whenever activeMemberKey or revision changes
+                            LaunchedEffect(activeMemberKey, allergySelectionRevision) {
+                                val latest = selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+                                if (activeMemberSelections != latest) {
+                                    activeMemberSelections = latest
+                                    Log.d(
+                                        "OnboardingAllergies",
+                                        "[SYNC] activeMemberSelections updated to=$latest for memberKey=$activeMemberKey revision=$allergySelectionRevision"
+                                    )
+                                }
+                            }
 
                             Log.d(
                                 "OnboardingAllergies",
-                                "Sheet for memberKey=$activeMemberKey " +
-                                    "selectedAllergiesForActiveMember=$selectedAllergiesForActiveMember " +
-                                    "selectedAllergiesByMember=$selectedAllergiesByMember"
+                                "[SHEET RECOMPOSE] memberKey=$activeMemberKey " +
+                                    "activeMemberSelections=$activeMemberSelections " +
+                                    "revision=$allergySelectionRevision " +
+                                    "selectedAllergiesByMember.keys=${selectedAllergiesByMember.keys}"
                             )
 
-                            AddAllergiesSheet(
-                                members = vm.familyOverviewMembers.toList(),
-                                selectedMemberId = selectedAllergyMemberIdState.value,
-                                selectedAllergies = selectedAllergiesForActiveMember,
-                                onMemberSelected = { selectedAllergyMemberIdState.value = it },
-                                onToggleAllergy = { allergyId ->
-                                    val activeMemberId = selectedAllergyMemberIdState.value
-                                    val memberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+                            // Key on revision (bumped every tap) so the sheet always recomposes when
+                            // chips are toggled. Use activeMemberSelections which is explicitly updated.
+                            key(activeMemberKey, allergySelectionRevision, activeMemberSelections.sorted().joinToString(",")) {
+                                AddAllergiesSheet(
+                                    members = vm.familyOverviewMembers.toList(),
+                                    selectedMemberId = selectedAllergyMemberIdState.value,
+                                    selectedAllergies = activeMemberSelections,
+                                    onMemberSelected = {
+                                        val oldMemberKey = if (selectedAllergyMemberIdState.value.isBlank()) "ALL" else selectedAllergyMemberIdState.value
+                                        val newMemberKey = if (it.isBlank()) "ALL" else it
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[MEMBER SWITCH] from=$oldMemberKey to=$newMemberKey " +
+                                                "selectionsForNewMember=${selectedAllergiesByMember[newMemberKey]?.toSet()}"
+                                        )
+                                        selectedAllergyMemberIdState.value = it
+                                        // Update activeMemberSelections immediately when switching members
+                                        activeMemberSelections = selectedAllergiesByMember[newMemberKey]?.toSet() ?: emptySet()
+                                    },
+                                    onToggleAllergy = { allergyId ->
+                                        val activeMemberId = selectedAllergyMemberIdState.value
+                                        val memberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
 
-                                    Log.d(
-                                        "OnboardingAllergies",
-                                        "onToggleAllergy START chip=$allergyId memberKey=$memberKey " +
-                                            "beforeChipsForMember=${selectedAllergiesByMember[memberKey]} " +
-                                            "selectedAllergiesByMember=$selectedAllergiesByMember"
-                                    )
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[TAP] START chip=$allergyId memberKey=$memberKey " +
+                                                "beforeChips=${selectedAllergiesByMember[memberKey]?.toSet()}"
+                                        )
 
-                                    val chipsForMember =
-                                        selectedAllergiesByMember.getOrPut(memberKey) { mutableSetOf() }
-                                    if (chipsForMember.contains(allergyId)) {
-                                        chipsForMember.remove(allergyId)
-                                        if (chipsForMember.isEmpty()) {
-                                            selectedAllergiesByMember.remove(memberKey)
+                                        // Copy out, mutate, then write back so SnapshotStateMap sees a change
+                                        // and the sheet recomposes. Mutating the inner MutableSet in place
+                                        // does not trigger recomposition.
+                                        val chipsForMember =
+                                            (selectedAllergiesByMember[memberKey]?.toMutableSet() ?: mutableSetOf())
+                                        if (chipsForMember.contains(allergyId)) {
+                                            chipsForMember.remove(allergyId)
+                                            if (chipsForMember.isEmpty()) {
+                                                selectedAllergiesByMember.remove(memberKey)
+                                            } else {
+                                                selectedAllergiesByMember[memberKey] = chipsForMember
+                                            }
+                                        } else {
+                                            chipsForMember.add(allergyId)
+                                            selectedAllergiesByMember[memberKey] = chipsForMember
                                         }
-                                    } else {
-                                        chipsForMember.add(allergyId)
-                                    }
 
-                                    // Rebuild the flat selectedAllergies list as the union of all chips
-                                    // selected by any member (used only for background capsules).
-                                    selectedAllergies.clear()
-                                    selectedAllergies.addAll(
-                                        selectedAllergiesByMember.values
-                                            .flatMap { it }
-                                            .toSet()
-                                    )
+                                        // Rebuild the flat selectedAllergies list as the union of all chips
+                                        // selected by any member (used only for background capsules).
+                                        selectedAllergies.clear()
+                                        selectedAllergies.addAll(
+                                            selectedAllergiesByMember.values
+                                                .flatMap { it }
+                                                .toSet()
+                                        )
 
-                                    Log.d(
-                                        "OnboardingAllergies",
-                                        "onToggleAllergy END chip=$allergyId memberKey=$memberKey " +
-                                            "afterChipsForMember=${selectedAllergiesByMember[memberKey]} " +
-                                            "selectedAllergiesByMember=$selectedAllergiesByMember " +
-                                            "selectedAllergies=$selectedAllergies"
-                                    )
-                                },
-                                onNext = {
-                                    // Advance to next fine‑tune step visually; once at the end, exit onboarding.
-                                    if (allergyStepIndex < allergySteps.lastIndex) {
-                                        allergyStepIndex++
-                                    } else {
-                                        onExitOnboarding()
-                                    }
-                                },
-                                questionStepIndex = allergyStepIndex
-                            )
+                                        // Immediately update activeMemberSelections if this is for the active member
+                                        // BEFORE incrementing revision so the key block sees the updated value
+                                        if (memberKey == activeMemberKey) {
+                                            activeMemberSelections = selectedAllergiesByMember[memberKey]?.toSet() ?: emptySet()
+                                        }
+                                        
+                                        allergySelectionRevision++
+                                        
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[TAP] END chip=$allergyId memberKey=$memberKey " +
+                                                "afterChips=${selectedAllergiesByMember[memberKey]?.toSet()} " +
+                                                "revision=$allergySelectionRevision " +
+                                                "activeMemberSelections=$activeMemberSelections"
+                                        )
+                                        },
+                                    onNext = {
+                                        // Advance to next fine‑tune step visually; once at the end, exit onboarding.
+                                        if (allergyStepIndex < allergySteps.lastIndex) {
+                                            allergyStepIndex++
+                                        } else {
+                                            onExitOnboarding()
+                                        }
+                                    },
+                                    questionStepIndex = allergyStepIndex
+                                )
+                            }
                         }
                         OnboardingStep.SIGN_IN_INITIAL -> {
                             SignInInitialSheet(
