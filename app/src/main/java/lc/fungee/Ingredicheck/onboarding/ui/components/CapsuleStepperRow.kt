@@ -87,7 +87,9 @@ fun CapsuleStepperRow(
     // If the active item is before the max reached index, we must add the expansion delta
     // because the active item (which is wider) pushes the subsequent items (up to max) further to the right.
     val baseFill = (collapsedWidth + itemSpacing) * maxReachedIndex
-    val expansionDelta = if (clampedActive < maxReachedIndex) (expandedWidth - collapsedWidth) else 0.dp
+    // Use the *measured* active capsule width instead of the old fixed expandedWidth,
+    // so the filled line stops exactly before the first *unvisited* capsule.
+    val expansionDelta = if (clampedActive < maxReachedIndex) (activeItemWidth - collapsedWidth) else 0.dp
     val fillToStartOfActive = baseFill + expansionDelta
 
     val fillToStartOfActiveState by animateDpAsState(
@@ -99,6 +101,7 @@ fun CapsuleStepperRow(
     Box(
         modifier = modifier
             .fillMaxWidth()
+
 //            .padding(horizontal = horizontalPadding)
             .heightIn(min = 64.dp)
     ) {

@@ -1,5 +1,6 @@
 package lc.fungee.Ingredicheck.onboarding.ui
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.Context
@@ -767,6 +768,7 @@ private fun FamilyOverviewBackground(
     }
 }
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun OnboardingHost(
     authViewModel: AuthViewModel,
@@ -1018,7 +1020,7 @@ fun OnboardingHost(
                             Column(
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                Spacer(modifier = Modifier.height(48.dp))
+                         Spacer(modifier = Modifier.height(40.dp))
 
                                 // Animate progress based on current allergyStepIndex.
                                 val rawProgress =
@@ -1030,21 +1032,23 @@ fun OnboardingHost(
                                     label = "allergyProgress"
                                 )
 
-                                AnimatedProgressLine(
-                                    progress = animatedProgress,
-                                    modifier = Modifier.padding(horizontal = 20.dp)
-                                )
+                                   AnimatedProgressLine(
+                                       progress = animatedProgress,
+                                       modifier = Modifier.padding(horizontal = 20.dp)
+                                   )
+//                                Spacer(modifier = Modifier.height(10.dp))
+
+                                   CapsuleStepperRow(
+                                       steps = allergySteps,
+                                       activeIndex = allergyStepIndex,
+                                       onStepClick = { clickedIndex ->
+                                           allergyStepIndex =
+                                               clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                       }
+                                   )
+
+
                                 Spacer(modifier = Modifier.height(10.dp))
-
-                                CapsuleStepperRow(
-                                    steps = allergySteps,
-                                    activeIndex = allergyStepIndex,
-                                    onStepClick = { clickedIndex ->
-                                        allergyStepIndex = clickedIndex.coerceIn(0, allergySteps.lastIndex)
-                                    }
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
 
                                 // Show a scrollable list of CapsuleSkeletonBox cards.
                                 // Steps 0-3 correspond to: Allergies, Intolerances, Health Conditions, Life Stage.

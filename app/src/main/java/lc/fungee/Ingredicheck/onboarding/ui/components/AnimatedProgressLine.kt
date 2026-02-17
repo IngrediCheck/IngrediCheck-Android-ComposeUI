@@ -78,7 +78,9 @@ fun AnimatedProgressLine(
         modifier = modifier
             .fillMaxWidth()
 //            .padding(horizontal = 20.dp)
-            .height(44.dp),
+            .height(44.dp)
+
+        ,
     ) {
         val maxWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
         val clampedProgress = progress.coerceIn(0f, 1f)

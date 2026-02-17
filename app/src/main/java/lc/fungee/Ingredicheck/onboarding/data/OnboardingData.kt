@@ -14,6 +14,19 @@ data class ChipDefinition(
     val iconPrefix: String
 )
 
+/**
+ * Region definition used for the cultural / regional food traditions
+ * step in the fine‑tune flow.
+ *
+ * Each region has a display name and a list of sub‑regions, which are
+ * modelled as regular chips (so they share the same styling and state
+ * handling as other chip-based steps).
+ */
+data class RegionDefinition(
+    val name: String,
+    val subRegions: List<ChipDefinition>
+)
+
 object OnboardingChipData {
 
     /**
@@ -29,8 +42,9 @@ object OnboardingChipData {
                 "This helps us tailor recommendations better."
             3 -> "Does anyone in your IngrediFam have special life stage needs?" to
                 "Select all that apply so tips match every life stage."
-            4 -> "Where does your IngrediFam draw its food traditions from?" to
-                "This helps us respect your family’s food traditions."
+            // 4 – Region / cultural practices
+            4 -> "Where are you from? This helps us customize your experience!" to
+                "Pick your region(s) or cultural practices."
             5 -> "Anything your IngrediFam avoids?" to
                 "We’ll steer clear of those ingredients and products."
             else -> "Does anyone in your IngrediFam have allergies we should know?" to
@@ -97,6 +111,72 @@ object OnboardingChipData {
             else -> chipsForStep(0)
         }
     }
+
+    /**
+     * Static definition of cultural / regional food traditions used on the
+     * "Where does your IngrediFam draw its food traditions from?" step.
+     *
+     * Mirrors the iOS `regions` JSON structure (DynamicRegionsQuestionView),
+     * but reuses `ChipDefinition` for sub‑regions so selections behave like
+     * normal chips on Android.
+     */
+    val regions: List<RegionDefinition> = listOf(
+        RegionDefinition(
+            name = "India & South Asia",
+            subRegions = listOf(
+                ChipDefinition("region_india_ayurveda", "Ayurveda", "🌿  "),
+                ChipDefinition("region_india_hindu_traditions", "Hindu food traditions", "🕉  "),
+                ChipDefinition("region_india_jain_diet", "Jain diet", "🧘‍♂️ "),
+                ChipDefinition("region_india_other", "Other", "✏️  ")
+            )
+        ),
+        RegionDefinition(
+            name = "Africa",
+            subRegions = listOf(
+                ChipDefinition("region_africa_rastafarian_ital", "Rastafarian Ital diet", "🥗  "),
+                ChipDefinition("region_africa_ethiopian_orthodox", "Ethiopian Orthodox fasting", "🥖  "),
+                ChipDefinition("region_africa_other", "Other", "✏️  ")
+            )
+        ),
+        RegionDefinition(
+            name = "Middle East & Mediterranean",
+            subRegions = listOf(
+                ChipDefinition("region_middleeast_halal", "Halal (Islamic dietary laws)", "☪️ "),
+                ChipDefinition("region_middleeast_kosher", "Kosher (Jewish dietary laws)", "✡️ "),
+                ChipDefinition("region_middleeast_mediterranean", "Greek / Mediterranean diets", "🫒 "),
+                ChipDefinition("region_middleeast_other", "Other", "✏️  ")
+            )
+        ),
+        RegionDefinition(
+            name = "East Asia",
+            subRegions = listOf(
+                ChipDefinition("region_eastasia_tcm", "Traditional Chinese Medicine (TCM)", "🧧 "),
+                ChipDefinition("region_eastasia_buddhist_rules", "Buddhist food rules", "🧘 "),
+                ChipDefinition("region_eastasia_macrobiotic", "Japanese Macrobiotic diet", "🍙 "),
+                ChipDefinition("region_eastasia_other", "Other", "✏️  ")
+            )
+        ),
+        RegionDefinition(
+            name = "Western / Native traditions",
+            subRegions = listOf(
+                ChipDefinition("region_western_native_american", "Native American traditions", "🪶 "),
+                ChipDefinition("region_western_christian", "Christian traditions", "✝️ "),
+                ChipDefinition("region_western_other", "Other", "✏️  ")
+            )
+        ),
+        RegionDefinition(
+            name = "Seventh-day Adventist",
+            subRegions = listOf(
+                ChipDefinition("region_sda_seventh_day_adventist", "Seventh-day Adventist", "✝️ ")
+            )
+        ),
+        RegionDefinition(
+            name = "Other",
+            subRegions = listOf(
+                ChipDefinition("region_other_other", "Other", "✏️  ")
+            )
+        )
+    )
 
     /**
      * Resolves a chip id to its definition (label + emoji) from any step.

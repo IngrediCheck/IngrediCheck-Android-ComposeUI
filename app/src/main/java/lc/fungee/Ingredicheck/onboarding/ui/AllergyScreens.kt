@@ -24,17 +24,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.RegionDefinition
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryChipEffect
@@ -293,60 +301,120 @@ internal fun AddAllergiesSheet(
         }
     }
 
-    Spacer(modifier = Modifier.height(18.dp))
+    Spacer(modifier = Modifier.height(10.dp))
 
-    val allergies = remember(questionStepIndex) {
-        OnboardingChipData.chipsForStep(questionStepIndex)
-    }
+    if (questionStepIndex == 4) {
+        // Region-style grouped UI – mirrors iOS DynamicRegionsQuestionView.
+        // The list of regions scrolls, but the green arrow button stays fixed
+        // at the bottom-right of the sheet (does not scroll).
+        val scrollState = rememberScrollState()
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            )
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color.White)
-            .padding(horizontal = 20.dp)
-    ) {
-        Column {
-            FlowRowWithRightAlignedButton(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalSpacing = 8.dp,
-                verticalSpacing = 8.dp
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 260.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color.White)
+        ) {
+            // Scrollable content: region capsules + their inner chips
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 0.dp)
+
+
+
             ) {
-                allergies.forEach { def ->
-                    val isSelected = selectedAllergies.contains(def.id)
-                    AllergyChip(
-                        label = def.iconPrefix + def.label,
-                        selected = isSelected,
-                        onClick = { onToggleAllergy(def.id) }
+                RegionSelectionSection(
+                    selectedAllergies = selectedAllergies,
+                    onToggleAllergy = onToggleAllergy
+                )
+
+                // Extra bottom spacer so last row isn't hidden behind the arrow button
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Fixed-position primary arrow button (does NOT scroll)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 16.dp)
+                    .size(56.dp)
+                    .primaryButtonEffect(
+                        isDisabled = false,
+                        shape = RoundedCornerShape(percent = 50),
+                        disabledBackgroundColor = Greyscale40
                     )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .primaryButtonEffect(
-                            isDisabled = false,
-                            shape = RoundedCornerShape(percent = 50),
-                            disabledBackgroundColor = Greyscale40
-                        )
-                        .clip(CircleShape)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onNext() },
-                    contentAlignment = Alignment.Center
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onNext() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Greyscale10,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    } else {
+        val allergies = remember(questionStepIndex) {
+            OnboardingChipData.chipsForStep(questionStepIndex)
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color.White)
+                .padding(horizontal = 20.dp)
+        ) {
+            Column {
+                FlowRowWithRightAlignedButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalSpacing = 8.dp,
+                    verticalSpacing = 8.dp
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Greyscale10,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    allergies.forEach { def ->
+                        val isSelected = selectedAllergies.contains(def.id)
+                        AllergyChip(
+                            label = def.iconPrefix + def.label,
+                            selected = isSelected,
+                            onClick = { onToggleAllergy(def.id) }
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .primaryButtonEffect(
+                                isDisabled = false,
+                                shape = RoundedCornerShape(percent = 50),
+                                disabledBackgroundColor = Greyscale40
+                            )
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onNext() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Greyscale10,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }
@@ -380,10 +448,177 @@ private fun AllergyChip(
             text = label,
             fontFamily = Manrope,
             fontWeight = FontWeight.Medium,
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             color = if (selected) Greyscale10 else Greyscale150,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun RegionSelectionSection(
+    selectedAllergies: Set<String>,
+    onToggleAllergy: (String) -> Unit
+) {
+    val regions = remember { OnboardingChipData.regions }
+    // Track which regions are expanded (by name). Mirrors the iOS expandedSectionIds set.
+    var expandedRegionNames by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        regions.forEach { region ->
+            // If a region only has a single sub-region, skip the expandable
+            // header and surface the chip directly – same as iOS.
+            if (region.subRegions.size == 1) {
+                SimpleFlowRow(
+                    horizontalSpacing = 8.dp,
+                    verticalSpacing = 8.dp
+                ) {
+                    val def = region.subRegions.first()
+                    val isSelected = selectedAllergies.contains(def.id)
+                    AllergyChip(
+                        label = def.iconPrefix + def.label,
+                        selected = isSelected,
+                        onClick = { onToggleAllergy(def.id) }
+                    )
+                }
+            } else {
+                val hasAnySelection = region.subRegions.any { selectedAllergies.contains(it.id) }
+                val isExpanded = expandedRegionNames.contains(region.name)
+                RegionSectionRow(
+                    region = region,
+                    isSectionSelected = hasAnySelection,
+                    isExpanded = isExpanded,
+                    selectedAllergies = selectedAllergies,
+                    onToggleExpanded = {
+                        expandedRegionNames =
+                            if (isExpanded) expandedRegionNames - region.name
+                            else expandedRegionNames + region.name
+                    },
+                    onToggleAllergy = onToggleAllergy
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RegionSectionRow(
+    region: RegionDefinition,
+    isSectionSelected: Boolean,
+    isExpanded: Boolean,
+    selectedAllergies: Set<String>,
+    onToggleExpanded: () -> Unit,
+    onToggleAllergy: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        val shape = RoundedCornerShape(999.dp)
+        val headerModifier =
+            if (isSectionSelected || isExpanded) {
+                Modifier.primaryChipEffect(shape)
+            } else {
+                Modifier
+                    .background(Color.White)
+                    .border(1.dp, lc.fungee.Ingredicheck.ui.theme.Greyscale60, shape)
+            }
+
+        Box(
+            modifier = Modifier
+                .then(headerModifier)
+                .clip(shape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onToggleExpanded() }
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = region.name,
+                    fontFamily = Manrope,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    color = if (isSectionSelected || isExpanded) Greyscale10 else Greyscale150,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = if (isSectionSelected || isExpanded) Greyscale10 else Greyscale120,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        if (isExpanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+            SimpleFlowRow(
+                horizontalSpacing = 8.dp,
+                verticalSpacing = 8.dp
+            ) {
+                region.subRegions.forEach { def ->
+                    val isSelected = selectedAllergies.contains(def.id)
+                    AllergyChip(
+                        label = def.iconPrefix + def.label,
+                        selected = isSelected,
+                        onClick = { onToggleAllergy(def.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimpleFlowRow(
+    modifier: Modifier = Modifier,
+    horizontalSpacing: Dp,
+    verticalSpacing: Dp,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val spacingX = horizontalSpacing.roundToPx()
+        val spacingY = verticalSpacing.roundToPx()
+
+        if (measurables.isEmpty()) {
+            return@Layout layout(0, 0) {}
+        }
+
+        val placeables = measurables.map { measurable ->
+            measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        }
+
+        val maxWidth = constraints.maxWidth
+        var x = 0
+        var y = 0
+        var rowHeight = 0
+        val positions = ArrayList<IntArray>(placeables.size)
+
+        placeables.forEach { p ->
+            if (x > 0 && x + p.width > maxWidth) {
+                x = 0
+                y += rowHeight + spacingY
+                rowHeight = 0
+            }
+            positions.add(intArrayOf(x, y))
+            x += p.width + spacingX
+            rowHeight = maxOf(rowHeight, p.height)
+        }
+
+        val totalHeight = (y + rowHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
+
+        layout(width = maxWidth, height = totalHeight) {
+            placeables.forEachIndexed { index, placeable ->
+                val pos = positions[index]
+                placeable.placeRelative(pos[0], pos[1])
+            }
+        }
     }
 }
 
