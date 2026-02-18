@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -44,14 +45,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,7 +67,9 @@ import coil.compose.AsyncImage
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.data.RegionDefinition
+import lc.fungee.Ingredicheck.onboarding.data.AvoidOptionDefinition
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
+import lc.fungee.Ingredicheck.onboarding.ui.components.StackedCardsComponent
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryChipEffect
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
@@ -71,8 +77,10 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale70
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
+import lc.fungee.Ingredicheck.ui.theme.Greyscale140
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Manrope
+import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.Primary700
 
 @Composable
@@ -301,7 +309,7 @@ internal fun AddAllergiesSheet(
         }
     }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 
     if (questionStepIndex == 4) {
         // Region-style grouped UI – mirrors iOS DynamicRegionsQuestionView.
@@ -360,6 +368,105 @@ internal fun AddAllergiesSheet(
                     modifier = Modifier.size(24.dp)
                 )
             }
+        }
+    } else if (questionStepIndex == 5) {
+        // Avoid step: show stacked cards instead of chips, and
+        // do NOT render the forward arrow button here.
+        val avoidCards = OnboardingChipData.avoidCards
+        val totalCards = avoidCards.size
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+        ) {
+            StackedCardsComponent(
+                modifier = Modifier,
+                cardContent = { index, isTop ->
+                    val card = avoidCards[index % avoidCards.size]
+
+                    val bgColor = try {
+                        Color(android.graphics.Color.parseColor(card.colorHex))
+                    } catch (_: IllegalArgumentException) {
+                        Color(0xFFFFF6B3)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(270.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                spotColor = Color.Black.copy(alpha = 0.15f)
+                            )
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(bgColor)
+                            .padding(horizontal = 12.dp, vertical = 16.dp)
+                    ) {
+                        if (isTop) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = card.title,
+                                        fontFamily = Nunito,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Greyscale150
+                                    )
+                                    Text(
+                                        text = "${index + 1}/$totalCards",
+                                        fontFamily = Manrope,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 14.sp,
+                                        color = Greyscale140
+                                    )
+                                }
+
+                                Text(
+                                    text = card.description,
+                                    fontFamily = Manrope,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    color = Greyscale140
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                SimpleFlowRow(
+                                    horizontalSpacing = 8.dp,
+                                    verticalSpacing = 8.dp
+                                ) {
+                                    card.options.forEach { opt ->
+                                        val isSelected = selectedAllergies.contains(opt.id)
+                                        AvoidOptionChip(
+                                            option = opt,
+                                            isSelected = isSelected,
+                                            onClick = { onToggleAllergy(opt.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Image(
+                            painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(100.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            )
         }
     } else {
         val allergies = remember(questionStepIndex) {
@@ -452,6 +559,53 @@ private fun AllergyChip(
             color = if (selected) Greyscale10 else Greyscale150,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+fun AvoidOptionChip(
+    option: AvoidOptionDefinition,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(999.dp)
+
+    val baseModifier =
+        if (isSelected) {
+            Modifier.primaryChipEffect(shape)
+        } else {
+            Modifier
+                .background(Color.White, shape)
+                .border(1.dp, Greyscale40, shape)
+        }
+
+    Box(
+        modifier = Modifier
+            .then(baseModifier)
+            .clip(shape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = option.iconPrefix,
+                fontSize = 16.sp
+            )
+            Text(
+                text = option.label,
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                color = if (isSelected) Greyscale10 else Color(0xFF303030),
+                maxLines = 1
+            )
+        }
     }
 }
 
@@ -576,7 +730,7 @@ private fun RegionSectionRow(
 }
 
 @Composable
-private fun SimpleFlowRow(
+fun SimpleFlowRow(
     modifier: Modifier = Modifier,
     horizontalSpacing: Dp,
     verticalSpacing: Dp,

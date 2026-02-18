@@ -27,6 +27,20 @@ data class RegionDefinition(
     val subRegions: List<ChipDefinition>
 )
 
+data class AvoidOptionDefinition(
+    val id: String,
+    val label: String,
+    val iconPrefix: String
+)
+
+data class AvoidCardDefinition(
+    val id: String,
+    val title: String,
+    val description: String,
+    val colorHex: String,
+    val options: List<AvoidOptionDefinition>
+)
+
 object OnboardingChipData {
 
     /**
@@ -56,7 +70,7 @@ object OnboardingChipData {
      * Returns the chip set (id, label, emoji prefix) for the given fine‑tune step.
      */
     fun chipsForStep(step: Int): List<ChipDefinition> {
-        return when (step.coerceIn(0, 5)) {
+        return when (step.coerceIn(0, 9)) {
             // 0 – Allergies
             0 -> listOf(
                 ChipDefinition("peanuts", "Peanuts", "🥜  "),
@@ -108,9 +122,103 @@ object OnboardingChipData {
                 ChipDefinition("none_lifestage", "None of these apply", "✅ ")
             )
 
+            // 8 – Ethical preferences
+            8 -> listOf(
+                ChipDefinition("ethical_animal_welfare", "Animal welfare focused", "🐄  "),
+                ChipDefinition("ethical_fair_trade", "Fair trade", "🤝  "),
+                ChipDefinition(
+                    "ethical_sustainable_fishing",
+                    "Sustainable fishing / no overfished species",
+                    "🐟  "
+                ),
+                ChipDefinition("ethical_low_carbon", "Low carbon footprint foods", "♻️  "),
+                ChipDefinition("ethical_water_footprint", "Water footprint concerns", "💧  "),
+                ChipDefinition("ethical_palm_oil_free", "Palm-oil free", "🌴  "),
+                ChipDefinition("ethical_plastic_free_packaging", "Plastic-free packaging", "🚫  "),
+                ChipDefinition("ethical_other", "Other", "✏️  ")
+            )
+
+            // 9 – Taste preferences
+            9 -> listOf(
+                ChipDefinition("taste_spicy_lover", "Spicy lover", "🌶️  "),
+                ChipDefinition("taste_avoid_spicy", "Avoid Spicy", "🚫  "),
+                ChipDefinition("taste_sweet_tooth", "Sweet tooth", "🍰  "),
+                ChipDefinition("taste_avoid_slimy", "Avoid slimy textures", "🥒  "),
+                ChipDefinition("taste_avoid_bitter", "Avoid bitter foods", "🍵  "),
+                ChipDefinition("taste_other", "Other", "✏️  "),
+                ChipDefinition("taste_crunchy_soft", "Crunchy / Soft preferences", "🍪  "),
+                ChipDefinition("taste_low_sweet", "Low-sweet preference", "🍯  ")
+            )
+
             else -> chipsForStep(0)
         }
     }
+
+    // Avoid stacked cards (type-2) used for the Avoid step.
+    val avoidCards: List<AvoidCardDefinition> = listOf(
+        AvoidCardDefinition(
+            id = "avoid_oils_fats",
+            title = "Oils & Fats",
+            description = "In fats or oils, what do you avoid?",
+            colorHex = "#FFF6B3",
+            options = listOf(
+                AvoidOptionDefinition("avoid_oils_trans_fats", "Hydrogenated oils / Trans fats", "🧈 "),
+                AvoidOptionDefinition("avoid_oils_seed", "Canola / Seed oils", "🌾 "),
+                AvoidOptionDefinition("avoid_oils_palm", "Palm oil", "🌴 "),
+                AvoidOptionDefinition("avoid_oils_corn_hfcs", "Corn / High-fructose corn syrup", "🌽 ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "avoid_animal_based",
+            title = "Animal-Based",
+            description = "Any animal products you don't consume?",
+            colorHex = "#DCC7F6",
+            options = listOf(
+                AvoidOptionDefinition("avoid_animal_pork", "Pork", "🐖 "),
+                AvoidOptionDefinition("avoid_animal_beef", "Beef", "🐄 "),
+                AvoidOptionDefinition("avoid_animal_honey", "Honey", "🍯 "),
+                AvoidOptionDefinition("avoid_animal_gelatin", "Gelatin / Rennet", "🧂 "),
+                AvoidOptionDefinition("avoid_animal_shellfish", "Shellfish", "🦐 "),
+                AvoidOptionDefinition("avoid_animal_insects", "Insects", "🐜 "),
+                AvoidOptionDefinition("avoid_animal_seafood", "Seafood (fish)", "🐟 "),
+                AvoidOptionDefinition("avoid_animal_lard", "Lard / Animal fat", "🍖 ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "avoid_stimulants_substances",
+            title = "Stimulants & Substances",
+            description = "Do you avoid these?",
+            colorHex = "#BFF0D4",
+            options = listOf(
+                AvoidOptionDefinition("avoid_stim_alcohol", "Alcohol", "🍷 "),
+                AvoidOptionDefinition("avoid_stim_caffeine", "Caffeine", "☕ ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "avoid_additives_sweeteners",
+            title = "Additives & Sweeteners",
+            description = "Do you stay away from processed ingredients?",
+            colorHex = "#FFD9B5",
+            options = listOf(
+                AvoidOptionDefinition("avoid_add_msg", "MSG", "⚗️ "),
+                AvoidOptionDefinition("avoid_add_artificial_sweeteners", "Artificial sweeteners", "🍬 "),
+                AvoidOptionDefinition("avoid_add_preservatives", "Preservatives", "🧂 "),
+                AvoidOptionDefinition("avoid_add_refined_sugar", "Refined sugar", "🍚 "),
+                AvoidOptionDefinition("avoid_add_corn_syrup", "Corn syrup / HFCS", "🌽 "),
+                AvoidOptionDefinition("avoid_add_stevia_monk", "Stevia / Monk fruit", "🍈 ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "avoid_plant_based_restrictions",
+            title = "Plant-Based Restrictions",
+            description = "Any plant foods you avoid?",
+            colorHex = "#F9C6D0",
+            options = listOf(
+                AvoidOptionDefinition("avoid_plant_nightshades", "Nightshades (paprika, peppers, etc.)", "🍅 "),
+                AvoidOptionDefinition("avoid_plant_garlic_onion", "Garlic / Onion", "🧄 ")
+            )
+        )
+    )
 
     /**
      * Static definition of cultural / regional food traditions used on the
@@ -183,7 +291,7 @@ object OnboardingChipData {
      * Used to display selected chips in the CapsuleSkeletonBox.
      */
     fun chipForId(id: String): ChipDefinition? {
-        for (step in 0..5) {
+        for (step in 0..9) {
             chipsForStep(step).find { it.id == id }?.let { return it }
         }
         return null
