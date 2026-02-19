@@ -64,13 +64,12 @@ import androidx.core.graphics.toColorInt
 @Composable
 fun StackedCardsComponent(
     modifier: Modifier = Modifier,
-    cardContent: @Composable (index: Int, isTop: Boolean) -> Unit
+    cardCount: Int = 6,
+    cardContent: @Composable (index: Int, isTop: Boolean, positionInStack: Int) -> Unit
 ) {
-    // Create 6 cards with initial indices
-    val initialCards = remember {
-        mutableStateListOf(0, 1, 2, 3, 4, 5)
+    val cards = remember(cardCount) {
+        mutableStateListOf<Int>().apply { addAll(0 until cardCount) }
     }
-    val cards = remember { initialCards }
 
     // Track drag offset for the top card
     val dragOffsetX = remember { Animatable(0f) }
@@ -164,10 +163,8 @@ fun StackedCardsComponent(
                                     cardWidth = coordinates.size.width.toFloat()
                                 }
                                 .offset {
-                                    IntOffset(
-                                        dragOffsetX.value.roundToInt(),
-                                        dragOffsetY.value.roundToInt()
-                                    )
+                                    // Horizontal only: no vertical movement
+                                    IntOffset(dragOffsetX.value.roundToInt(), 0)
                                 }
                                 .pointerInput(cardIndex) {
                                     detectDragGestures(
@@ -234,12 +231,9 @@ fun StackedCardsComponent(
                                         onDrag = { change, dragAmount ->
                                             change.consume()
                                             coroutineScope.launch {
-                                                // Free horizontal dragging (primarily left); no clamping,
-                                                // so the card can visually reach / go past the screen edge.
+                                                // Horizontal only: card stays fixed vertically
                                                 val newOffsetX = dragOffsetX.value + dragAmount.x
                                                 dragOffsetX.snapTo(newOffsetX)
-                                                // Slight vertical offset for natural feel
-                                                dragOffsetY.snapTo(dragAmount.y * 0.3f)
                                             }
                                         }
                                     )
@@ -249,9 +243,9 @@ fun StackedCardsComponent(
                         }
                     )
             ) {
-                // Only the top card should reveal its full content (text, etc.).
-                // Cards behind can render a simplified/placeholder state if desired.
-                cardContent(cardIndex, isTopCard)
+                // positionInStack: 1 = top card, 2 = second, etc. (so "1/N" is always the visible top card)
+                val positionInStack = cards.lastIndex - stackIndex + 1
+                cardContent(cardIndex, isTopCard, positionInStack)
             }
         }
     }
@@ -265,9 +259,9 @@ private fun StackedCardsAvoidPreview() {
 
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         StackedCardsComponent(
-//            modifier = Modifier.padding(horizontal = 20.dp),
-            cardContent = { index, isTop ->
-                val card = cards[index % cards.size]
+            cardCount = cards.size,
+            cardContent = { index, isTop, positionInStack ->
+                val card = cards[index]
 
                 val bgColor = try {
                     androidx.compose.ui.graphics.Color(card.colorHex.toColorInt())
@@ -308,7 +302,7 @@ private fun StackedCardsAvoidPreview() {
                                     color = Greyscale150
                                 )
                                 Text(
-                                    text = "${index + 1}/$total",
+                                    text = "${positionInStack}/$total",
                                     fontFamily = Manrope,
                                     fontWeight = FontWeight.Companion.Normal,
                                     fontSize = 14.sp,

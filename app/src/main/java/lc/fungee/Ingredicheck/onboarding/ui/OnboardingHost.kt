@@ -887,7 +887,10 @@ fun OnboardingHost(
             CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
         )
     }
+
     var allergyStepIndex by remember { mutableStateOf(0) }
+    // When true, show the fine‑tune decision screen between Life Style and Nutrition
+    var showFineTuneDecision by remember { mutableStateOf(false) }
 
     if (step == OnboardingStep.GET_STARTED) {
         GetStatedScreen(
@@ -1023,6 +1026,9 @@ fun OnboardingHost(
                          Spacer(modifier = Modifier.height(40.dp))
 
                                 // Animate progress based on current allergyStepIndex.
+                                // NOTE: The fine‑tune decision screen between Life Style and Nutrition
+                                // does NOT advance allergyStepIndex, so progress will not increase
+                                // while that screen is shown.
                                 val rawProgress =
                                     if (allergySteps.size <= 1) 1f
                                     else allergyStepIndex.toFloat() / (allergySteps.size - 1).coerceAtLeast(1)
@@ -1042,8 +1048,12 @@ fun OnboardingHost(
                                        steps = allergySteps,
                                        activeIndex = allergyStepIndex,
                                        onStepClick = { clickedIndex ->
-                                           allergyStepIndex =
-                                               clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                           // Only allow jumping to steps the user has already visited.
+                                           val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                           if (clamped <= allergyStepIndex) {
+                                               allergyStepIndex = clamped
+                                               showFineTuneDecision = false
+                                           }
                                        }
                                    )
 
@@ -1051,13 +1061,14 @@ fun OnboardingHost(
                                 Spacer(modifier = Modifier.height(10.dp))
 
                                 // Show a scrollable list of CapsuleSkeletonBox cards.
-                                // Steps 0-3 correspond to: Allergies, Intolerances, Health Conditions, Life Stage.
+                                // Steps 0–9: Allergies, Intolerances, Health, Life Stage, Region, Avoid, LifeStyle, Nutrition, Ethical, Taste.
                                 val hasAnySelections = selectedAllergies.isNotEmpty()
+                                val maxStepIndex = allergySteps.lastIndex
 
                                 // Decide which step indices should render cards.
                                 val cardSteps: List<Int> = if (hasAnySelections) {
-                                    // Only steps that have at least one selected chip.
-                                    (0..3).filter { stepIndex ->
+                                    // Only steps that have at least one selected chip (including Region, Avoid, LifeStyle, Nutrition).
+                                    (0..maxStepIndex).filter { stepIndex ->
                                         val stepChipIds = OnboardingChipData
                                             .chipsForStep(stepIndex)
                                             .map { it.id }
@@ -1065,8 +1076,8 @@ fun OnboardingHost(
                                         selectedAllergies.any { it in stepChipIds }
                                     }
                                 } else {
-                                    // No selections yet – show all four as empty placeholders.
-                                    (0..3).toList()
+                                    // No selections yet – show all steps as empty placeholders.
+                                    (0..maxStepIndex).toList()
                                 }
 
                                 val cardsListState = rememberLazyListState()
@@ -1208,9 +1219,10 @@ fun OnboardingHost(
                                     "selectedAllergiesByMember.keys=${selectedAllergiesByMember.keys}"
                             )
 
-                            // Key on revision (bumped every tap) so the sheet always recomposes when
-                            // chips are toggled. Use activeMemberSelections which is explicitly updated.
-                            key(activeMemberKey, allergySelectionRevision, activeMemberSelections.sorted().joinToString(",")) {
+                            // Key only by member so switching member resets the sheet; do NOT key by
+                            // selections so that chip toggles do not recreate the sheet (preserves
+                            // stacked card order when user selects chips on 2nd/3rd card).
+                            key(activeMemberKey) {
                                 AddAllergiesSheet(
                                     members = vm.familyOverviewMembers.toList(),
                                     selectedMemberId = selectedAllergyMemberIdState.value,
@@ -1280,13 +1292,27 @@ fun OnboardingHost(
                                         )
                                         },
                                     onNext = {
-                                        // Advance to next fine‑tune step visually; once at the end, exit onboarding.
-                                        if (allergyStepIndex < allergySteps.lastIndex) {
-                                            allergyStepIndex++
+                                        // Between Life Style (index 6) and Nutrition (index 7),
+                                        // show a dedicated fine‑tune decision screen that does
+                                        // NOT advance progress until the user confirms.
+                                        if (allergyStepIndex == 6 && !showFineTuneDecision) {
+                                            showFineTuneDecision = true
                                         } else {
-                                            onExitOnboarding()
+                                            showFineTuneDecision = false
+                                            if (allergyStepIndex < allergySteps.lastIndex) {
+                                                allergyStepIndex++
+                                            } else {
+                                                onExitOnboarding()
+                                            }
                                         }
                                     },
+                                    onSkipPreferences = {
+                                        // User tapped "All Set!" on the fine‑tune decision screen:
+                                        // close the decision and exit the onboarding fine‑tune flow.
+                                        showFineTuneDecision = false
+                                        onExitOnboarding()
+                                    },
+                                    showFineTuneDecision = showFineTuneDecision,
                                     questionStepIndex = allergyStepIndex
                                 )
                             }

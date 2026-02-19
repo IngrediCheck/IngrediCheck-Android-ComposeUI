@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -72,6 +74,8 @@ import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.ui.components.StackedCardsComponent
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryChipEffect
+import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
+import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale70
@@ -91,6 +95,8 @@ internal fun AddAllergiesSheet(
     onMemberSelected: (String) -> Unit,
     onToggleAllergy: (String) -> Unit,
     onNext: () -> Unit,
+    onSkipPreferences: () -> Unit = {},
+    showFineTuneDecision: Boolean = false,
     questionStepIndex: Int = 0
 ) {
     val everyoneId = "ALL"
@@ -106,8 +112,66 @@ internal fun AddAllergiesSheet(
         }
     }
 
+    // Special fine‑tune decision screen between Life Style and Nutrition.
+    if (showFineTuneDecision) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Want to fine‑tune your experience?",
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Greyscale150,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Add extra preferences to tailor your experience.\nJump in or skip!",
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale120,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // "All Set!" – secondary (outlined) button
+                SecondaryButton(
+                    title = "All Set!",
+                    modifier = Modifier.weight(1f),
+                    onClick = { onSkipPreferences() },
+                    takeFullWidth = true
+                )
+
+                // "Add Preferences" – primary (filled) button
+                PrimaryButton(
+                    title = "Add Preferences",
+                    modifier = Modifier.weight(1f),
+                    onClick = { onNext() },
+                    takeFullWidth = true
+                )
+            }
+        }
+        return
+    }
+
     AnimatedContent(
-        targetState = questionStepIndex.coerceIn(0, 5),
+        targetState = questionStepIndex.coerceIn(0, 9),
         label = "allergyQuestion",
         transitionSpec = {
             fadeIn(animationSpec = tween(durationMillis = 250)) togetherWith
@@ -348,7 +412,7 @@ internal fun AddAllergiesSheet(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 16.dp)
-                    .size(56.dp)
+                    .size(50.dp)
                     .primaryButtonEffect(
                         isDisabled = false,
                         shape = RoundedCornerShape(percent = 50),
@@ -370,8 +434,7 @@ internal fun AddAllergiesSheet(
             }
         }
     } else if (questionStepIndex == 5) {
-        // Avoid step: show stacked cards instead of chips, and
-        // do NOT render the forward arrow button here.
+        // Avoid step: show stacked cards with forward arrow button always visible
         val avoidCards = OnboardingChipData.avoidCards
         val totalCards = avoidCards.size
 
@@ -382,14 +445,25 @@ internal fun AddAllergiesSheet(
         ) {
             StackedCardsComponent(
                 modifier = Modifier,
-                cardContent = { index, isTop ->
-                    val card = avoidCards[index % avoidCards.size]
+                cardCount = avoidCards.size,
+                cardContent = { index, isTop, positionInStack ->
+                    val card = avoidCards[index]
 
                     val bgColor = try {
                         Color(android.graphics.Color.parseColor(card.colorHex))
                     } catch (_: IllegalArgumentException) {
                         Color(0xFFFFF6B3)
                     }
+
+                    // Smooth fade-in of card content when this card becomes top (0 -> 1 opacity)
+                    val contentAlpha by animateFloatAsState(
+                        targetValue = if (isTop) 1f else 0f,
+                        animationSpec = tween(
+                            durationMillis = 750,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "cardContentAlpha"
+                    )
 
                     Box(
                         modifier = Modifier
@@ -406,7 +480,9 @@ internal fun AddAllergiesSheet(
                     ) {
                         if (isTop) {
                             Column(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(contentAlpha),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Row(
@@ -422,7 +498,7 @@ internal fun AddAllergiesSheet(
                                         color = Greyscale150
                                     )
                                     Text(
-                                        text = "${index + 1}/$totalCards",
+                                        text = "${positionInStack}/$totalCards",
                                         fontFamily = Manrope,
                                         fontWeight = FontWeight.Normal,
                                         fontSize = 14.sp,
@@ -456,71 +532,388 @@ internal fun AddAllergiesSheet(
                             }
                         }
 
-                        Image(
-                            painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(100.dp),
-                            contentScale = ContentScale.Fit
-                        )
+                        if (isTop) {
+                            // Adjust leaf icon position (positive X = right, positive Y = down)
+                            val leafIconOffsetX = 5.dp
+                            val leafIconOffsetY = 34.dp
+                            Image(
+                                painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = leafIconOffsetX, y = leafIconOffsetY)
+                                    .height(100.dp)
+                                    .alpha(contentAlpha),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
                     }
                 }
             )
+            
+            // Fixed-position forward arrow button (always visible)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 16.dp)
+                    .size(56.dp)
+                    .primaryButtonEffect(
+                        isDisabled = false,
+                        shape = RoundedCornerShape(percent = 50),
+                        disabledBackgroundColor = Greyscale40
+                    )
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onNext() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Greyscale10,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
-    } else {
-        val allergies = remember(questionStepIndex) {
-            OnboardingChipData.chipsForStep(questionStepIndex)
-        }
+    } else if (questionStepIndex == 6) {
+        // LifeStyle step: same stacked cards as Avoid, 3 cards (Plant & Balance, Quality & Source, Sustainable Living)
+        val lifestyleCards = OnboardingChipData.lifestyleCards
+        val totalCards = lifestyleCards.size
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color.White)
-                .padding(horizontal = 20.dp)
+                .height(300.dp)
         ) {
-            Column {
-                FlowRowWithRightAlignedButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalSpacing = 8.dp,
-                    verticalSpacing = 8.dp
-                ) {
-                    allergies.forEach { def ->
-                        val isSelected = selectedAllergies.contains(def.id)
-                        AllergyChip(
-                            label = def.iconPrefix + def.label,
-                            selected = isSelected,
-                            onClick = { onToggleAllergy(def.id) }
-                        )
+            StackedCardsComponent(
+                modifier = Modifier,
+                cardCount = lifestyleCards.size,
+                cardContent = { index, isTop, positionInStack ->
+                    val card = lifestyleCards[index]
+
+                    val bgColor = try {
+                        Color(android.graphics.Color.parseColor(card.colorHex))
+                    } catch (_: IllegalArgumentException) {
+                        Color(0xFFFFF6B3)
                     }
+
+                    val contentAlpha by animateFloatAsState(
+                        targetValue = if (isTop) 1f else 0f,
+                        animationSpec = tween(
+                            durationMillis = 750,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "cardContentAlpha"
+                    )
+
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
-                            .primaryButtonEffect(
-                                isDisabled = false,
-                                shape = RoundedCornerShape(percent = 50),
-                                disabledBackgroundColor = Greyscale40
+                            .fillMaxWidth()
+                            .height(270.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                spotColor = Color.Black.copy(alpha = 0.15f)
                             )
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onNext() },
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(bgColor)
+                            .padding(horizontal = 12.dp, vertical = 16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = Greyscale10,
-                            modifier = Modifier.size(24.dp)
+                        if (isTop) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(contentAlpha),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = card.title,
+                                        fontFamily = Nunito,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Greyscale150
+                                    )
+                                    Text(
+                                        text = "${positionInStack}/$totalCards",
+                                        fontFamily = Manrope,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 14.sp,
+                                        color = Greyscale140
+                                    )
+                                }
+
+                                Text(
+                                    text = card.description,
+                                    fontFamily = Manrope,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    color = Greyscale140
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                SimpleFlowRow(
+                                    horizontalSpacing = 8.dp,
+                                    verticalSpacing = 8.dp
+                                ) {
+                                    card.options.forEach { opt ->
+                                        val isSelected = selectedAllergies.contains(opt.id)
+                                        AvoidOptionChip(
+                                            option = opt,
+                                            isSelected = isSelected,
+                                            onClick = { onToggleAllergy(opt.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isTop) {
+                            val leafIconOffsetX = 5.dp
+                            val leafIconOffsetY = 34.dp
+                            Image(
+                                painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = leafIconOffsetX, y = leafIconOffsetY)
+                                    .height(100.dp)
+                                    .alpha(contentAlpha),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                }
+            )
+            
+            // Fixed-position forward arrow button (always visible)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 16.dp)
+                    .size(56.dp)
+                    .primaryButtonEffect(
+                        isDisabled = false,
+                        shape = RoundedCornerShape(percent = 50),
+                        disabledBackgroundColor = Greyscale40
+                    )
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onNext() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Greyscale10,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    } else if (questionStepIndex == 7) {
+        // Nutrition step: 3 cards (Macronutrient Goals, Sugar & Fiber, Diet Frameworks & Patterns)
+        val nutritionCards = OnboardingChipData.nutritionCards
+        val totalCards = nutritionCards.size
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+        ) {
+            StackedCardsComponent(
+                modifier = Modifier,
+                cardCount = nutritionCards.size,
+                cardContent = { index, isTop, positionInStack ->
+                    val card = nutritionCards[index]
+
+                    val bgColor = try {
+                        Color(android.graphics.Color.parseColor(card.colorHex))
+                    } catch (_: IllegalArgumentException) {
+                        Color(0xFFFFF6B3)
+                    }
+
+                    val contentAlpha by animateFloatAsState(
+                        targetValue = if (isTop) 1f else 0f,
+                        animationSpec = tween(
+                            durationMillis = 750,
+                            easing = FastOutSlowInEasing
+                        ),
+                        label = "cardContentAlpha"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(270.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                spotColor = Color.Black.copy(alpha = 0.15f)
+                            )
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(bgColor)
+                            .padding(horizontal = 12.dp, vertical = 16.dp)
+                    ) {
+                        if (isTop) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(contentAlpha),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = card.title,
+                                        fontFamily = Nunito,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Greyscale150
+                                    )
+                                    Text(
+                                        text = "${positionInStack}/$totalCards",
+                                        fontFamily = Manrope,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 14.sp,
+                                        color = Greyscale140
+                                    )
+                                }
+
+                                Text(
+                                    text = card.description,
+                                    fontFamily = Manrope,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    color = Greyscale140
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                SimpleFlowRow(
+                                    horizontalSpacing = 8.dp,
+                                    verticalSpacing = 8.dp
+                                ) {
+                                    card.options.forEach { opt ->
+                                        val isSelected = selectedAllergies.contains(opt.id)
+                                        AvoidOptionChip(
+                                            option = opt,
+                                            isSelected = isSelected,
+                                            onClick = { onToggleAllergy(opt.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isTop) {
+                            val leafIconOffsetX = 5.dp
+                            val leafIconOffsetY = 34.dp
+                            Image(
+                                painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .offset(x = leafIconOffsetX, y = leafIconOffsetY)
+                                    .height(100.dp)
+                                    .alpha(contentAlpha),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                }
+            )
+            
+            // Fixed-position forward arrow button (always visible)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 16.dp)
+                    .size(56.dp)
+                    .primaryButtonEffect(
+                        isDisabled = false,
+                        shape = RoundedCornerShape(percent = 50),
+                        disabledBackgroundColor = Greyscale40
+                    )
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onNext() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = Greyscale10,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    } else {
+    val allergies = remember(questionStepIndex) {
+        OnboardingChipData.chipsForStep(questionStepIndex)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color.White)
+            .padding(horizontal = 20.dp)
+    ) {
+        Column {
+            FlowRowWithRightAlignedButton(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalSpacing = 8.dp,
+                verticalSpacing = 8.dp
+            ) {
+                allergies.forEach { def ->
+                    val isSelected = selectedAllergies.contains(def.id)
+                    AllergyChip(
+                        label = def.iconPrefix + def.label,
+                        selected = isSelected,
+                        onClick = { onToggleAllergy(def.id) }
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .primaryButtonEffect(
+                            isDisabled = false,
+                            shape = RoundedCornerShape(percent = 50),
+                            disabledBackgroundColor = Greyscale40
                         )
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onNext() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Greyscale10,
+                        modifier = Modifier.size(24.dp)
+                    )
                     }
                 }
             }

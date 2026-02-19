@@ -47,7 +47,7 @@ object OnboardingChipData {
      * Returns the (question, subtitle) pair for the given fine‑tune step.
      */
     fun questionForStep(step: Int): Pair<String, String> {
-        return when (step.coerceIn(0, 5)) {
+        return when (step.coerceIn(0, 9)) {
             0 -> "Does anyone in your IngrediFam have allergies we should know?" to
                 "Select all that apply to keep meals worry-free."
             1 -> "Any sensitivities or intolerances in your IngrediFam?" to
@@ -61,6 +61,12 @@ object OnboardingChipData {
                 "Pick your region(s) or cultural practices."
             5 -> "Anything your IngrediFam avoids?" to
                 "We’ll steer clear of those ingredients and products."
+            // 6 – LifeStyle (plant/balance, quality/source, sustainable living)
+            6 -> "What’s your lifestyle when it comes to food?" to
+                "Tell us about your eating style, sourcing, and habits."
+            // 7 – Nutrition (macros, sugar/fiber, diet frameworks)
+            7 -> "How do you like to approach nutrition?" to
+                "Set your macronutrient goals, sugar & fiber preferences, and diet patterns."
             else -> "Does anyone in your IngrediFam have allergies we should know?" to
                 "Select all that apply to keep meals worry-free."
         }
@@ -121,6 +127,24 @@ object OnboardingChipData {
                 ChipDefinition("senior_friendly", "Senior-friendly", "👴 "),
                 ChipDefinition("none_lifestage", "None of these apply", "✅ ")
             )
+
+            // 4 – Region / cultural practices (subRegions as chips for capsule display)
+            4 -> regions.flatMap { it.subRegions }
+
+            // 5 – Avoid (stacked card options as chips for capsule display)
+            5 -> avoidCards.flatMap { it.options }.map { o ->
+                ChipDefinition(o.id, o.label, o.iconPrefix)
+            }
+
+            // 6 – LifeStyle (stacked card options for capsule display)
+            6 -> lifestyleCards.flatMap { it.options }.map { o ->
+                ChipDefinition(o.id, o.label, o.iconPrefix)
+            }
+
+            // 7 – Nutrition (stacked card options for capsule display)
+            7 -> nutritionCards.flatMap { it.options }.map { o ->
+                ChipDefinition(o.id, o.label, o.iconPrefix)
+            }
 
             // 8 – Ethical preferences
             8 -> listOf(
@@ -216,6 +240,88 @@ object OnboardingChipData {
             options = listOf(
                 AvoidOptionDefinition("avoid_plant_nightshades", "Nightshades (paprika, peppers, etc.)", "🍅 "),
                 AvoidOptionDefinition("avoid_plant_garlic_onion", "Garlic / Onion", "🧄 ")
+            )
+        )
+    )
+
+    /** LifeStyle stacked cards (3 cards): Plant & Balance, Quality & Source, Sustainable Living. */
+    val lifestyleCards: List<AvoidCardDefinition> = listOf(
+        AvoidCardDefinition(
+            id = "lifestyle_plant_balance",
+            title = "Plant & Balance",
+            description = "Do you follow a plant-forward or flexible eating style?",
+            colorHex = "#FFF6B3",
+            options = listOf(
+                AvoidOptionDefinition("lifestyle_plant_vegetarian", "Vegetarian", "🥦 "),
+                AvoidOptionDefinition("lifestyle_plant_vegan", "Vegan", "🌱 "),
+                AvoidOptionDefinition("lifestyle_plant_flexitarian", "Flexitarian", "🔄 "),
+                AvoidOptionDefinition("lifestyle_plant_reducetarian", "Reducetarian", "➖ "),
+                AvoidOptionDefinition("lifestyle_plant_pescatarian", "Pescatarian", "🐟 "),
+                AvoidOptionDefinition("lifestyle_plant_other", "Other", "✏️ ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "lifestyle_quality_source",
+            title = "Quality & Source",
+            description = "Do you care about where your food comes from and how it's grown?",
+            colorHex = "#DCC7F6",
+            options = listOf(
+                AvoidOptionDefinition("lifestyle_quality_organic", "Organic Only", "🌱 "),
+                AvoidOptionDefinition("lifestyle_quality_nongmo", "Non-GMO", "🧬 "),
+                AvoidOptionDefinition("lifestyle_quality_local", "Locally Sourced", "📍 "),
+                AvoidOptionDefinition("lifestyle_quality_seasonal", "Seasonal Eater", "🕰️ ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "lifestyle_sustainable_living",
+            title = "Sustainable Living",
+            description = "Are you mindful of waste, packaging, and ingredient transparency?",
+            colorHex = "#D7EEB2",
+            options = listOf(
+                AvoidOptionDefinition("lifestyle_sustainable_zerowaste", "Zero-Waste / Minimal Packing", "🌍 "),
+                AvoidOptionDefinition("lifestyle_sustainable_clean_label", "Clean Label", "✅ ")
+            )
+        )
+    )
+
+    /** Nutrition stacked cards (3 cards): Macronutrient Goals, Sugar & Fiber, Diet Frameworks & Patterns. */
+    val nutritionCards: List<AvoidCardDefinition> = listOf(
+        AvoidCardDefinition(
+            id = "nutrition_macronutrient_goals",
+            title = "Macronutrient Goals",
+            description = "Do you want to balance your proteins, carbs, and fats or focus on one?",
+            colorHex = "#F9C6D0",
+            options = listOf(
+                AvoidOptionDefinition("nutrition_macro_high_protein", "High Protein", "🍗 "),
+                AvoidOptionDefinition("nutrition_macro_low_carb", "Low Carb", "🥒 "),
+                AvoidOptionDefinition("nutrition_macro_low_fat", "Low Fat", "🥑 "),
+                AvoidOptionDefinition("nutrition_macro_balanced", "Balanced Macros", "⚖️ ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "nutrition_sugar_fiber",
+            title = "Sugar & Fiber",
+            description = "Do you prefer low sugar or high-fiber foods for better digestion and energy?",
+            colorHex = "#A7D8F0",
+            options = listOf(
+                AvoidOptionDefinition("nutrition_sugar_low", "Low Sugar", "🍓 "),
+                AvoidOptionDefinition("nutrition_sugar_free", "Sugar-Free", "🍭 "),
+                AvoidOptionDefinition("nutrition_fiber_high", "High Fiber", "🌾 ")
+            )
+        ),
+        AvoidCardDefinition(
+            id = "nutrition_diet_frameworks_patterns",
+            title = "Diet Frameworks & Patterns",
+            description = "Do you follow a structured eating plan or experiment with fasting?",
+            colorHex = "#FFD9B5",
+            options = listOf(
+                AvoidOptionDefinition("nutrition_diet_keto", "Keto", "🥑 "),
+                AvoidOptionDefinition("nutrition_diet_dash", "DASH", "💧 "),
+                AvoidOptionDefinition("nutrition_diet_paleo", "Paleo", "🥩 "),
+                AvoidOptionDefinition("nutrition_diet_mediterranean", "Mediterranean", "🫒 "),
+                AvoidOptionDefinition("nutrition_diet_whole30", "Whole30", "🥗 "),
+                AvoidOptionDefinition("nutrition_diet_fasting", "Fasting", "🕑 "),
+                AvoidOptionDefinition("nutrition_diet_other", "Other", "✏️ ")
             )
         )
     )

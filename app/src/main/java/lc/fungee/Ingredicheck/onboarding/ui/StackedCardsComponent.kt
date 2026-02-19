@@ -134,7 +134,7 @@ fun StackedCardsComponent(
             val rotation by animateFloatAsState(
                 targetValue = targetRotation,
                 animationSpec = tween(
-                    durationMillis = 1800, // extra slow, very smooth glide 6° -> 0°
+                    durationMillis = 2600, // very smooth, slow glide 6° -> 0° when card becomes top
                     easing = FastOutSlowInEasing
                 ),
                 label = "stackCardRotation"
@@ -175,10 +175,8 @@ fun StackedCardsComponent(
                                     cardWidth = coordinates.size.width.toFloat()
                                 }
                                 .offset {
-                                    IntOffset(
-                                        dragOffsetX.value.roundToInt(),
-                                        dragOffsetY.value.roundToInt()
-                                    )
+                                    // Horizontal only: no vertical movement
+                                    IntOffset(dragOffsetX.value.roundToInt(), 0)
                                 }
                                 .pointerInput(cardIndex) {
                                     detectDragGestures(
@@ -244,12 +242,9 @@ fun StackedCardsComponent(
                                         onDrag = { change, dragAmount ->
                                             change.consume()
                                             coroutineScope.launch {
-                                                // Free horizontal dragging (primarily left); no clamping,
-                                                // so the card can visually reach / go past the screen edge.
+                                                // Horizontal only: card stays stable vertically
                                                 val newOffsetX = dragOffsetX.value + dragAmount.x
                                                 dragOffsetX.snapTo(newOffsetX)
-                                                // Slight vertical offset for natural feel
-                                                dragOffsetY.snapTo(dragAmount.y * 0.3f)
                                             }
                                         }
                                     )
@@ -288,7 +283,7 @@ private fun StackedCardsAvoidPreview() {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp)
+                        .height(280.dp)
                         .shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(24.dp),
@@ -349,15 +344,20 @@ private fun StackedCardsAvoidPreview() {
                         }
                     }
 
-                    Image(
-                        painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .height(56.dp)
-                            .alpha(0.22f),
-                        contentScale = ContentScale.Fit
-                    )
+                    if (isTop) {
+                        // Adjust leaf icon position (positive X = right, positive Y = down)
+                        val leafIconOffsetX = 5.dp
+                        val leafIconOffsetY = 34.dp
+                        Image(
+                            painter = painterResource(id = R.drawable.leaf_arrow_circlepath),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = leafIconOffsetX, y = leafIconOffsetY)
+                                .height(100.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         )

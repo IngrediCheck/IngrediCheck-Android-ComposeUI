@@ -63,7 +63,8 @@ fun CapsuleStepperRow(
     lineHeight: Dp = 15.dp,
     horizontalPadding: Dp = 16.dp,
     itemSpacing: Dp = 10.dp,
-    animationDurationMs: Int = 280
+    animationDurationMs: Int = 280,
+    progressExcludedIndex: Int? = null // Step index that should not count toward progress fill
 ) {
     if (steps.isEmpty()) return
 
@@ -72,6 +73,13 @@ fun CapsuleStepperRow(
     var maxReachedIndex by remember { mutableIntStateOf(clampedActive) }
     if (clampedActive > maxReachedIndex) {
         maxReachedIndex = clampedActive
+    }
+    
+    // Adjust maxReachedIndex for progress calculation: exclude the excluded step
+    val effectiveMaxReachedIndex = if (progressExcludedIndex != null && maxReachedIndex > progressExcludedIndex) {
+        maxReachedIndex - 1
+    } else {
+        maxReachedIndex
     }
 
     // Layout model (fixed widths so we can compute the progress fill length deterministically)
@@ -172,7 +180,15 @@ fun CapsuleStepperRow(
             ) {
                 steps.forEachIndexed { index, step ->
                     val isActive = index == clampedActive
-                    val isVisited = index <= maxReachedIndex
+                    // For progress fill, exclude the excluded step from "visited" calculation
+                    val effectiveIndex = if (progressExcludedIndex != null && index > progressExcludedIndex) {
+                        index - 1
+                    } else {
+                        index
+                    }
+                    val isVisited = effectiveIndex <= effectiveMaxReachedIndex
+                    // Only allow clicking on visited steps (users must progress sequentially via forward arrow)
+                    val isClickable = isVisited && onStepClick != null
 
                     val bg = if (isVisited) activeColor else inactiveColor
                     val iconTint = if (isVisited) Color.Companion.White else Color(0xFFC4E092)
@@ -201,7 +217,7 @@ fun CapsuleStepperRow(
                                 }
                             )
                             .clickable(
-                                enabled = onStepClick != null,
+                                enabled = isClickable,
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) { onStepClick?.invoke(index) },
