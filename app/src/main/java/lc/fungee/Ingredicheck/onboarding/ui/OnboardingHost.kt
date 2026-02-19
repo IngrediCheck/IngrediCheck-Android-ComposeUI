@@ -107,7 +107,9 @@ import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
+import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
+import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
@@ -371,6 +373,10 @@ private fun CapsuleSkeletonBox(
     val resolvedChips = remember(selectedChipIds) {
         selectedChipIds.mapNotNull { id -> OnboardingChipData.chipForId(id) }
     }
+    val hasOtherSelection = remember(selectedChipIds) {
+        // Any chip id containing "other" (e.g. "other", "other_sens", "region_*_other", etc.)
+        selectedChipIds.any { it.contains("other", ignoreCase = true) }
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -419,6 +425,27 @@ private fun CapsuleSkeletonBox(
                             emoji = def.iconPrefix,
                             label = def.label,
                             trailingAvatars = trailing
+                        )
+                    }
+                }
+                if (hasOtherSelection) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.emoji_warning),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Unspecified
+                        )
+                        Text(
+                            text = "Something else too, don't worry we'll ask later!",
+                            fontFamily = Manrope,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            color = Greyscale100
                         )
                     }
                 }
