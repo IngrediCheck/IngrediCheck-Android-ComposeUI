@@ -55,6 +55,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -81,6 +82,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
+import kotlinx.coroutines.runBlocking
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
@@ -823,6 +825,7 @@ fun OnboardingHost(
         }
         if (
             step == OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR ||
+            step == OnboardingStep.FALLING_CAPSULES ||
             step == OnboardingStep.ADD_FAMILY_WELCOME ||
             step == OnboardingStep.ADD_FAMILY_NAME ||
             step == OnboardingStep.ADD_FAMILY_AVATAR_PICKER ||
@@ -833,6 +836,10 @@ fun OnboardingHost(
             authViewModel.debugLogCurrentSession("Entered $step (before ensureAnonymousSession)")
             authViewModel.ensureAnonymousSession()
         }
+        
+        // Note: signInAsGuest() should NOT be called here because it sets authState to Success,
+        // which causes MainActivity to immediately exit onboarding. Guest sign-in should happen
+        // only when onboarding is actually completed (e.g., when user exits after completing allergies).
 
         // Restore memoji generation UI state after process death:
         // - If we are on the generating screen and have a saved image URL with
@@ -878,16 +885,58 @@ fun OnboardingHost(
     }
 
     // On first launch show "Everyone" as selected (ALL); user can switch to a member later.
-    val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size) {
-        mutableStateOf(EVERYONE_MEMBER_ID)
+    // Restore allergy selections state from persistence (per‑member chip ids + active member + step index).
+    val (restoredSelections, restoredMemberId, restoredStepIndex) = remember {
+        runBlocking {
+            try {
+                persistence.getAllergySelectionsState()
+            } catch (e: Exception) {
+                Log.w("OnboardingAllergies", "[RESTORE] getAllergySelectionsState failed", e)
+                Triple(emptyMap<String, Set<String>>(), EVERYONE_MEMBER_ID, 0)
+            }
+        }
+    }
+
+    val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size, restoredMemberId) {
+        mutableStateOf(restoredMemberId.ifBlank { EVERYONE_MEMBER_ID })
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
     // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
-    val selectedAllergiesByMember = remember { mutableStateMapOf<String, MutableSet<String>>() }
+    val selectedAllergiesByMember = remember(restoredSelections) {
+        mutableStateMapOf<String, MutableSet<String>>().apply {
+            // Restore persisted selections
+            restoredSelections.forEach { (memberKey, chipIds) ->
+                this[memberKey] = chipIds.toMutableSet()
+            }
+        }
+    }
     // Bump on every chip toggle so the sheet reliably recomposes (workaround for SnapshotStateMap).
     var allergySelectionRevision by remember { mutableStateOf(0) }
     // Explicitly track selections for the active member to force sheet recomposition
     var activeMemberSelections by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    // Rebuild flat union + active member selections from the restored map so UI shows the
+    // same selected chips immediately after an app restart.
+    LaunchedEffect(restoredSelections, restoredMemberId) {
+        if (restoredSelections.isNotEmpty()) {
+            val union = restoredSelections.values.flatten().toSet()
+            selectedAllergies.clear()
+            selectedAllergies.addAll(union)
+            val activeKey = restoredMemberId.ifBlank { EVERYONE_MEMBER_ID }
+            activeMemberSelections = restoredSelections[activeKey] ?: emptySet()
+            Log.d(
+                "OnboardingAllergies",
+                "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
+                    "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
+                    "union=$union activeMemberSelections=$activeMemberSelections"
+            )
+        } else {
+            Log.d(
+                "OnboardingAllergies",
+                "[RESTORE_APPLY] no restoredSelections found; keeping defaults"
+            )
+        }
+    }
 
     // Progress tracking within the fine‑tune flow (allergies, intolerances, etc.)
     // These same steps drive both the CapsuleStepperRow and the AnimatedProgressLine.
@@ -906,9 +955,40 @@ fun OnboardingHost(
         )
     }
 
-    var allergyStepIndex by remember { mutableStateOf(0) }
+    // Restore allergy step index (moved after allergySteps definition)
+    var allergyStepIndex by remember(restoredStepIndex) {
+        mutableStateOf(restoredStepIndex)
+    }
+
+    // Persist allergy selections whenever they change
+    LaunchedEffect(selectedAllergiesByMember, selectedAllergyMemberIdState.value, allergyStepIndex) {
+        if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
+            val snapshot = selectedAllergiesByMember.mapValues { it.value.toSet() }
+            Log.d(
+                "OnboardingAllergies",
+                "[PERSIST_EFFECT] step=$step isRestored=$isRestored " +
+                    "selectedMember=${selectedAllergyMemberIdState.value} " +
+                    "stepIndex=$allergyStepIndex selections=$snapshot"
+            )
+            persistence.setAllergySelectionsState(
+                selectedAllergiesByMember = snapshot,
+                selectedAllergyMemberId = selectedAllergyMemberIdState.value,
+                allergyStepIndex = allergyStepIndex
+            )
+        }
+    }
     // When true, show the fine‑tune decision screen between Life Style and Nutrition
     var showFineTuneDecision by remember { mutableStateOf(false) }
+    // When true, show the summary screen with floating robot after completing fine-tune flow
+    var showSummaryScreen by remember { mutableStateOf(false) }
+
+    // Exit onboarding after showing summary screen for 3 seconds
+    LaunchedEffect(showSummaryScreen) {
+        if (showSummaryScreen) {
+            delay(3000) // Show summary screen for 3 seconds
+            onExitOnboarding()
+        }
+    }
 
     if (step == OnboardingStep.GET_STARTED) {
         GetStatedScreen(
@@ -1062,19 +1142,21 @@ fun OnboardingHost(
                                    )
 //                                Spacer(modifier = Modifier.height(10.dp))
 
-                                   CapsuleStepperRow(
-                                       steps = allergySteps,
-                                       activeIndex = allergyStepIndex,
-                                       onStepClick = { clickedIndex ->
-                                           // Only allow jumping to steps the user has already visited.
-                                           val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
-                                           if (clamped <= allergyStepIndex) {
-                                               allergyStepIndex = clamped
-                                               showFineTuneDecision = false
+                                   // Hide CapsuleStepperRow when summary screen is shown
+                                   if (!showSummaryScreen) {
+                                       CapsuleStepperRow(
+                                           steps = allergySteps,
+                                           activeIndex = allergyStepIndex,
+                                           onStepClick = { clickedIndex ->
+                                               // Only allow jumping to steps the user has already visited.
+                                               val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                               if (clamped <= allergyStepIndex) {
+                                                   allergyStepIndex = clamped
+                                                   showFineTuneDecision = false
+                                               }
                                            }
-                                       }
-                                   )
-
+                                       )
+                                   }
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -1320,24 +1402,25 @@ fun OnboardingHost(
                                             if (allergyStepIndex < allergySteps.lastIndex) {
                                                 allergyStepIndex++
                                             } else {
-                                                // Sync dietary preferences to backend (same as iOS) before exiting
+                                                // Sync dietary preferences to backend (same as iOS) before showing summary
                                                 val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
                                                 Log.d("OnboardingAllergies", "[DietaryPreference] onNext complete: syncing textLength=${preferenceText.length}")
                                                 authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
-                                                onExitOnboarding()
+                                                showSummaryScreen = true
                                             }
                                         }
                                     },
                                     onSkipPreferences = {
                                         // User tapped "All Set!" on the fine‑tune decision screen:
-                                        // sync preferences to backend (same as iOS) then close and exit.
+                                        // sync preferences to backend (same as iOS) then show summary screen.
                                         val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
                                         Log.d("OnboardingAllergies", "[DietaryPreference] onSkipPreferences: syncing textLength=${preferenceText.length}")
                                         authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
                                         showFineTuneDecision = false
-                                        onExitOnboarding()
+                                        showSummaryScreen = true
                                     },
                                     showFineTuneDecision = showFineTuneDecision,
+                                    showSummaryScreen = showSummaryScreen,
                                     questionStepIndex = allergyStepIndex
                                 )
                             }
@@ -1421,8 +1504,10 @@ fun OnboardingHost(
                                 onBackClick = handleBack,
                                 isLoading = isAuthLoading,
                                 onJustMe = {
+                                    Log.d("OnboardingHost", "Just Me: Navigating to FALLING_CAPSULES")
                                     authViewModel.debugLogCurrentSession("Just Me clicked")
-                                    authViewModel.signInAsGuest()
+                                    // Navigate to FALLING_CAPSULES - signInAsGuest will be handled in LaunchedEffect
+                                    vm.navigateTo(OnboardingStep.FALLING_CAPSULES)
                                 },
                                 onAddFamily = {
                                     authViewModel.debugLogCurrentSession("Add Family clicked")

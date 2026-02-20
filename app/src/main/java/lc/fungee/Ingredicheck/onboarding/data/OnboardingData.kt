@@ -6,6 +6,16 @@ import lc.fungee.Ingredicheck.R
 const val EVERYONE_MEMBER_ID = "ALL"
 
 /**
+ * Flow type for onboarding questions - determines which question text to show.
+ */
+enum class OnboardingFlowType {
+    /** "Just Me" / Individual flow */
+    INDIVIDUAL,
+    /** "Add Family" flow */
+    FAMILY
+}
+
+/**
  * Static configuration for the multi‑step fine‑tune flow (allergy/sensitivity/health/life‑stage chips)
  * and shared avatar lists. Keeping this data out of the UI layer keeps
  * `OnboardingStepScreens` lightweight and closer to MVVM.
@@ -48,30 +58,77 @@ object OnboardingChipData {
 
     /**
      * Returns the (question, subtitle) pair for the given fine‑tune step.
+     * @param step Step index (0-9)
+     * @param flowType Flow type (INDIVIDUAL for "Just Me", FAMILY for "Add Family")
      */
-    fun questionForStep(step: Int): Pair<String, String> {
+    fun questionForStep(step: Int, flowType: OnboardingFlowType = OnboardingFlowType.FAMILY): Pair<String, String> {
         return when (step.coerceIn(0, 9)) {
-            0 -> "Does anyone in your IngrediFam have allergies we should know?" to
-                "Select all that apply to keep meals worry-free."
-            1 -> "Any sensitivities or intolerances in your IngrediFam?" to
-                "We’ll avoid foods that cause discomfort."
-            2 -> "Any doctor diets or health conditions in your IngrediFam?" to
-                "This helps us tailor recommendations better."
-            3 -> "Does anyone in your IngrediFam have special life stage needs?" to
-                "Select all that apply so tips match every life stage."
+            0 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Got any allergies we should keep in mind?" to
+                    "Choose all that apply so we can give you smarter food tips."
+                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have allergies we should know?" to
+                    "Select all that apply to keep meals worry-free."
+            }
+            1 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Any sensitivities that make eating tricky?" to
+                    "We'll make sure your food suggestions avoid these."
+                OnboardingFlowType.FAMILY -> "Any sensitivities or intolerances in your IngrediFam?" to
+                    "We'll avoid foods that cause discomfort."
+            }
+            2 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Do you follow any special diets or have health conditions?" to
+                    "This helps us recommend meals that work for you."
+                OnboardingFlowType.FAMILY -> "Any doctor diets or health conditions in your IngrediFam?" to
+                    "This helps us tailor recommendations better."
+            }
+            3 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Do you have special needs we should keep in mind?" to
+                    "Select all that apply, this helps us tailor tips for you."
+                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have special life stage needs?" to
+                    "Select all that apply so tips match every life stage."
+            }
             // 4 – Region / cultural practices
-            4 -> "Where are you from? This helps us customize your experience!" to
-                "Pick your region(s) or cultural practices."
-            5 -> "Anything your IngrediFam avoids?" to
-                "We’ll steer clear of those ingredients and products."
+            4 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Where are you from? This helps us customize your experience!" to
+                    "Pick your region(s) or cultural practices."
+                OnboardingFlowType.FAMILY -> "Where does your IngrediFam draw its food traditions from?" to
+                    "Select your region or cultural roots."
+            }
+            5 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Anything you avoid in your diet?" to ""
+                OnboardingFlowType.FAMILY -> "Anything your IngrediFam avoids?" to
+                    "We'll steer clear of those ingredients and products."
+            }
             // 6 – LifeStyle (plant/balance, quality/source, sustainable living)
-            6 -> "What’s your lifestyle when it comes to food?" to
-                "Tell us about your eating style, sourcing, and habits."
+            6 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "What's your way of eating?" to ""
+                OnboardingFlowType.FAMILY -> "What's your IngrediFam's food lifestyle?" to
+                    "Tell us about your eating style, sourcing, and habits."
+            }
             // 7 – Nutrition (macros, sugar/fiber, diet frameworks)
-            7 -> "How do you like to approach nutrition?" to
-                "Set your macronutrient goals, sugar & fiber preferences, and diet patterns."
-            else -> "Does anyone in your IngrediFam have allergies we should know?" to
-                "Select all that apply to keep meals worry-free."
+            7 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "What's your nutrition focus right now?" to ""
+                OnboardingFlowType.FAMILY -> "What's your IngrediFam's nutrition focus?" to
+                    "Set your macronutrient goals, sugar & fiber preferences, and diet patterns."
+            }
+            8 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "What ethical or environmental values are important to you?" to
+                    "Select the causes that matter most when it comes to the food you eat."
+                OnboardingFlowType.FAMILY -> "What ethical or environmental values matter to your IngrediFam?" to
+                    "Select causes that shape your food choices."
+            }
+            9 -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "What are your taste and texture preferences?" to
+                    "Choose what you love or avoid when it comes to flavors and textures."
+                OnboardingFlowType.FAMILY -> "What tastes and textures does your family prefer?" to
+                    "Customize tastes so every plate feels just right."
+            }
+            else -> when (flowType) {
+                OnboardingFlowType.INDIVIDUAL -> "Got any allergies we should keep in mind?" to
+                    "Choose all that apply so we can give you smarter food tips."
+                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have allergies we should know?" to
+                    "Select all that apply to keep meals worry-free."
+            }
         }
     }
 
@@ -407,7 +464,7 @@ object OnboardingChipData {
     }
 
     /**
-     * Shared avatar lists used by multiple onboarding screens.
+     * Base avatar items mapping avatar IDs to drawable resource IDs.
      */
     val baseAvatarItems: List<Pair<String, Int>> = listOf(
         "baby_boy"      to R.drawable.family_member_baby,
@@ -426,9 +483,15 @@ object OnboardingChipData {
         "tomato_avtar"  to R.drawable.avtar_tomato
     )
 
+    /**
+     * Avatar items for editing (same as baseAvatarItems).
+     */
     val editAvatarItems: List<Pair<String, Int>> = baseAvatarItems
 
-    /** Resolve avatar id to drawable resource id; null if not found. Shared by Host and screens. */
+    /**
+     * Resolve avatar id to drawable resource id; null if not found.
+     * Shared by Host and screens.
+     */
     fun avatarResOrNull(avatarId: String): Int? =
         baseAvatarItems.firstOrNull { (id, _) -> id == avatarId }?.second
 

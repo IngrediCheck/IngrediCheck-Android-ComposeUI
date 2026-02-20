@@ -67,6 +67,7 @@ import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
+import lc.fungee.Ingredicheck.onboarding.ui.OnboardingAnimations
 import lc.fungee.Ingredicheck.memoji.AvatarCategoryTabs
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
@@ -234,25 +235,8 @@ internal fun AddFamilyAvatarGeneratingSheet(
         label = "shimmerProgress"
     )
 
-    val botX by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "botX"
-    )
-
-    val botY by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = -6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2500, delayMillis = 500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "botY"
-    )
+    // Use common floating robot animation
+    val (botX, botY) = OnboardingAnimations.rememberFloatingRobotOffsets(label = "avatarGenerating")
 
     Column(
         modifier = Modifier

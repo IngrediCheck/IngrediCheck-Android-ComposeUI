@@ -65,10 +65,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Devices
 import coil.compose.AsyncImage
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.OnboardingFlowType
 import lc.fungee.Ingredicheck.onboarding.data.RegionDefinition
 import lc.fungee.Ingredicheck.onboarding.data.AvoidOptionDefinition
 import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
@@ -79,6 +82,7 @@ import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryChipEffect
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
+import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale70
@@ -90,6 +94,7 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
+import lc.fungee.Ingredicheck.ui.theme.NunitoBold
 import lc.fungee.Ingredicheck.ui.theme.Primary700
 import lc.fungee.Ingredicheck.onboarding.ui.OnboardingAnimations
 
@@ -103,11 +108,16 @@ internal fun AddAllergiesSheet(
     onNext: () -> Unit,
     onSkipPreferences: () -> Unit = {},
     showFineTuneDecision: Boolean = false,
+    showSummaryScreen: Boolean = false,
     questionStepIndex: Int = 0
 ) {
     val everyoneId = EVERYONE_MEMBER_ID
     val fallbackMembers = remember(members) {
         if (members.isNotEmpty()) members else emptyList()
+    }
+    // Determine flow type: INDIVIDUAL if no members (just me flow), FAMILY if members exist
+    val flowType = remember(members) {
+        if (members.isEmpty()) OnboardingFlowType.INDIVIDUAL else OnboardingFlowType.FAMILY
     }
     val resolvedSelectedId = remember(selectedMemberId, fallbackMembers) {
         when {
@@ -116,6 +126,12 @@ internal fun AddAllergiesSheet(
             fallbackMembers.isNotEmpty() -> everyoneId
             else -> ""
         }
+    }
+
+    // Summary screen with floating robot (shown after last step completes)
+    if (showSummaryScreen) {
+        SummaryScreenWithFloatingRobot()
+        return
     }
 
     // Special fine‑tune decision screen between Life Style and Nutrition.
@@ -188,7 +204,9 @@ internal fun AddAllergiesSheet(
                 fadeOut(animationSpec = tween(durationMillis = 250))
         }
     ) { idx ->
-        val (question, subtitle) = OnboardingChipData.questionForStep(idx)
+        val (question, subtitle) = OnboardingChipData.questionForStep(idx, flowType)
+        // Hide subtitle for Avoid (5), Life Style (6), and Nutrition (7) steps
+        val shouldShowSubtitle = idx !in listOf(5, 6, 7)
         Column {
             Text(
                 text = buildAnnotatedString {
@@ -201,16 +219,20 @@ internal fun AddAllergiesSheet(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = subtitle,
-                fontFamily = Manrope,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                color = Greyscale120,
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            if (shouldShowSubtitle) {
+                Text(
+                    text = subtitle,
+                    fontFamily = Manrope,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 14.sp,
+                    color = Greyscale120,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            } else {
+                Spacer(modifier = Modifier.height(10.dp))
+            }
         }
     }
 
@@ -1126,5 +1148,63 @@ fun SimpleFlowRow(
                 placeable.placeRelative(pos[0], pos[1])
             }
         }
+    }
+}
+
+/**
+ * Summary screen shown after completing the fine-tune flow.
+ * Displays a floating robot image (ingredi_robo2) with the text "Working on your personalized summary…"
+ */
+@Composable
+private fun SummaryScreenWithFloatingRobot() {
+    // Use common floating robot animation
+    val (botX, botY) = OnboardingAnimations.rememberFloatingRobotOffsets(label = "summaryRobot")
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(vertical = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Floating robot image - same size as ingredi_robo1 (147.dp)
+        Box(
+            modifier = Modifier
+                .offset(x = botX.dp, y = botY.dp)
+                .size(147.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ingredi_robo2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Text: "Working on your personalized summary…" - Nunito Bold 20sp
+        Text(
+            text = "Working on your\npersonalized summary…",
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            fontSize = 20.sp,
+            color = Greyscale150,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true, device = Devices.PIXEL_8_PRO)
+@Composable
+private fun SummaryScreenWithFloatingRobotPreview() {
+    NonDraggableBottomSheet(
+        onDismissRequest = { },
+        horizontalPaddingEnabled = true
+    ) {
+        SummaryScreenWithFloatingRobot()
     }
 }
