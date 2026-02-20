@@ -431,7 +431,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             OnboardingStep.ADD_FAMILY_AVATAR_GENERATING,
             OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE,
             OnboardingStep.ADD_FAMILY_EDIT_MEMBER,
-            OnboardingStep.ADD_FAMILY_FALLING_CAPSULES,
+            OnboardingStep.FALLING_CAPSULES,
             OnboardingStep.ADD_FAMILY_ALLERGIES -> "pre_onboarding"
         }
 

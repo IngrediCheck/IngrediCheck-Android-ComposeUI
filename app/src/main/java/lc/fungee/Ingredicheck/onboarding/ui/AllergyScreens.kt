@@ -83,9 +83,35 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale140
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
+import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
+import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
 import lc.fungee.Ingredicheck.ui.theme.Primary700
+
+private fun avatarBackgroundColorForId(colorId: String): Color {
+    return when (colorId) {
+        "color_pastel_blue" -> Color(0xFFA5D8FF)
+        "color_warm_pink" -> Color(0xFFFFB3C1)
+        "color_soft_green" -> Color(0xFFB9FBC0)
+        "color_lavender" -> Color(0xFFE3B8FF)
+        "color_orange" -> Color(0xFFFFB74D)
+        "color_yellow" -> Color(0xFFFFE082)
+        "color_transparent" -> Color.Transparent
+        else -> Color.White
+    }
+}
+
+/** Resolves member avatar background: memoji color if set, else random pastel (colorHex) from member creation. */
+private fun memberAvatarBackgroundColor(backgroundColorId: String, colorHex: String): Color {
+    if (backgroundColorId.isNotBlank()) return avatarBackgroundColorForId(backgroundColorId)
+    if (colorHex.isNotBlank()) {
+        return kotlin.runCatching {
+            Color(android.graphics.Color.parseColor(colorHex))
+        }.getOrElse { Color.White }
+    }
+    return Color.White
+}
 
 @Composable
 internal fun AddAllergiesSheet(
@@ -117,13 +143,14 @@ internal fun AddAllergiesSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "Want to fine‑tune your experience?",
-                fontFamily = Manrope,
+                fontFamily = Nunito,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 color = Greyscale150,
@@ -150,20 +177,23 @@ internal fun AddAllergiesSheet(
                     .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // "All Set!" – secondary (outlined) button
+                // "All Set!" – secondary (outlined) button; 16sp Nunito SemiBold, text #75990E
                 SecondaryButton(
                     title = "All Set!",
                     modifier = Modifier.weight(1f),
                     onClick = { onSkipPreferences() },
-                    takeFullWidth = true
+                    takeFullWidth = true,
+                    textColor = Color(0xFF75990E),
+                    textStyle = NunitoSemiBold.copy(fontSize = 16.sp)
                 )
 
-                // "Add Preferences" – primary (filled) button
+                // "Add Preferences" – primary (filled) button; 16sp Nunito SemiBold
                 PrimaryButton(
                     title = "Add Preferences",
                     modifier = Modifier.weight(1f),
                     onClick = { onNext() },
-                    takeFullWidth = true
+                    takeFullWidth = true,
+                    textStyle = NunitoSemiBold.copy(fontSize = 16.sp)
                 )
             }
         }
@@ -231,14 +261,18 @@ internal fun AddAllergiesSheet(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
+                            .background(
+                                if (isSelected) Primary700.copy(alpha = 0.2f)
+                                else Color.White,
+                                shape = CircleShape
+                            )
                             .border(
                                 width = borderWidth,
                                 color = if (isSelected) Primary700 else Color.Unspecified,
                                 shape = CircleShape
-                            )
-                            .background(Color.White),
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -279,11 +313,14 @@ internal fun AddAllergiesSheet(
                         indication = null
                     ) { onMemberSelected(m.id) }
                 ) {
+                    val memberBgColor = remember(m.backgroundColorId, m.colorHex) {
+                        memberAvatarBackgroundColor(m.backgroundColorId, m.colorHex)
+                    }
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .background(Color.White)
+                            .background(Color.White, shape = CircleShape)
                             .border(
                                 width = borderWidth,
                                 color = if (isSelected) Primary700 else Color.Unspecified,
@@ -291,27 +328,39 @@ internal fun AddAllergiesSheet(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        when {
-                            m.generatedAvatarUrl.trim().isNotBlank() -> {
-                                AsyncImage(
-                                    model = m.generatedAvatarUrl.trim(),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(avatarSize).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            avatarRes != null -> {
-                                Image(
-                                    painter = painterResource(id = avatarRes),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(avatarSize).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            else -> {
-                                Box(
-                                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Greyscale40)
-                                )
+                        Box(
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .clip(CircleShape)
+                                .background(memberBgColor, shape = CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            when {
+                                m.generatedAvatarUrl.trim().isNotBlank() -> {
+                                    AsyncImage(
+                                        model = m.generatedAvatarUrl.trim(),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(avatarSize).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                avatarRes != null -> {
+                                    Image(
+                                        painter = painterResource(id = avatarRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(avatarSize).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        text = m.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                                        fontFamily = Manrope,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = if (isSelected) 16.sp else 14.sp,
+                                        color = Greyscale120
+                                    )
+                                }
                             }
                         }
                     }
@@ -417,7 +466,8 @@ internal fun AddAllergiesSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(280.dp)
+
         ) {
             StackedCardsComponent(
                 modifier = Modifier,
@@ -453,6 +503,7 @@ internal fun AddAllergiesSheet(
                             .clip(RoundedCornerShape(24.dp))
                             .background(bgColor)
                             .padding(horizontal = 12.dp, vertical = 16.dp)
+
                     ) {
                         if (isTop) {
                             Column(
@@ -536,7 +587,7 @@ internal fun AddAllergiesSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(280.dp)
         ) {
             StackedCardsComponent(
                 modifier = Modifier,
@@ -653,7 +704,7 @@ internal fun AddAllergiesSheet(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(280.dp)
         ) {
             StackedCardsComponent(
                 modifier = Modifier,
@@ -803,7 +854,8 @@ internal fun AddAllergiesSheet(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-           .padding(vertical = 10.dp , horizontal = 20.dp)
+           .padding( horizontal = 20.dp)
+            .padding(top = 4.dp ,end =10.dp)
 
         ,
         contentAlignment = Alignment.BottomEnd
@@ -995,7 +1047,8 @@ private fun RegionSectionRow(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { onToggleExpanded() }
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(start = 16.dp , end = 6.dp)
+                .padding( vertical = 8.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1009,13 +1062,23 @@ private fun RegionSectionRow(
                     color = if (isSectionSelected) Greyscale10 else Greyscale150,
                     modifier = Modifier.weight(1f, fill = false)
                 )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp) // circle size
+                        .background(
+                            color = Greyscale30 ,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
                 Icon(
                     imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = if (isSectionSelected) Greyscale10 else Greyscale120,
+                    tint =  Greyscale100,
                     modifier = Modifier.size(18.dp)
                 )
             }
+                }
         }
 
         AnimatedVisibility(visible = isExpanded) {

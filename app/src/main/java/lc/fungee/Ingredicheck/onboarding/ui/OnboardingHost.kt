@@ -880,15 +880,16 @@ fun OnboardingHost(
 
     val isAddMoreMemberNoBack = step == OnboardingStep.ADD_FAMILY_NAME && vm.familyOverviewMembers.size == 1
     val isAllSetOrMoreScreen = step == OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE
-    val isFallingCapsulesScreen = step == OnboardingStep.ADD_FAMILY_FALLING_CAPSULES
+    val isFallingCapsulesScreen = step == OnboardingStep.FALLING_CAPSULES
     BackHandler(enabled = true) {
         if (!isAddMoreMemberNoBack && !isAllSetOrMoreScreen && !isFallingCapsulesScreen) {
             handleBack()
         }
     }
 
+    // On first launch show "Everyone" as selected (ALL); user can switch to a member later.
     val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size) {
-        mutableStateOf(vm.familyOverviewMembers.firstOrNull()?.id.orEmpty())
+        mutableStateOf("ALL")
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
     // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
@@ -938,7 +939,7 @@ fun OnboardingHost(
         OnboardingStep.ADD_FAMILY_AVATAR_GENERATING,
         OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE,
         OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> 4
-        OnboardingStep.ADD_FAMILY_FALLING_CAPSULES -> 5
+        OnboardingStep.FALLING_CAPSULES -> 5
         OnboardingStep.ADD_FAMILY_ALLERGIES -> 6
         else -> 0
     }
@@ -1212,7 +1213,7 @@ fun OnboardingHost(
             ) { s ->
                 Column {
                     when (s) {
-                        OnboardingStep.ADD_FAMILY_FALLING_CAPSULES -> {
+                        OnboardingStep.FALLING_CAPSULES -> {
                             AddFamilyLetsGoSheet(
                                 onLetsGo = {
                                     vm.navigateTo(OnboardingStep.ADD_FAMILY_ALLERGIES)
@@ -1595,7 +1596,7 @@ fun OnboardingHost(
 
                         OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE -> {
                             AddFamilyAllSetOrMoreSheet(
-                                onAllSet = { vm.navigateTo(OnboardingStep.ADD_FAMILY_FALLING_CAPSULES) },
+                                onAllSet = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) },
                                 onAddMore = { vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME) }
                             )
                         }
