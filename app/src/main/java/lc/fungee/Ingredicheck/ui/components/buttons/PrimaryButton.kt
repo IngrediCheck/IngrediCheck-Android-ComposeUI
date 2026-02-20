@@ -242,6 +242,98 @@ fun Modifier.primaryButtonEffect(
     }
 }
 
+/**
+ * Primary-style pill effect without the outer white border.
+ *
+ * Used for selected allergy chips so they visually match the primary
+ * button (gradient, shadows) but without the 1px white stroke.
+ */
+fun Modifier.primaryChipEffect(
+    shape: RoundedCornerShape
+): Modifier = this.drawBehind {
+    val size = size
+    val outline = shape.createOutline(size, layoutDirection, this)
+
+    // 1. Drop Shadow (same as primaryButtonEffect)
+    drawIntoCanvas { canvas ->
+        val paint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.TRANSPARENT
+            setShadowLayer(
+                11.dp.toPx(),
+                0.dp.toPx(),
+                4.dp.toPx(),
+                android.graphics.Color.argb((0.57f * 255).toInt(), 197, 197, 197)
+            )
+        }
+        canvas.nativeCanvas.drawRoundRect(
+            0f, 0f, size.width, size.height,
+            size.height / 2, size.height / 2,
+            paint
+        )
+    }
+
+    // 2. Background Gradient (same as primaryButtonEffect)
+    val brush = Brush.linearGradient(
+        colors = listOf(Color(0xFF9DCF10), Color(0xFF6B8E06)),
+        start = Offset(0f, 0f),
+        end = Offset(size.width, size.height)
+    )
+    drawOutline(outline, brush)
+
+    // 3. Inner Shadows (same as primaryButtonEffect, but we intentionally
+    // skip the final white border so the chip has a clean edge)
+    drawIntoCanvas { canvas ->
+        val path = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(0f, 0f, size.width, size.height),
+                    cornerRadius = CornerRadius(size.height / 2)
+                )
+            )
+        }
+        canvas.save()
+        canvas.clipPath(path)
+
+        // Inner Shadow 1
+        val shadow1Paint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.TRANSPARENT
+            strokeWidth = 10.dp.toPx()
+            style = android.graphics.Paint.Style.STROKE
+            setShadowLayer(
+                7.5.dp.toPx(),
+                2.dp.toPx(),
+                9.dp.toPx(),
+                android.graphics.Color.argb((0.25f * 255).toInt(), 237, 237, 237)
+            )
+        }
+        canvas.nativeCanvas.drawRoundRect(
+            -5.dp.toPx(), -5.dp.toPx(), size.width + 5.dp.toPx(), size.height + 5.dp.toPx(),
+            (size.height / 2) + 5.dp.toPx(), (size.height / 2) + 5.dp.toPx(),
+            shadow1Paint
+        )
+
+        // Inner Shadow 2
+        val shadow2Paint = Paint().asFrameworkPaint().apply {
+            color = android.graphics.Color.TRANSPARENT
+            strokeWidth = 10.dp.toPx()
+            style = android.graphics.Paint.Style.STROKE
+            setShadowLayer(
+                5.7.dp.toPx(),
+                0.dp.toPx(),
+                4.dp.toPx(),
+                android.graphics.Color.parseColor("#72930A")
+            )
+        }
+        canvas.nativeCanvas.drawRoundRect(
+            -5.dp.toPx(), -5.dp.toPx(), size.width + 5.dp.toPx(), size.height + 5.dp.toPx(),
+            (size.height / 2) + 5.dp.toPx(), (size.height / 2) + 5.dp.toPx(),
+            shadow2Paint
+        )
+
+        canvas.restore()
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun PrimaryButtonPreview() {

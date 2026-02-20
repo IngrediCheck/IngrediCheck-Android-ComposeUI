@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-02-16T12:27:31.134152Z">
+        <DropdownSelection timestamp="2026-02-18T10:48:56.545466Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="PhysicalDevice" identifier="serial=R9ZY70T6QZH" />
@@ -13,21 +13,27 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="CapsuleStepperRowPreview">
+      <SelectionState runConfigName="StackCardsPreview">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-01-28T05:05:39.142817Z">
+      </SelectionState>
+      <SelectionState runConfigName="StackCard2 – swipe - StackCard2Preview">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="StackedCardsPreview">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-02-18T10:31:01.067593Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/EightinityTeam/.android/avd/Pixel_8_Pro.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=R9ZY70T6QZH" />
             </handle>
           </Target>
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="AddFamilyNameFullPreview_Empty_Pixel4a">
+      <SelectionState runConfigName="AvoidOilsFatsCardPreview">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="AvatarCreationScreenPreview">
+      <SelectionState runConfigName="StackedCardsAvoidPreview">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

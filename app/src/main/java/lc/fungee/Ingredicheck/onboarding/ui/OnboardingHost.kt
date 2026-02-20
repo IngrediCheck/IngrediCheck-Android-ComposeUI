@@ -1,5 +1,6 @@
 package lc.fungee.Ingredicheck.onboarding.ui
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.Context
@@ -44,6 +45,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -79,8 +81,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.draw.shadow
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
@@ -98,13 +98,16 @@ import lc.fungee.Ingredicheck.family.CreateFamilyRequest
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.memoji.GetStatedScreen
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingPersistence
+import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
+import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
@@ -167,23 +170,14 @@ private fun familyPlaceholderColor(seed: String): Color {
     return palette[idx]
 }
 
-private fun avatarBackgroundColorForId(colorId: String): Color {
-    return when (colorId) {
-        "color_pastel_blue" -> Color(0xFFA5D8FF)
-        "color_warm_pink" -> Color(0xFFFFB3C1)
-        "color_soft_green" -> Color(0xFFB9FBC0)
-        "color_lavender" -> Color(0xFFE3B8FF)
-        "color_orange" -> Color(0xFFFFB74D)
-        "color_yellow" -> Color(0xFFFFE082)
-        "color_transparent" -> Color.Transparent
-        else -> Color.White
-    }
-}
-
-
-
 private val SelectedPillBackground = Secondary200
 private val PillShape = RoundedCornerShape(30.dp)
+
+/** Build a single preference string from onboarding chip selections for backend sync (same as iOS). */
+private fun buildDietaryPreferenceText(selectedAllergiesByMember: Map<String, MutableSet<String>>): String {
+    val allChipIds = selectedAllergiesByMember.values.flatMap { it.toList() }.toSet()
+    return allChipIds.map { OnboardingChipData.labelForChipId(it) }.joinToString(", ")
+}
 
 @Composable
 private fun SelectedChipPill(
@@ -299,7 +293,7 @@ private fun CapsuleChipMemberAvatars(
 ) {
     if (memberIds.isEmpty()) return
 
-    val everyoneId = "ALL"
+    val everyoneId = EVERYONE_MEMBER_ID
     val hasEveryone = memberIds.contains(everyoneId)
     val concreteMemberIds = memberIds.filter { it != everyoneId }.toSet()
     val concreteMembers = members.filter { concreteMemberIds.contains(it.id) }
@@ -369,6 +363,10 @@ private fun CapsuleSkeletonBox(
     val resolvedChips = remember(selectedChipIds) {
         selectedChipIds.mapNotNull { id -> OnboardingChipData.chipForId(id) }
     }
+    val hasOtherSelection = remember(selectedChipIds) {
+        // Any chip id containing "other" (e.g. "other", "other_sens", "region_*_other", etc.)
+        selectedChipIds.any { it.contains("other", ignoreCase = true) }
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -417,6 +415,27 @@ private fun CapsuleSkeletonBox(
                             emoji = def.iconPrefix,
                             label = def.label,
                             trailingAvatars = trailing
+                        )
+                    }
+                }
+                if (hasOtherSelection) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.emoji_warning),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Unspecified
+                        )
+                        Text(
+                            text = "Something else too, don't worry we'll ask later!",
+                            fontFamily = Manrope,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 12.sp,
+                            color = Greyscale100
                         )
                     }
                 }
@@ -766,6 +785,7 @@ private fun FamilyOverviewBackground(
     }
 }
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun OnboardingHost(
     authViewModel: AuthViewModel,
@@ -850,19 +870,24 @@ fun OnboardingHost(
 
     val isAddMoreMemberNoBack = step == OnboardingStep.ADD_FAMILY_NAME && vm.familyOverviewMembers.size == 1
     val isAllSetOrMoreScreen = step == OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE
-    val isFallingCapsulesScreen = step == OnboardingStep.ADD_FAMILY_FALLING_CAPSULES
+    val isFallingCapsulesScreen = step == OnboardingStep.FALLING_CAPSULES
     BackHandler(enabled = true) {
         if (!isAddMoreMemberNoBack && !isAllSetOrMoreScreen && !isFallingCapsulesScreen) {
             handleBack()
         }
     }
 
+    // On first launch show "Everyone" as selected (ALL); user can switch to a member later.
     val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size) {
-        mutableStateOf(vm.familyOverviewMembers.firstOrNull()?.id.orEmpty())
+        mutableStateOf(EVERYONE_MEMBER_ID)
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
-    // memberKey (\"ALL\" or member.id) -> set of chipIds selected for that member
+    // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
     val selectedAllergiesByMember = remember { mutableStateMapOf<String, MutableSet<String>>() }
+    // Bump on every chip toggle so the sheet reliably recomposes (workaround for SnapshotStateMap).
+    var allergySelectionRevision by remember { mutableStateOf(0) }
+    // Explicitly track selections for the active member to force sheet recomposition
+    var activeMemberSelections by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // Progress tracking within the fine‑tune flow (allergies, intolerances, etc.)
     // These same steps drive both the CapsuleStepperRow and the AnimatedProgressLine.
@@ -880,7 +905,10 @@ fun OnboardingHost(
             CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
         )
     }
+
     var allergyStepIndex by remember { mutableStateOf(0) }
+    // When true, show the fine‑tune decision screen between Life Style and Nutrition
+    var showFineTuneDecision by remember { mutableStateOf(false) }
 
     if (step == OnboardingStep.GET_STARTED) {
         GetStatedScreen(
@@ -901,7 +929,7 @@ fun OnboardingHost(
         OnboardingStep.ADD_FAMILY_AVATAR_GENERATING,
         OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE,
         OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> 4
-        OnboardingStep.ADD_FAMILY_FALLING_CAPSULES -> 5
+        OnboardingStep.FALLING_CAPSULES -> 5
         OnboardingStep.ADD_FAMILY_ALLERGIES -> 6
         else -> 0
     }
@@ -1013,9 +1041,12 @@ fun OnboardingHost(
                             Column(
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                Spacer(modifier = Modifier.height(48.dp))
+                         Spacer(modifier = Modifier.height(40.dp))
 
                                 // Animate progress based on current allergyStepIndex.
+                                // NOTE: The fine‑tune decision screen between Life Style and Nutrition
+                                // does NOT advance allergyStepIndex, so progress will not increase
+                                // while that screen is shown.
                                 val rawProgress =
                                     if (allergySteps.size <= 1) 1f
                                     else allergyStepIndex.toFloat() / (allergySteps.size - 1).coerceAtLeast(1)
@@ -1025,30 +1056,37 @@ fun OnboardingHost(
                                     label = "allergyProgress"
                                 )
 
-                                AnimatedProgressLine(
-                                    progress = animatedProgress,
-                                    modifier = Modifier.padding(horizontal = 20.dp)
-                                )
+                                   AnimatedProgressLine(
+                                       progress = animatedProgress,
+                                       modifier = Modifier.padding(horizontal = 20.dp)
+                                   )
+//                                Spacer(modifier = Modifier.height(10.dp))
+
+                                   CapsuleStepperRow(
+                                       steps = allergySteps,
+                                       activeIndex = allergyStepIndex,
+                                       onStepClick = { clickedIndex ->
+                                           // Only allow jumping to steps the user has already visited.
+                                           val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
+                                           if (clamped <= allergyStepIndex) {
+                                               allergyStepIndex = clamped
+                                               showFineTuneDecision = false
+                                           }
+                                       }
+                                   )
+
+
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                CapsuleStepperRow(
-                                    steps = allergySteps,
-                                    activeIndex = allergyStepIndex,
-                                    onStepClick = { clickedIndex ->
-                                        allergyStepIndex = clickedIndex.coerceIn(0, allergySteps.lastIndex)
-                                    }
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
                                 // Show a scrollable list of CapsuleSkeletonBox cards.
-                                // Steps 0-3 correspond to: Allergies, Intolerances, Health Conditions, Life Stage.
+                                // Steps 0–9: Allergies, Intolerances, Health, Life Stage, Region, Avoid, LifeStyle, Nutrition, Ethical, Taste.
                                 val hasAnySelections = selectedAllergies.isNotEmpty()
+                                val maxStepIndex = allergySteps.lastIndex
 
                                 // Decide which step indices should render cards.
                                 val cardSteps: List<Int> = if (hasAnySelections) {
-                                    // Only steps that have at least one selected chip.
-                                    (0..3).filter { stepIndex ->
+                                    // Only steps that have at least one selected chip (including Region, Avoid, LifeStyle, Nutrition).
+                                    (0..maxStepIndex).filter { stepIndex ->
                                         val stepChipIds = OnboardingChipData
                                             .chipsForStep(stepIndex)
                                             .map { it.id }
@@ -1056,15 +1094,15 @@ fun OnboardingHost(
                                         selectedAllergies.any { it in stepChipIds }
                                     }
                                 } else {
-                                    // No selections yet – show all four as empty placeholders.
-                                    (0..3).toList()
+                                    // No selections yet – show all steps as empty placeholders.
+                                    (0..maxStepIndex).toList()
                                 }
 
                                 val cardsListState = rememberLazyListState()
 
                                 // Small avatar(s) to show who this capsule applies to (Everyone or a member)
                                 val activeMemberId = selectedAllergyMemberIdState.value
-                                val everyoneIdCaps = "ALL"
+                                val everyoneIdCaps = EVERYONE_MEMBER_ID
                                 val activeMember = vm.familyOverviewMembers
                                     .firstOrNull { it.id == activeMemberId }
 
@@ -1165,7 +1203,7 @@ fun OnboardingHost(
             ) { s ->
                 Column {
                     when (s) {
-                        OnboardingStep.ADD_FAMILY_FALLING_CAPSULES -> {
+                        OnboardingStep.FALLING_CAPSULES -> {
                             AddFamilyLetsGoSheet(
                                 onLetsGo = {
                                     vm.navigateTo(OnboardingStep.ADD_FAMILY_ALLERGIES)
@@ -1177,71 +1215,132 @@ fun OnboardingHost(
                             // the sheet should reflect ONLY what the currently selected member
                             // (or Everyone) has chosen, not the union across all members.
                             val activeMemberId = selectedAllergyMemberIdState.value
-                            val activeMemberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
-                            val selectedAllergiesForActiveMember: Set<String> =
-                                selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+                            val activeMemberKey = if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
+
+                            // Sync activeMemberSelections whenever activeMemberKey or revision changes
+                            LaunchedEffect(activeMemberKey, allergySelectionRevision) {
+                                val latest = selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+                                if (activeMemberSelections != latest) {
+                                    activeMemberSelections = latest
+                                    Log.d(
+                                        "OnboardingAllergies",
+                                        "[SYNC] activeMemberSelections updated to=$latest for memberKey=$activeMemberKey revision=$allergySelectionRevision"
+                                    )
+                                }
+                            }
 
                             Log.d(
                                 "OnboardingAllergies",
-                                "Sheet for memberKey=$activeMemberKey " +
-                                    "selectedAllergiesForActiveMember=$selectedAllergiesForActiveMember " +
-                                    "selectedAllergiesByMember=$selectedAllergiesByMember"
+                                "[SHEET RECOMPOSE] memberKey=$activeMemberKey " +
+                                    "activeMemberSelections=$activeMemberSelections " +
+                                    "revision=$allergySelectionRevision " +
+                                    "selectedAllergiesByMember.keys=${selectedAllergiesByMember.keys}"
                             )
 
-                            AddAllergiesSheet(
-                                members = vm.familyOverviewMembers.toList(),
-                                selectedMemberId = selectedAllergyMemberIdState.value,
-                                selectedAllergies = selectedAllergiesForActiveMember,
-                                onMemberSelected = { selectedAllergyMemberIdState.value = it },
-                                onToggleAllergy = { allergyId ->
-                                    val activeMemberId = selectedAllergyMemberIdState.value
-                                    val memberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+                            // Key only by member so switching member resets the sheet; do NOT key by
+                            // selections so that chip toggles do not recreate the sheet (preserves
+                            // stacked card order when user selects chips on 2nd/3rd card).
+                            key(activeMemberKey) {
+                                AddAllergiesSheet(
+                                    members = vm.familyOverviewMembers.toList(),
+                                    selectedMemberId = selectedAllergyMemberIdState.value,
+                                    selectedAllergies = activeMemberSelections,
+                                    onMemberSelected = {
+                                        val oldMemberKey = if (selectedAllergyMemberIdState.value.isBlank()) EVERYONE_MEMBER_ID else selectedAllergyMemberIdState.value
+                                        val newMemberKey = if (it.isBlank()) EVERYONE_MEMBER_ID else it
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[MEMBER SWITCH] from=$oldMemberKey to=$newMemberKey " +
+                                                "selectionsForNewMember=${selectedAllergiesByMember[newMemberKey]?.toSet()}"
+                                        )
+                                        selectedAllergyMemberIdState.value = it
+                                        // Update activeMemberSelections immediately when switching members
+                                        activeMemberSelections = selectedAllergiesByMember[newMemberKey]?.toSet() ?: emptySet()
+                                    },
+                                    onToggleAllergy = { allergyId ->
+                                        val activeMemberId = selectedAllergyMemberIdState.value
+                                        val memberKey = if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
 
-                                    Log.d(
-                                        "OnboardingAllergies",
-                                        "onToggleAllergy START chip=$allergyId memberKey=$memberKey " +
-                                            "beforeChipsForMember=${selectedAllergiesByMember[memberKey]} " +
-                                            "selectedAllergiesByMember=$selectedAllergiesByMember"
-                                    )
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[TAP] START chip=$allergyId memberKey=$memberKey " +
+                                                "beforeChips=${selectedAllergiesByMember[memberKey]?.toSet()}"
+                                        )
 
-                                    val chipsForMember =
-                                        selectedAllergiesByMember.getOrPut(memberKey) { mutableSetOf() }
-                                    if (chipsForMember.contains(allergyId)) {
-                                        chipsForMember.remove(allergyId)
-                                        if (chipsForMember.isEmpty()) {
-                                            selectedAllergiesByMember.remove(memberKey)
+                                        // Copy out, mutate, then write back so SnapshotStateMap sees a change
+                                        // and the sheet recomposes. Mutating the inner MutableSet in place
+                                        // does not trigger recomposition.
+                                        val chipsForMember =
+                                            (selectedAllergiesByMember[memberKey]?.toMutableSet() ?: mutableSetOf())
+                                        if (chipsForMember.contains(allergyId)) {
+                                            chipsForMember.remove(allergyId)
+                                            if (chipsForMember.isEmpty()) {
+                                                selectedAllergiesByMember.remove(memberKey)
+                                            } else {
+                                                selectedAllergiesByMember[memberKey] = chipsForMember
+                                            }
+                                        } else {
+                                            chipsForMember.add(allergyId)
+                                            selectedAllergiesByMember[memberKey] = chipsForMember
                                         }
-                                    } else {
-                                        chipsForMember.add(allergyId)
-                                    }
 
-                                    // Rebuild the flat selectedAllergies list as the union of all chips
-                                    // selected by any member (used only for background capsules).
-                                    selectedAllergies.clear()
-                                    selectedAllergies.addAll(
-                                        selectedAllergiesByMember.values
-                                            .flatMap { it }
-                                            .toSet()
-                                    )
+                                        // Rebuild the flat selectedAllergies list as the union of all chips
+                                        // selected by any member (used only for background capsules).
+                                        selectedAllergies.clear()
+                                        selectedAllergies.addAll(
+                                            selectedAllergiesByMember.values
+                                                .flatMap { it }
+                                                .toSet()
+                                        )
 
-                                    Log.d(
-                                        "OnboardingAllergies",
-                                        "onToggleAllergy END chip=$allergyId memberKey=$memberKey " +
-                                            "afterChipsForMember=${selectedAllergiesByMember[memberKey]} " +
-                                            "selectedAllergiesByMember=$selectedAllergiesByMember " +
-                                            "selectedAllergies=$selectedAllergies"
-                                    )
-                                },
-                                onNext = {
-                                    // Advance to next fine‑tune step visually; once at the end, exit onboarding.
-                                    if (allergyStepIndex < allergySteps.lastIndex) {
-                                        allergyStepIndex++
-                                    } else {
+                                        // Immediately update activeMemberSelections if this is for the active member
+                                        // BEFORE incrementing revision so the key block sees the updated value
+                                        if (memberKey == activeMemberKey) {
+                                            activeMemberSelections = selectedAllergiesByMember[memberKey]?.toSet() ?: emptySet()
+                                        }
+                                        
+                                        allergySelectionRevision++
+                                        
+                                        Log.d(
+                                            "OnboardingAllergies",
+                                            "[TAP] END chip=$allergyId memberKey=$memberKey " +
+                                                "afterChips=${selectedAllergiesByMember[memberKey]?.toSet()} " +
+                                                "revision=$allergySelectionRevision " +
+                                                "activeMemberSelections=$activeMemberSelections"
+                                        )
+                                        },
+                                    onNext = {
+                                        // Between Life Style (index 6) and Nutrition (index 7),
+                                        // show a dedicated fine‑tune decision screen that does
+                                        // NOT advance progress until the user confirms.
+                                        if (allergyStepIndex == 6 && !showFineTuneDecision) {
+                                            showFineTuneDecision = true
+                                        } else {
+                                            showFineTuneDecision = false
+                                            if (allergyStepIndex < allergySteps.lastIndex) {
+                                                allergyStepIndex++
+                                            } else {
+                                                // Sync dietary preferences to backend (same as iOS) before exiting
+                                                val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
+                                                Log.d("OnboardingAllergies", "[DietaryPreference] onNext complete: syncing textLength=${preferenceText.length}")
+                                                authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
+                                                onExitOnboarding()
+                                            }
+                                        }
+                                    },
+                                    onSkipPreferences = {
+                                        // User tapped "All Set!" on the fine‑tune decision screen:
+                                        // sync preferences to backend (same as iOS) then close and exit.
+                                        val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
+                                        Log.d("OnboardingAllergies", "[DietaryPreference] onSkipPreferences: syncing textLength=${preferenceText.length}")
+                                        authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
+                                        showFineTuneDecision = false
                                         onExitOnboarding()
-                                    }
-                                },
-                                questionStepIndex = allergyStepIndex
-                            )
+                                    },
+                                    showFineTuneDecision = showFineTuneDecision,
+                                    questionStepIndex = allergyStepIndex
+                                )
+                            }
                         }
                         OnboardingStep.SIGN_IN_INITIAL -> {
                             SignInInitialSheet(
@@ -1494,7 +1593,7 @@ fun OnboardingHost(
 
                         OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE -> {
                             AddFamilyAllSetOrMoreSheet(
-                                onAllSet = { vm.navigateTo(OnboardingStep.ADD_FAMILY_FALLING_CAPSULES) },
+                                onAllSet = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) },
                                 onAddMore = { vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME) }
                             )
                         }

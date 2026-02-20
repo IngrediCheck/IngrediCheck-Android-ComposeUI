@@ -11,39 +11,26 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,43 +40,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.auth.MemojiGenState
-import lc.fungee.Ingredicheck.memoji.FillingPipeLine
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
-import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
 import lc.fungee.Ingredicheck.memoji.AvatarCategoryTabs
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
@@ -101,24 +77,16 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
-import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.Fail100
-import lc.fungee.Ingredicheck.ui.theme.Fail25
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale30
-import lc.fungee.Ingredicheck.ui.theme.Greyscale70
 import lc.fungee.Ingredicheck.ui.theme.Greyscale80
-import lc.fungee.Ingredicheck.ui.theme.Greyscale90
 import lc.fungee.Ingredicheck.ui.theme.Manrope
-import lc.fungee.Ingredicheck.ui.theme.Primary700
 import lc.fungee.Ingredicheck.ui.theme.Primary800
-import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
-import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
-import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
 import lc.fungee.Ingredicheck.memoji.avatarOptionsForCategory
 
 @Composable
@@ -396,16 +364,7 @@ internal fun AddFamilyAvatarGeneratingSheet(
                 // Determine the background color from the user's selected color category (index 5)
                 val selectedColorId = selections[5]
                 val avatarBackgroundColor = remember(selectedColorId) {
-                    when (selectedColorId) {
-                        "color_pastel_blue" -> Color(0xFFA5D8FF)
-                        "color_warm_pink" -> Color(0xFFFFB3C1)
-                        "color_soft_green" -> Color(0xFFB9FBC0)
-                        "color_lavender" -> Color(0xFFE3B8FF)
-                        "color_orange" -> Color(0xFFFFB74D)
-                        "color_yellow" -> Color(0xFFFFE082)
-                        "color_transparent" -> Color.Transparent
-                        else -> Color.White
-                    }
+                    avatarBackgroundColorForId(selectedColorId)
                 }
 
                 Box(
