@@ -9,9 +9,9 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,9 +67,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.data.RegionDefinition
 import lc.fungee.Ingredicheck.onboarding.data.AvoidOptionDefinition
+import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
+import lc.fungee.Ingredicheck.onboarding.data.memberAvatarBackgroundColor
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.ui.components.StackedCardsComponent
 import lc.fungee.Ingredicheck.ui.components.buttons.primaryButtonEffect
@@ -88,30 +91,7 @@ import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
 import lc.fungee.Ingredicheck.ui.theme.Primary700
-
-private fun avatarBackgroundColorForId(colorId: String): Color {
-    return when (colorId) {
-        "color_pastel_blue" -> Color(0xFFA5D8FF)
-        "color_warm_pink" -> Color(0xFFFFB3C1)
-        "color_soft_green" -> Color(0xFFB9FBC0)
-        "color_lavender" -> Color(0xFFE3B8FF)
-        "color_orange" -> Color(0xFFFFB74D)
-        "color_yellow" -> Color(0xFFFFE082)
-        "color_transparent" -> Color.Transparent
-        else -> Color.White
-    }
-}
-
-/** Resolves member avatar background: memoji color if set, else random pastel (colorHex) from member creation. */
-private fun memberAvatarBackgroundColor(backgroundColorId: String, colorHex: String): Color {
-    if (backgroundColorId.isNotBlank()) return avatarBackgroundColorForId(backgroundColorId)
-    if (colorHex.isNotBlank()) {
-        return kotlin.runCatching {
-            Color(android.graphics.Color.parseColor(colorHex))
-        }.getOrElse { Color.White }
-    }
-    return Color.White
-}
+import lc.fungee.Ingredicheck.onboarding.ui.OnboardingAnimations
 
 @Composable
 internal fun AddAllergiesSheet(
@@ -125,7 +105,7 @@ internal fun AddAllergiesSheet(
     showFineTuneDecision: Boolean = false,
     questionStepIndex: Int = 0
 ) {
-    val everyoneId = "ALL"
+    val everyoneId = EVERYONE_MEMBER_ID
     val fallbackMembers = remember(members) {
         if (members.isNotEmpty()) members else emptyList()
     }
@@ -244,12 +224,12 @@ internal fun AddAllergiesSheet(
                 val isSelected = resolvedSelectedId == everyoneId
                 val avatarSize by animateDpAsState(
                     targetValue = if (isSelected) 42.dp else 36.dp,
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    animationSpec = OnboardingAnimations.AvatarSelectionTween,
                     label = "everyoneAvatarSize"
                 )
                 val borderWidth by animateDpAsState(
                     targetValue = if (isSelected) 2.dp else 1.dp,
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    animationSpec = OnboardingAnimations.AvatarSelectionTween,
                     label = "everyoneBorderWidth"
                 )
                 Column(
@@ -298,12 +278,12 @@ internal fun AddAllergiesSheet(
                 val avatarRes = OnboardingChipData.avatarResOrNull(m.avatarId)
                 val avatarSize by animateDpAsState(
                     targetValue = if (isSelected) 42.dp else 36.dp,
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    animationSpec = OnboardingAnimations.AvatarSelectionTween,
                     label = "memberAvatarSize"
                 )
                 val borderWidth by animateDpAsState(
                     targetValue = if (isSelected) 2.dp else 1.dp,
-                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                    animationSpec = OnboardingAnimations.AvatarSelectionTween,
                     label = "memberBorderWidth"
                 )
                 Column(
@@ -961,7 +941,7 @@ fun AvoidOptionChip(
                 fontFamily = Manrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
-                color = if (isSelected) Greyscale10 else Color(0xFF303030),
+                color = if (isSelected) Greyscale150 else Color(0xFF303030),
                 maxLines = 1
             )
         }

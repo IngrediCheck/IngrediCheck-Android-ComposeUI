@@ -81,8 +81,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.draw.shadow
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
@@ -100,7 +98,9 @@ import lc.fungee.Ingredicheck.family.CreateFamilyRequest
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.memoji.GetStatedScreen
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingPersistence
+import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
@@ -109,7 +109,6 @@ import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
-import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
@@ -171,23 +170,14 @@ private fun familyPlaceholderColor(seed: String): Color {
     return palette[idx]
 }
 
-private fun avatarBackgroundColorForId(colorId: String): Color {
-    return when (colorId) {
-        "color_pastel_blue" -> Color(0xFFA5D8FF)
-        "color_warm_pink" -> Color(0xFFFFB3C1)
-        "color_soft_green" -> Color(0xFFB9FBC0)
-        "color_lavender" -> Color(0xFFE3B8FF)
-        "color_orange" -> Color(0xFFFFB74D)
-        "color_yellow" -> Color(0xFFFFE082)
-        "color_transparent" -> Color.Transparent
-        else -> Color.White
-    }
-}
-
-
-
 private val SelectedPillBackground = Secondary200
 private val PillShape = RoundedCornerShape(30.dp)
+
+/** Build a single preference string from onboarding chip selections for backend sync (same as iOS). */
+private fun buildDietaryPreferenceText(selectedAllergiesByMember: Map<String, MutableSet<String>>): String {
+    val allChipIds = selectedAllergiesByMember.values.flatMap { it.toList() }.toSet()
+    return allChipIds.map { OnboardingChipData.labelForChipId(it) }.joinToString(", ")
+}
 
 @Composable
 private fun SelectedChipPill(
@@ -303,7 +293,7 @@ private fun CapsuleChipMemberAvatars(
 ) {
     if (memberIds.isEmpty()) return
 
-    val everyoneId = "ALL"
+    val everyoneId = EVERYONE_MEMBER_ID
     val hasEveryone = memberIds.contains(everyoneId)
     val concreteMemberIds = memberIds.filter { it != everyoneId }.toSet()
     val concreteMembers = members.filter { concreteMemberIds.contains(it.id) }
@@ -889,7 +879,7 @@ fun OnboardingHost(
 
     // On first launch show "Everyone" as selected (ALL); user can switch to a member later.
     val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size) {
-        mutableStateOf("ALL")
+        mutableStateOf(EVERYONE_MEMBER_ID)
     }
     val selectedAllergies = remember { mutableStateListOf<String>() }
     // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
@@ -1112,7 +1102,7 @@ fun OnboardingHost(
 
                                 // Small avatar(s) to show who this capsule applies to (Everyone or a member)
                                 val activeMemberId = selectedAllergyMemberIdState.value
-                                val everyoneIdCaps = "ALL"
+                                val everyoneIdCaps = EVERYONE_MEMBER_ID
                                 val activeMember = vm.familyOverviewMembers
                                     .firstOrNull { it.id == activeMemberId }
 
@@ -1225,7 +1215,7 @@ fun OnboardingHost(
                             // the sheet should reflect ONLY what the currently selected member
                             // (or Everyone) has chosen, not the union across all members.
                             val activeMemberId = selectedAllergyMemberIdState.value
-                            val activeMemberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+                            val activeMemberKey = if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
 
                             // Sync activeMemberSelections whenever activeMemberKey or revision changes
                             LaunchedEffect(activeMemberKey, allergySelectionRevision) {
@@ -1256,8 +1246,8 @@ fun OnboardingHost(
                                     selectedMemberId = selectedAllergyMemberIdState.value,
                                     selectedAllergies = activeMemberSelections,
                                     onMemberSelected = {
-                                        val oldMemberKey = if (selectedAllergyMemberIdState.value.isBlank()) "ALL" else selectedAllergyMemberIdState.value
-                                        val newMemberKey = if (it.isBlank()) "ALL" else it
+                                        val oldMemberKey = if (selectedAllergyMemberIdState.value.isBlank()) EVERYONE_MEMBER_ID else selectedAllergyMemberIdState.value
+                                        val newMemberKey = if (it.isBlank()) EVERYONE_MEMBER_ID else it
                                         Log.d(
                                             "OnboardingAllergies",
                                             "[MEMBER SWITCH] from=$oldMemberKey to=$newMemberKey " +
@@ -1269,7 +1259,7 @@ fun OnboardingHost(
                                     },
                                     onToggleAllergy = { allergyId ->
                                         val activeMemberId = selectedAllergyMemberIdState.value
-                                        val memberKey = if (activeMemberId.isBlank()) "ALL" else activeMemberId
+                                        val memberKey = if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
 
                                         Log.d(
                                             "OnboardingAllergies",
@@ -1330,13 +1320,20 @@ fun OnboardingHost(
                                             if (allergyStepIndex < allergySteps.lastIndex) {
                                                 allergyStepIndex++
                                             } else {
+                                                // Sync dietary preferences to backend (same as iOS) before exiting
+                                                val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
+                                                Log.d("OnboardingAllergies", "[DietaryPreference] onNext complete: syncing textLength=${preferenceText.length}")
+                                                authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
                                                 onExitOnboarding()
                                             }
                                         }
                                     },
                                     onSkipPreferences = {
                                         // User tapped "All Set!" on the fine‑tune decision screen:
-                                        // close the decision and exit the onboarding fine‑tune flow.
+                                        // sync preferences to backend (same as iOS) then close and exit.
+                                        val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
+                                        Log.d("OnboardingAllergies", "[DietaryPreference] onSkipPreferences: syncing textLength=${preferenceText.length}")
+                                        authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
                                         showFineTuneDecision = false
                                         onExitOnboarding()
                                     },

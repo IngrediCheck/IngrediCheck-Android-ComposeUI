@@ -17,6 +17,7 @@ import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.memoji.MemojiRepository
 import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
+import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
 
 enum class AuthProvider {
     Google,
@@ -43,6 +44,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val repository = AuthRepository(app.applicationContext)
     private val memojiRepository = MemojiRepository()
     private val familyRepository = FamilyRepository()
+    private val dietaryPreferenceRepository = DietaryPreferenceRepository()
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
@@ -60,6 +62,51 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         val line = "${System.currentTimeMillis()} | $message"
         _debugLog.value = (_debugLog.value + line).takeLast(60)
         Log.d("AuthDebug", message)
+    }
+
+    /**
+     * Sync onboarding fine-tune selections to the backend as one dietary preference (same as iOS).
+     * Called when user taps "All Set!" or completes the last preference step.
+     * Logs success/failure for debugging.
+     */
+    fun syncDietaryPreferencesFromOnboarding(preferenceText: String) {
+        if (preferenceText.isBlank()) {
+            Log.d("AuthDebug", "DietaryPreference: skip sync (empty text)")
+            return
+        }
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                Log.w("AuthDebug", "DietaryPreference: skip sync (no access token)")
+                return@launch
+            }
+            pushDebug("DietaryPreference: syncing length=${preferenceText.length}")
+            val clientActivityId = java.util.UUID.randomUUID().toString()
+            val result = dietaryPreferenceRepository.addOrEditDietaryPreference(
+                accessToken = accessToken,
+                clientActivityId = clientActivityId,
+                preferenceText = preferenceText,
+                id = null
+            )
+            result.fold(
+                onSuccess = { validationResult ->
+                    when (validationResult) {
+                        is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Success -> {
+                            pushDebug("DietaryPreference: sync success id=${validationResult.preference.id}")
+                            Log.d("AuthDebug", "DietaryPreference: sync success id=${validationResult.preference.id}")
+                        }
+                        is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Failure -> {
+                            pushDebug("DietaryPreference: sync failure ${validationResult.explanation}")
+                            Log.w("AuthDebug", "DietaryPreference: sync failure ${validationResult.explanation}")
+                        }
+                    }
+                },
+                onFailure = { e ->
+                    pushDebug("DietaryPreference: sync error ${e.message}")
+                    Log.e("AuthDebug", "DietaryPreference: sync error", e)
+                }
+            )
+        }
     }
 
     fun addFamilyMember(member: FamilyMemberDto, onResult: (Result<FamilyDto>) -> Unit) {

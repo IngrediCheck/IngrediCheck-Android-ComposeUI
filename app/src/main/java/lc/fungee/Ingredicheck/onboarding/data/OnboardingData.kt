@@ -2,6 +2,9 @@ package lc.fungee.Ingredicheck.onboarding.data
 
 import lc.fungee.Ingredicheck.R
 
+/** Member id used for "Everyone" in add-family and just-me flows. */
+const val EVERYONE_MEMBER_ID = "ALL"
+
 /**
  * Static configuration for the multi‑step fine‑tune flow (allergy/sensitivity/health/life‑stage chips)
  * and shared avatar lists. Keeping this data out of the UI layer keeps
@@ -428,5 +431,9 @@ object OnboardingChipData {
     /** Resolve avatar id to drawable resource id; null if not found. Shared by Host and screens. */
     fun avatarResOrNull(avatarId: String): Int? =
         baseAvatarItems.firstOrNull { (id, _) -> id == avatarId }?.second
+
+    /** Resolve chip id to display label for dietary preference sync; returns id if not found. */
+    fun labelForChipId(chipId: String): String =
+        (0..9).flatMap { chipsForStep(it) }.firstOrNull { it.id == chipId }?.label ?: chipId
 }
 
