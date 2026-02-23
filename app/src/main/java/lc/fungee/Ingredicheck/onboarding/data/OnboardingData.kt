@@ -56,408 +56,137 @@ data class AvoidCardDefinition(
 
 object OnboardingChipData {
 
+    private fun slug(name: String): String =
+        name.lowercase().replace(Regex("[^a-z0-9]"), "_").replace(Regex("_+"), "_").trim('_')
+
+    private fun dynamicStepToChips(step: DynamicStep): List<ChipDefinition> {
+        return when (step.type) {
+            "type-1" -> step.content.options?.map { o ->
+                ChipDefinition(slug(o.name), o.name, o.icon + "  ")
+            } ?: emptyList()
+            "type-2" -> step.content.subSteps?.flatMap { sub ->
+                (sub.options ?: emptyList()).map { o ->
+                    ChipDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
+                }
+            } ?: emptyList()
+            "type-3" -> step.content.regions?.flatMap { r ->
+                r.subRegions.map { o ->
+                    ChipDefinition("${slug(r.name)}_${slug(o.name)}", o.name, o.icon + "  ")
+                }
+            } ?: emptyList()
+            else -> emptyList()
+        }
+    }
+
+    private fun dynamicSteps(): List<DynamicStep>? = DynamicStepsLoader.getSteps()
+
     /**
      * Returns the (question, subtitle) pair for the given fine‑tune step.
      * @param step Step index (0-9)
      * @param flowType Flow type (INDIVIDUAL for "Just Me", FAMILY for "Add Family")
      */
     fun questionForStep(step: Int, flowType: OnboardingFlowType = OnboardingFlowType.FAMILY): Pair<String, String> {
-        return when (step.coerceIn(0, 9)) {
-            0 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Got any allergies we should keep in mind?" to
-                    "Choose all that apply so we can give you smarter food tips."
-                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have allergies we should know?" to
-                    "Select all that apply to keep meals worry-free."
-            }
-            1 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Any sensitivities that make eating tricky?" to
-                    "We'll make sure your food suggestions avoid these."
-                OnboardingFlowType.FAMILY -> "Any sensitivities or intolerances in your IngrediFam?" to
-                    "We'll avoid foods that cause discomfort."
-            }
-            2 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Do you follow any special diets or have health conditions?" to
-                    "This helps us recommend meals that work for you."
-                OnboardingFlowType.FAMILY -> "Any doctor diets or health conditions in your IngrediFam?" to
-                    "This helps us tailor recommendations better."
-            }
-            3 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Do you have special needs we should keep in mind?" to
-                    "Select all that apply, this helps us tailor tips for you."
-                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have special life stage needs?" to
-                    "Select all that apply so tips match every life stage."
-            }
-            // 4 – Region / cultural practices
-            4 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Where are you from? This helps us customize your experience!" to
-                    "Pick your region(s) or cultural practices."
-                OnboardingFlowType.FAMILY -> "Where does your IngrediFam draw its food traditions from?" to
-                    "Select your region or cultural roots."
-            }
-            5 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Anything you avoid in your diet?" to ""
-                OnboardingFlowType.FAMILY -> "Anything your IngrediFam avoids?" to
-                    "We'll steer clear of those ingredients and products."
-            }
-            // 6 – LifeStyle (plant/balance, quality/source, sustainable living)
-            6 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "What's your way of eating?" to ""
-                OnboardingFlowType.FAMILY -> "What's your IngrediFam's food lifestyle?" to
-                    "Tell us about your eating style, sourcing, and habits."
-            }
-            // 7 – Nutrition (macros, sugar/fiber, diet frameworks)
-            7 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "What's your nutrition focus right now?" to ""
-                OnboardingFlowType.FAMILY -> "What's your IngrediFam's nutrition focus?" to
-                    "Set your macronutrient goals, sugar & fiber preferences, and diet patterns."
-            }
-            8 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "What ethical or environmental values are important to you?" to
-                    "Select the causes that matter most when it comes to the food you eat."
-                OnboardingFlowType.FAMILY -> "What ethical or environmental values matter to your IngrediFam?" to
-                    "Select causes that shape your food choices."
-            }
-            9 -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "What are your taste and texture preferences?" to
-                    "Choose what you love or avoid when it comes to flavors and textures."
-                OnboardingFlowType.FAMILY -> "What tastes and textures does your family prefer?" to
-                    "Customize tastes so every plate feels just right."
-            }
-            else -> when (flowType) {
-                OnboardingFlowType.INDIVIDUAL -> "Got any allergies we should keep in mind?" to
-                    "Choose all that apply so we can give you smarter food tips."
-                OnboardingFlowType.FAMILY -> "Does anyone in your IngrediFam have allergies we should know?" to
-                    "Select all that apply to keep meals worry-free."
-            }
+        val steps = dynamicSteps()
+        if (steps != null && step in steps.indices) {
+            val h = steps[step].header
+            val v = if (flowType == OnboardingFlowType.INDIVIDUAL) h.individual else h.family
+            return v.question to (v.description ?: "")
         }
+        return "" to ""
     }
 
     /**
      * Returns the chip set (id, label, emoji prefix) for the given fine‑tune step.
      */
     fun chipsForStep(step: Int): List<ChipDefinition> {
-        return when (step.coerceIn(0, 9)) {
-            // 0 – Allergies
-            0 -> listOf(
-                ChipDefinition("peanuts", "Peanuts", "🥜  "),
-                ChipDefinition("tree_nuts", "Tree nuts", "🌰  "),
-                ChipDefinition("dairy", "Dairy", "🥛  "),
-                ChipDefinition("eggs", "Eggs", "🥚  "),
-                ChipDefinition("soy", "Soy", "🌱  "),
-                ChipDefinition("wheat", "Wheat", "🌾  "),
-                ChipDefinition("fish", "Fish", "🐟  "),
-                ChipDefinition("shellfish", "Shellfish", "🍤 "),
-                ChipDefinition("sesame", "Sesame", "✨ "),
-                ChipDefinition("celery", "Celery", "🥬  "),
-                ChipDefinition("lupin", "Lupin", "🫘  "),
-                ChipDefinition("sulphites", "Sulphites", "🧂  "),
-                ChipDefinition("mustard", "Mustard", "🟡 "),
-                ChipDefinition("molluscs", "Molluscs", "🐚  "),
-                ChipDefinition("other", "Other", "✏️  ")
-            )
-
-            // 1 – Sensitivities / intolerances
-            1 -> listOf(
-                ChipDefinition("lactose", "Lactose", "🥛  "),
-                ChipDefinition("fructose", "Fructose", "🍓  "),
-                ChipDefinition("histamine", "Histamine", "🍷  "),
-                ChipDefinition("gluten_wheat", "Gluten / wheat", "🌾  "),
-                ChipDefinition("fodmap", "FODMAP", "🧄  "),
-                ChipDefinition("other_sens", "Other", "✏️  ")
-            )
-
-            // 2 – Health conditions / doctor diets
-            2 -> listOf(
-                ChipDefinition("diabetes", "Diabetes", "🍭  "),
-                ChipDefinition("hypertension", "Hypertension", "💊  "),
-                ChipDefinition("kidney_disease", "Kidney disease", "🩺 "),
-                ChipDefinition("heart_health", "Heart health", "\uD83E\uDEC0  "),
-                ChipDefinition("pku", "PKU (phenylalanine-sensitive)", "🧬  "),
-                ChipDefinition("anti_inflammatory", "Anti-inflammatory / medical diet", "🥗  "),
-                ChipDefinition("celiac_disease", "Celiac disease", "🥖  "),
-                ChipDefinition("other_health", "Other", "✏️  ")
-            )
-
-            // 3 – Life stage needs
-            3 -> listOf(
-                ChipDefinition("kids_baby_friendly", "Kids / Baby-friendly foods", "👶 "),
-                ChipDefinition("toddler_picky", "Toddler picky-eating adaptations", "🙄 "),
-                ChipDefinition("pregnancy_prenatal", "Pregnancy / Prenatal nutrition", "🤰 "),
-                ChipDefinition("breastfeeding", "Breastfeeding diets", "🍼 "),
-                ChipDefinition("senior_friendly", "Senior-friendly", "👴 "),
-                ChipDefinition("none_lifestage", "None of these apply", "✅ ")
-            )
-
-            // 4 – Region / cultural practices (subRegions as chips for capsule display)
-            4 -> regions.flatMap { it.subRegions }
-
-            // 5 – Avoid (stacked card options as chips for capsule display)
-            5 -> avoidCards.flatMap { it.options }.map { o ->
-                ChipDefinition(o.id, o.label, o.iconPrefix)
-            }
-
-            // 6 – LifeStyle (stacked card options for capsule display)
-            6 -> lifestyleCards.flatMap { it.options }.map { o ->
-                ChipDefinition(o.id, o.label, o.iconPrefix)
-            }
-
-            // 7 – Nutrition (stacked card options for capsule display)
-            7 -> nutritionCards.flatMap { it.options }.map { o ->
-                ChipDefinition(o.id, o.label, o.iconPrefix)
-            }
-
-            // 8 – Ethical preferences
-            8 -> listOf(
-                ChipDefinition("ethical_animal_welfare", "Animal welfare focused", "🐄  "),
-                ChipDefinition("ethical_fair_trade", "Fair trade", "🤝  "),
-                ChipDefinition(
-                    "ethical_sustainable_fishing",
-                    "Sustainable fishing / no overfished species",
-                    "🐟  "
-                ),
-                ChipDefinition("ethical_low_carbon", "Low carbon footprint foods", "♻️  "),
-                ChipDefinition("ethical_water_footprint", "Water footprint concerns", "💧  "),
-                ChipDefinition("ethical_palm_oil_free", "Palm-oil free", "🌴  "),
-                ChipDefinition("ethical_plastic_free_packaging", "Plastic-free packaging", "🚫  "),
-                ChipDefinition("ethical_other", "Other", "✏️  ")
-            )
-
-            // 9 – Taste preferences
-            9 -> listOf(
-                ChipDefinition("taste_spicy_lover", "Spicy lover", "🌶️  "),
-                ChipDefinition("taste_avoid_spicy", "Avoid Spicy", "🚫  "),
-                ChipDefinition("taste_sweet_tooth", "Sweet tooth", "🍰  "),
-                ChipDefinition("taste_avoid_slimy", "Avoid slimy textures", "🥒  "),
-                ChipDefinition("taste_avoid_bitter", "Avoid bitter foods", "🍵  "),
-                ChipDefinition("taste_other", "Other", "✏️  "),
-                ChipDefinition("taste_crunchy_soft", "Crunchy / Soft preferences", "🍪  "),
-                ChipDefinition("taste_low_sweet", "Low-sweet preference", "🍯  ")
-            )
-
-            else -> chipsForStep(0)
+        val steps = dynamicSteps()
+        if (steps != null && step in steps.indices) {
+            return dynamicStepToChips(steps[step])
         }
+        return emptyList()
     }
 
-    // Avoid stacked cards (type-2) used for the Avoid step.
-    val avoidCards: List<AvoidCardDefinition> = listOf(
-        AvoidCardDefinition(
-            id = "avoid_oils_fats",
-            title = "Oils & Fats",
-            description = "In fats or oils, what do you avoid?",
-            colorHex = "#FFF6B3",
-            options = listOf(
-                AvoidOptionDefinition("avoid_oils_trans_fats", "Hydrogenated oils / Trans fats", "🧈 "),
-                AvoidOptionDefinition("avoid_oils_seed", "Canola / Seed oils", "🌾 "),
-                AvoidOptionDefinition("avoid_oils_palm", "Palm oil", "🌴 "),
-                AvoidOptionDefinition("avoid_oils_corn_hfcs", "Corn / High-fructose corn syrup", "🌽 ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "avoid_animal_based",
-            title = "Animal-Based",
-            description = "Any animal products you don't consume?",
-            colorHex = "#DCC7F6",
-            options = listOf(
-                AvoidOptionDefinition("avoid_animal_pork", "Pork", "🐖 "),
-                AvoidOptionDefinition("avoid_animal_beef", "Beef", "🐄 "),
-                AvoidOptionDefinition("avoid_animal_honey", "Honey", "🍯 "),
-                AvoidOptionDefinition("avoid_animal_gelatin", "Gelatin / Rennet", "🧂 "),
-                AvoidOptionDefinition("avoid_animal_shellfish", "Shellfish", "🦐 "),
-                AvoidOptionDefinition("avoid_animal_insects", "Insects", "🐜 "),
-                AvoidOptionDefinition("avoid_animal_seafood", "Seafood (fish)", "🐟 "),
-                AvoidOptionDefinition("avoid_animal_lard", "Lard / Animal fat", "🍖 ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "avoid_stimulants_substances",
-            title = "Stimulants & Substances",
-            description = "Do you avoid these?",
-            colorHex = "#BFF0D4",
-            options = listOf(
-                AvoidOptionDefinition("avoid_stim_alcohol", "Alcohol", "🍷 "),
-                AvoidOptionDefinition("avoid_stim_caffeine", "Caffeine", "☕ ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "avoid_additives_sweeteners",
-            title = "Additives & Sweeteners",
-            description = "Do you stay away from processed ingredients?",
-            colorHex = "#FFD9B5",
-            options = listOf(
-                AvoidOptionDefinition("avoid_add_msg", "MSG", "⚗️ "),
-                AvoidOptionDefinition("avoid_add_artificial_sweeteners", "Artificial sweeteners", "🍬 "),
-                AvoidOptionDefinition("avoid_add_preservatives", "Preservatives", "🧂 "),
-                AvoidOptionDefinition("avoid_add_refined_sugar", "Refined sugar", "🍚 "),
-                AvoidOptionDefinition("avoid_add_corn_syrup", "Corn syrup / HFCS", "🌽 "),
-                AvoidOptionDefinition("avoid_add_stevia_monk", "Stevia / Monk fruit", "🍈 ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "avoid_plant_based_restrictions",
-            title = "Plant-Based Restrictions",
-            description = "Any plant foods you avoid?",
-            colorHex = "#F9C6D0",
-            options = listOf(
-                AvoidOptionDefinition("avoid_plant_nightshades", "Nightshades (paprika, peppers, etc.)", "🍅 "),
-                AvoidOptionDefinition("avoid_plant_garlic_onion", "Garlic / Onion", "🧄 ")
-            )
-        )
-    )
+    // Avoid stacked cards (type-2) from dynamic JSON "avoid" step.
+    val avoidCards: List<AvoidCardDefinition>
+        get() {
+            dynamicSteps()?.find { it.id == "avoid" }?.content?.subSteps?.let { subSteps ->
+                return subSteps.map { sub ->
+                    AvoidCardDefinition(
+                        id = sub.id,
+                        title = sub.title,
+                        description = sub.description,
+                        colorHex = sub.color,
+                        options = (sub.options ?: emptyList()).map { o ->
+                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
+                        }
+                    )
+                }
+            }
+            return emptyList()
+        }
 
-    /** LifeStyle stacked cards (3 cards): Plant & Balance, Quality & Source, Sustainable Living. */
-    val lifestyleCards: List<AvoidCardDefinition> = listOf(
-        AvoidCardDefinition(
-            id = "lifestyle_plant_balance",
-            title = "Plant & Balance",
-            description = "Do you follow a plant-forward or flexible eating style?",
-            colorHex = "#FFF6B3",
-            options = listOf(
-                AvoidOptionDefinition("lifestyle_plant_vegetarian", "Vegetarian", "🥦 "),
-                AvoidOptionDefinition("lifestyle_plant_vegan", "Vegan", "🌱 "),
-                AvoidOptionDefinition("lifestyle_plant_flexitarian", "Flexitarian", "🔄 "),
-                AvoidOptionDefinition("lifestyle_plant_reducetarian", "Reducetarian", "➖ "),
-                AvoidOptionDefinition("lifestyle_plant_pescatarian", "Pescatarian", "🐟 "),
-                AvoidOptionDefinition("lifestyle_plant_other", "Other", "✏️ ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "lifestyle_quality_source",
-            title = "Quality & Source",
-            description = "Do you care about where your food comes from and how it's grown?",
-            colorHex = "#DCC7F6",
-            options = listOf(
-                AvoidOptionDefinition("lifestyle_quality_organic", "Organic Only", "🌱 "),
-                AvoidOptionDefinition("lifestyle_quality_nongmo", "Non-GMO", "🧬 "),
-                AvoidOptionDefinition("lifestyle_quality_local", "Locally Sourced", "📍 "),
-                AvoidOptionDefinition("lifestyle_quality_seasonal", "Seasonal Eater", "🕰️ ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "lifestyle_sustainable_living",
-            title = "Sustainable Living",
-            description = "Are you mindful of waste, packaging, and ingredient transparency?",
-            colorHex = "#D7EEB2",
-            options = listOf(
-                AvoidOptionDefinition("lifestyle_sustainable_zerowaste", "Zero-Waste / Minimal Packing", "🌍 "),
-                AvoidOptionDefinition("lifestyle_sustainable_clean_label", "Clean Label", "✅ ")
-            )
-        )
-    )
+    /** LifeStyle stacked cards from dynamic JSON "lifeStyle" step. */
+    val lifestyleCards: List<AvoidCardDefinition>
+        get() {
+            dynamicSteps()?.find { it.id == "lifeStyle" }?.content?.subSteps?.let { subSteps ->
+                return subSteps.map { sub ->
+                    AvoidCardDefinition(
+                        id = sub.id,
+                        title = sub.title,
+                        description = sub.description,
+                        colorHex = sub.color,
+                        options = (sub.options ?: emptyList()).map { o ->
+                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
+                        }
+                    )
+                }
+            }
+            return emptyList()
+        }
 
-    /** Nutrition stacked cards (3 cards): Macronutrient Goals, Sugar & Fiber, Diet Frameworks & Patterns. */
-    val nutritionCards: List<AvoidCardDefinition> = listOf(
-        AvoidCardDefinition(
-            id = "nutrition_macronutrient_goals",
-            title = "Macronutrient Goals",
-            description = "Do you want to balance your proteins, carbs, and fats or focus on one?",
-            colorHex = "#F9C6D0",
-            options = listOf(
-                AvoidOptionDefinition("nutrition_macro_high_protein", "High Protein", "🍗 "),
-                AvoidOptionDefinition("nutrition_macro_low_carb", "Low Carb", "🥒 "),
-                AvoidOptionDefinition("nutrition_macro_low_fat", "Low Fat", "🥑 "),
-                AvoidOptionDefinition("nutrition_macro_balanced", "Balanced Macros", "⚖️ ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "nutrition_sugar_fiber",
-            title = "Sugar & Fiber",
-            description = "Do you prefer low sugar or high-fiber foods for better digestion and energy?",
-            colorHex = "#A7D8F0",
-            options = listOf(
-                AvoidOptionDefinition("nutrition_sugar_low", "Low Sugar", "🍓 "),
-                AvoidOptionDefinition("nutrition_sugar_free", "Sugar-Free", "🍭 "),
-                AvoidOptionDefinition("nutrition_fiber_high", "High Fiber", "🌾 ")
-            )
-        ),
-        AvoidCardDefinition(
-            id = "nutrition_diet_frameworks_patterns",
-            title = "Diet Frameworks & Patterns",
-            description = "Do you follow a structured eating plan or experiment with fasting?",
-            colorHex = "#FFD9B5",
-            options = listOf(
-                AvoidOptionDefinition("nutrition_diet_keto", "Keto", "🥑 "),
-                AvoidOptionDefinition("nutrition_diet_dash", "DASH", "💧 "),
-                AvoidOptionDefinition("nutrition_diet_paleo", "Paleo", "🥩 "),
-                AvoidOptionDefinition("nutrition_diet_mediterranean", "Mediterranean", "🫒 "),
-                AvoidOptionDefinition("nutrition_diet_whole30", "Whole30", "🥗 "),
-                AvoidOptionDefinition("nutrition_diet_fasting", "Fasting", "🕑 "),
-                AvoidOptionDefinition("nutrition_diet_other", "Other", "✏️ ")
-            )
-        )
-    )
+    /** Nutrition stacked cards from dynamic JSON "nutrition" step. */
+    val nutritionCards: List<AvoidCardDefinition>
+        get() {
+            dynamicSteps()?.find { it.id == "nutrition" }?.content?.subSteps?.let { subSteps ->
+                return subSteps.map { sub ->
+                    AvoidCardDefinition(
+                        id = sub.id,
+                        title = sub.title,
+                        description = sub.description,
+                        colorHex = sub.color,
+                        options = (sub.options ?: emptyList()).map { o ->
+                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
+                        }
+                    )
+                }
+            }
+            return emptyList()
+        }
 
-    /**
-     * Static definition of cultural / regional food traditions used on the
-     * "Where does your IngrediFam draw its food traditions from?" step.
-     *
-     * Mirrors the iOS `regions` JSON structure (DynamicRegionsQuestionView),
-     * but reuses `ChipDefinition` for sub‑regions so selections behave like
-     * normal chips on Android.
-     */
-    val regions: List<RegionDefinition> = listOf(
-        RegionDefinition(
-            name = "India & South Asia",
-            subRegions = listOf(
-                ChipDefinition("region_india_ayurveda", "Ayurveda", "🌿  "),
-                ChipDefinition("region_india_hindu_traditions", "Hindu food traditions", "🕉  "),
-                ChipDefinition("region_india_jain_diet", "Jain diet", "🧘‍♂️ "),
-                ChipDefinition("region_india_other", "Other", "✏️  ")
-            )
-        ),
-        RegionDefinition(
-            name = "Africa",
-            subRegions = listOf(
-                ChipDefinition("region_africa_rastafarian_ital", "Rastafarian Ital diet", "🥗  "),
-                ChipDefinition("region_africa_ethiopian_orthodox", "Ethiopian Orthodox fasting", "🥖  "),
-                ChipDefinition("region_africa_other", "Other", "✏️  ")
-            )
-        ),
-        RegionDefinition(
-            name = "Middle East & Mediterranean",
-            subRegions = listOf(
-                ChipDefinition("region_middleeast_halal", "Halal (Islamic dietary laws)", "☪️ "),
-                ChipDefinition("region_middleeast_kosher", "Kosher (Jewish dietary laws)", "✡️ "),
-                ChipDefinition("region_middleeast_mediterranean", "Greek / Mediterranean diets", "🫒 "),
-                ChipDefinition("region_middleeast_other", "Other", "✏️  ")
-            )
-        ),
-        RegionDefinition(
-            name = "East Asia",
-            subRegions = listOf(
-                ChipDefinition("region_eastasia_tcm", "Traditional Chinese Medicine (TCM)", "🧧 "),
-                ChipDefinition("region_eastasia_buddhist_rules", "Buddhist food rules", "🧘 "),
-                ChipDefinition("region_eastasia_macrobiotic", "Japanese Macrobiotic diet", "🍙 "),
-                ChipDefinition("region_eastasia_other", "Other", "✏️  ")
-            )
-        ),
-        RegionDefinition(
-            name = "Western / Native traditions",
-            subRegions = listOf(
-                ChipDefinition("region_western_native_american", "Native American traditions", "🪶 "),
-                ChipDefinition("region_western_christian", "Christian traditions", "✝️ "),
-                ChipDefinition("region_western_other", "Other", "✏️  ")
-            )
-        ),
-        RegionDefinition(
-            name = "Seventh-day Adventist",
-            subRegions = listOf(
-                ChipDefinition("region_sda_seventh_day_adventist", "Seventh-day Adventist", "✝️ ")
-            )
-        ),
-        RegionDefinition(
-            name = "Other",
-            subRegions = listOf(
-                ChipDefinition("region_other_other", "Other", "✏️  ")
-            )
-        )
-    )
+    /** Cultural / regional food traditions from dynamic JSON "region" step. */
+    val regions: List<RegionDefinition>
+        get() {
+            dynamicSteps()?.find { it.id == "region" }?.content?.regions?.let { regs ->
+                return regs.map { r ->
+                    RegionDefinition(
+                        name = r.name,
+                        subRegions = r.subRegions.map { o ->
+                            ChipDefinition("${slug(r.name)}_${slug(o.name)}", o.name, o.icon + "  ")
+                        }
+                    )
+                }
+            }
+            return emptyList()
+        }
 
     /**
      * Resolves a chip id to its definition (label + emoji) from any step.
      * Used to display selected chips in the CapsuleSkeletonBox.
      */
     fun chipForId(id: String): ChipDefinition? {
-        for (step in 0..9) {
+        val steps = dynamicSteps()
+        val maxStep = (steps?.size ?: 0) - 1
+        for (step in 0..maxStep) {
             chipsForStep(step).find { it.id == id }?.let { return it }
         }
         return null
@@ -496,14 +225,30 @@ object OnboardingChipData {
         baseAvatarItems.firstOrNull { (id, _) -> id == avatarId }?.second
 
     /** Resolve chip id to display label for dietary preference sync; returns id if not found. */
-    fun labelForChipId(chipId: String): String =
-        (0..9).flatMap { chipsForStep(it) }.firstOrNull { it.id == chipId }?.label ?: chipId
+    fun labelForChipId(chipId: String): String {
+        val steps = dynamicSteps()
+        val maxStep = (steps?.size ?: 0) - 1
+        return (0..maxStep).flatMap { chipsForStep(it) }.firstOrNull { it.id == chipId }?.label ?: chipId
+    }
 
-    /** Step IDs in order (0..9), matching iOS dynamicJsonData.json for food-notes API. */
-    val foodNotesStepIds: List<String> = listOf(
-        "allergies", "intolerances", "healthConditions", "lifeStage", "region",
-        "avoid", "lifeStyle", "nutrition", "ethical", "taste"
-    )
+    /** Step IDs in order from dynamic JSON (food-notes API). */
+    val foodNotesStepIds: List<String>
+        get() = dynamicSteps()?.map { it.id } ?: emptyList()
+
+    /** Map step id to drawable for CapsuleStepperRow / section headers. */
+    fun iconResForStepId(stepId: String): Int = when (stepId) {
+        "allergies" -> R.drawable.ic_step_allergies
+        "intolerances" -> R.drawable.ic_step_intolerances
+        "healthConditions" -> R.drawable.ic_step_health_conditions
+        "lifeStage" -> R.drawable.ic_step_life_style
+        "region" -> R.drawable.ic_step_region
+        "avoid" -> R.drawable.ic_step_avoid_cross
+        "lifeStyle" -> R.drawable.ic_step_diet_preferences
+        "nutrition" -> R.drawable.ic_step_meals
+        "ethical" -> R.drawable.ic_step_ethical
+        "taste" -> R.drawable.iconoir_chocolate
+        else -> R.drawable.ic_step_allergies
+    }
 
     /**
      * Build food-notes API content from a set of selected chip IDs (for one member or Everyone).
@@ -512,8 +257,9 @@ object OnboardingChipData {
     fun buildFoodNotesContentFromChipIds(chipIds: Set<String>): Map<String, List<Map<String, String>>> {
         if (chipIds.isEmpty()) return emptyMap()
         val content = mutableMapOf<String, MutableList<Map<String, String>>>()
-        for (stepIndex in 0..9) {
-            val stepId = foodNotesStepIds.getOrNull(stepIndex) ?: continue
+        val stepIds = foodNotesStepIds
+        for (stepIndex in stepIds.indices) {
+            val stepId = stepIds.getOrNull(stepIndex) ?: continue
             val chips = chipsForStep(stepIndex)
             val selected = chips.filter { it.id in chipIds }.map { chip ->
                 mapOf(

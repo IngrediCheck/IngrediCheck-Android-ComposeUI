@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
+
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
@@ -66,8 +66,6 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
-import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
-import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.subtitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
 
@@ -501,7 +499,9 @@ private fun InviteCodeBox(
 @Composable
 internal fun SignInWhoIsThisForSheet(
     onBackClick: () -> Unit,
-    isLoading: Boolean,
+    isJustMeLoading: Boolean = false,
+    isAddFamilyLoading: Boolean = false,
+    isAuthLoading: Boolean = false,
     onJustMe: () -> Unit,
     onAddFamily: () -> Unit
 ) {
@@ -525,8 +525,8 @@ internal fun SignInWhoIsThisForSheet(
             modifier = Modifier.weight(1f),
             takeFullWidth = true,
             width = 0.dp,
-            isLoading = isLoading,
-            isDisabled = isLoading,
+            isLoading = isJustMeLoading,
+            isDisabled = isAuthLoading || isJustMeLoading,
             textColor = Greyscale150,
             borderColor = Greyscale40,
             textStyle = TextStyle(
@@ -544,8 +544,8 @@ internal fun SignInWhoIsThisForSheet(
             modifier = Modifier.weight(1f),
             takeFullWidth = true,
             width = 0.dp,
-            isLoading = isLoading,
-            isDisabled = isLoading,
+            isLoading = isAddFamilyLoading,
+            isDisabled = isAuthLoading || isAddFamilyLoading,
             textColor = Greyscale150,
             borderColor = Greyscale40,
             textStyle = TextStyle(

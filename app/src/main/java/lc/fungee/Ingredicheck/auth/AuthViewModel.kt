@@ -120,16 +120,20 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
      * - Each member id -> PUT family/members/{id}/food-notes
      */
     fun syncFoodNotesFromOnboarding(selectedAllergiesByMember: Map<String, Set<String>>) {
+        val keys = selectedAllergiesByMember.keys.toList()
+        Log.d("FoodNotesAPI", "FoodNotes API implementation: sync started, keys=${keys}, size=${selectedAllergiesByMember.size}")
         if (selectedAllergiesByMember.isEmpty()) {
-            Log.d("AuthDebug", "FoodNotes: skip sync (empty selections)")
+            Log.d("FoodNotesAPI", "FoodNotes API: skip sync (empty selections)")
             return
         }
         viewModelScope.launch {
             val accessToken = repository.accessTokenOrNull()
             if (accessToken.isNullOrBlank()) {
-                Log.w("AuthDebug", "FoodNotes: skip sync (no access token)")
+                Log.w("FoodNotesAPI", "FoodNotes API: skip sync (no access token)")
                 return@launch
             }
+            var successCount = 0
+            var failCount = 0
             for ((memberKey, chipIds) in selectedAllergiesByMember) {
                 if (chipIds.isEmpty()) continue
                 val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
@@ -151,15 +155,18 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 result.fold(
                     onSuccess = {
+                        successCount++
                         pushDebug("FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
-                        Log.d("AuthDebug", "FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
+                        Log.d("FoodNotesAPI", "FoodNotes API implementation: sync success ${if (isEveryone) "Everyone" else "member=$memberKey"} — working")
                     },
                     onFailure = { e ->
+                        failCount++
                         pushDebug("FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey} ${e.message}")
-                        Log.e("AuthDebug", "FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey}", e)
+                        Log.e("FoodNotesAPI", "FoodNotes API: sync error ${if (isEveryone) "Everyone" else memberKey}", e)
                     }
                 )
             }
+            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
         }
     }
 

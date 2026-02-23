@@ -197,7 +197,7 @@ internal fun AddAllergiesSheet(
     }
 
     AnimatedContent(
-        targetState = questionStepIndex.coerceIn(0, 9),
+        targetState = questionStepIndex.coerceIn(0, (OnboardingChipData.foodNotesStepIds.size - 1).coerceAtLeast(0)),
         label = "allergyQuestion",
         transitionSpec = {
             fadeIn(animationSpec = tween(durationMillis = 250)) togetherWith

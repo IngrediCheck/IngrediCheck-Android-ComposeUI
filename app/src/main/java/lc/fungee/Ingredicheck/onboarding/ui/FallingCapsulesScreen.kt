@@ -4,9 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +53,9 @@ fun FallingCapsulesScreen(
 ) {
     val bodies = remember { mutableStateListOf<CapsuleBody>() }
     // Ensure we use the provided seed, but it's generated once per composition
-    val rng = remember(seed) { Random(seed) }
+        val rng = remember(seed) { Random(seed) }
+        // One capsule per spec, shuffled so the order feels organic and non‑repeating.
+        val specs = remember(seed) { defaultCapsuleSpecs().shuffled(rng) }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val density = LocalDensity.current
@@ -72,20 +72,27 @@ fun FallingCapsulesScreen(
         containerH = heightPx
 
         var nextId by remember { mutableIntStateOf(0) }
+        var nextSpecIndex by remember { mutableIntStateOf(0) }
 
         // Spawn Loop
         LaunchedEffect(containerW, containerH, seed) {
             if (containerW <= 0f || containerH <= 0f) return@LaunchedEffect
             bodies.clear()
             nextId = 0
+            nextSpecIndex = 0
 
-            while (isActive && bodies.size < maxCapsules) {
+            // Only spawn as many capsules as we have unique specs.
+            val maxUnique = min(maxCapsules, specs.size)
+
+            while (isActive && bodies.size < maxUnique && nextSpecIndex < specs.size) {
                 // Anti-Stacking Rhythm: Add varied delay per chip
                 delay(spawnIntervalMs + rng.nextLong(0, 150))
-                
+
+                val spec = specs[nextSpecIndex++]
                 bodies.add(
                     createCapsule(
                         id = nextId++,
+                        spec = spec,
                         rng = rng,
                         containerW = containerW,
                         density = density
@@ -117,10 +124,12 @@ fun FallingCapsulesScreen(
                         for (i in bodies.indices) {
                             val b = bodies[i]
                             
-                            val effectiveGravity = if (b.isSettled) 0f else gravity
+                            // Simple gravity model similar to typical falling‑text demos:
+                            // each capsule accelerates downward with gravity scaled by its mass.
+                            val effectiveGravity = if (b.isSettled) 0f else gravity / b.mass
                             
                             // Flight Jitter: Subtle horizontal force to prevent towers
-                            val jitter = if (!b.isSettled) (rng.nextFloat() - 0.5f) * 120f else 0f
+                            val jitter = if (!b.isSettled) (rng.nextFloat() - 0.5f) * 80f else 0f
                             
                             val nextVy = b.vy + effectiveGravity * subDt
                             val nextVx = (b.vx + jitter * subDt) * 0.95f // Air friction
@@ -188,6 +197,7 @@ private data class CapsuleBody(
     val gradient: List<Color>,
     val w: Float,
     val h: Float,
+    val mass: Float,
     val x: Float,
     val y: Float,
     val vx: Float,
@@ -199,12 +209,13 @@ private data class CapsuleBody(
 
 private fun createCapsule(
     id: Int,
+    spec: CapsuleSpec,
     rng: Random,
     containerW: Float,
     density: Density
 ): CapsuleBody {
-    val specs = defaultCapsuleSpecs()
-    val spec = specs[rng.nextInt(specs.size)]
+    // Vary mass slightly per capsule so some fall / settle a bit differently.
+    val mass = 0.8f + rng.nextFloat() * 0.7f // 0.8 .. 1.5
 
     val widthDp = rng.nextInt(spec.minWidthDp.value.toInt(), spec.maxWidthDp.value.toInt() + 1).dp
     val heightDp = spec.heightDp
@@ -229,6 +240,7 @@ private fun createCapsule(
         gradient = spec.gradient,
         w = wPx,
         h = hPx,
+        mass = mass,
         x = startX,
         y = y,
         vx = vx,
@@ -246,9 +258,9 @@ private fun resolveCollisions(
     val restitution = 0.05f 
     val settleThreshold = 160f
 
-    for (i in bodies.indices) {
+    bodies.indices.forEach { i ->
         val b = bodies[i]
-        
+
         // Floor
         if (b.y + b.h > containerH) {
             if (!b.hasBounced && abs(b.vy) > settleThreshold) {
@@ -323,18 +335,19 @@ private data class CapsuleSpec(
 
 private fun defaultCapsuleSpecs(): List<CapsuleSpec> {
     return listOf(
-        CapsuleSpec("Mediterranean", listOf(Color(0xFFF6A54F), Color(0xFFF07A2D)), 150.dp, 190.dp, 38.dp),
-        CapsuleSpec("Dairy Free", listOf(Color(0xFF8D6BFF), Color(0xFF6A4BFF)), 120.dp, 155.dp, 38.dp),
-        CapsuleSpec("Organic Only", listOf(Color(0xFFFF6D77), Color(0xFFFF3D4E)), 130.dp, 170.dp, 38.dp),
-        CapsuleSpec("Low Fat", listOf(Color(0xFF7FE0FF), Color(0xFF4BC7F8)), 110.dp, 140.dp, 38.dp),
-        CapsuleSpec("High Protein", listOf(Color(0xFF4FA0FF), Color(0xFF297BFF)), 140.dp, 175.dp, 38.dp),
-        CapsuleSpec("Paleo", listOf(Color(0xFFFF8A65), Color(0xFFFF7043)), 95.dp, 125.dp, 38.dp),
-        CapsuleSpec("Low Sugar", listOf(Color(0xFFFFB74D), Color(0xFFFF9800)), 115.dp, 150.dp, 38.dp),
-        CapsuleSpec("Vegetarian", listOf(Color(0xFF9CCC65), Color(0xFF7CB342)), 120.dp, 155.dp, 38.dp),
-        CapsuleSpec("Gluten", listOf(Color(0xFFFFA726), Color(0xFFFF8F00)), 95.dp, 125.dp, 38.dp),
-        CapsuleSpec("Celery", listOf(Color(0xFF66BB6A), Color(0xFF43A047)), 95.dp, 125.dp, 38.dp),
-        CapsuleSpec("Molluscs", listOf(Color(0xFFFF8A80), Color(0xFFFF5252)), 110.dp, 145.dp, 38.dp),
-        CapsuleSpec("Heart Health", listOf(Color(0xFFFF8DA1), Color(0xFFFF5D7E)), 135.dp, 175.dp, 38.dp)
+        // Order and labels (including emoji) match iOS ChipCategory list.
+            CapsuleSpec("🫒   Mediterranean", listOf(Color(0xFFF6A54F), Color(0xFFF07A2D)), 150.dp, 190.dp, 38.dp),
+        CapsuleSpec("🥛   Dairy Free", listOf(Color(0xFF8D6BFF), Color(0xFF6A4BFF)), 120.dp, 155.dp, 38.dp),
+        CapsuleSpec("🍃   Organic Only", listOf(Color(0xFFFF6D77), Color(0xFFFF3D4E)), 130.dp, 170.dp, 38.dp),
+        CapsuleSpec("🥩   Paleo", listOf(Color(0xFFFF8A65), Color(0xFFFF7043)), 95.dp, 125.dp, 38.dp),
+        CapsuleSpec("🍓   Low Sugar", listOf(Color(0xFFFFB74D), Color(0xFFFF9800)), 115.dp, 150.dp, 38.dp),
+        CapsuleSpec("🥦   Vegetarian", listOf(Color(0xFF9CCC65), Color(0xFF7CB342)), 120.dp, 155.dp, 38.dp),
+        CapsuleSpec("🫀   Heart Health", listOf(Color(0xFFFF8DA1), Color(0xFFFF5D7E)), 135.dp, 175.dp, 38.dp),
+        CapsuleSpec("🐚   Molluscs", listOf(Color(0xFFFF8A80), Color(0xFFFF5252)), 110.dp, 145.dp, 38.dp),
+        CapsuleSpec("🍗   High Protein", listOf(Color(0xFF4FA0FF), Color(0xFF297BFF)), 140.dp, 175.dp, 38.dp),
+        CapsuleSpec("🥬   Celery", listOf(Color(0xFF66BB6A), Color(0xFF43A047)), 95.dp, 125.dp, 38.dp),
+        CapsuleSpec("🥑   Low Fat", listOf(Color(0xFF7FE0FF), Color(0xFF4BC7F8)), 110.dp, 140.dp, 38.dp),
+        CapsuleSpec("🌾   Gluten", listOf(Color(0xFFFFA726), Color(0xFFFF8F00)), 95.dp, 125.dp, 38.dp)
     )
 }
 
@@ -360,12 +373,7 @@ private fun CapsuleChip(
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(Color(0x33000000), RoundedCornerShape(percent = 50))
-            )
-            Spacer(modifier = Modifier.size(10.dp))
+
             Text(
                 text = body.label,
                 color = Color.White,

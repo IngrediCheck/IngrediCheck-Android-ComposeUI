@@ -15,7 +15,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.isSuccess
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
+
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -92,20 +92,24 @@ class FoodNotesRepository {
             val body = response.bodyAsText()
             when {
                 response.status.value == 404 -> {
-                    Log.d(TAG, "fetchFoodNotesAll: 404, no notes yet")
+                    Log.d(TAG, "FoodNotes API: fetchFoodNotesAll 404, no notes yet")
                     return@runCatching null
                 }
                 body.isBlank() || body.trim() == "null" -> {
-                    Log.d(TAG, "fetchFoodNotesAll: null/empty body")
+                    Log.d(TAG, "FoodNotes API: fetchFoodNotesAll null/empty body")
                     return@runCatching null
                 }
                 !response.status.isSuccess() -> {
-                    Log.e(TAG, "fetchFoodNotesAll: failed ${response.status.value} $body")
+                    Log.e(TAG, "FoodNotes API: fetchFoodNotesAll failed ${response.status.value} $body")
                     throw IllegalStateException("GET failed: ${response.status.value}")
                 }
-                else -> json.decodeFromString<FoodNotesAllResponse>(body)
+                else -> {
+                    val parsed = json.decodeFromString<FoodNotesAllResponse>(body)
+                    Log.d(TAG, "FoodNotes API implementation: fetchFoodNotesAll success — data loaded")
+                    parsed
+                }
             }
-        }.onFailure { e -> Log.e(TAG, "fetchFoodNotesAll: error", e) }
+        }.onFailure { e -> Log.e(TAG, "FoodNotes API: fetchFoodNotesAll error", e) }
     }
 
     /**
@@ -120,7 +124,7 @@ class FoodNotesRepository {
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/food-notes")
-        Log.d(TAG, "updateFamilyFoodNotes: PUT $url version=$version")
+        Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes PUT $url version=$version")
         return runCatching {
             val body = json.encodeToString(FoodNotesUpdateRequest(requestContent, version))
             val response: HttpResponse = client.put(url) {
@@ -129,7 +133,10 @@ class FoodNotesRepository {
                 setBody(body)
             }
             val responseBody = response.bodyAsText()
-            Log.d(TAG, "updateFamilyFoodNotes: status=${response.status.value}")
+            if (response.status.isSuccess()) {
+                Log.d(TAG, "FoodNotes API implementation: updateFamilyFoodNotes success (Everyone) — working")
+            }
+            Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes status=${response.status.value}")
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {
@@ -159,7 +166,7 @@ class FoodNotesRepository {
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/members/$memberId/food-notes")
-        Log.d(TAG, "updateMemberFoodNotes: PUT $url version=$version")
+        Log.d(TAG, "FoodNotes API: updateMemberFoodNotes PUT $url version=$version")
         return runCatching {
             val body = json.encodeToString(FoodNotesUpdateRequest(requestContent, version))
             val response: HttpResponse = client.put(url) {
@@ -168,7 +175,10 @@ class FoodNotesRepository {
                 setBody(body)
             }
             val responseBody = response.bodyAsText()
-            Log.d(TAG, "updateMemberFoodNotes: status=${response.status.value}")
+            if (response.status.isSuccess()) {
+                Log.d(TAG, "FoodNotes API implementation: updateMemberFoodNotes success (memberId=$memberId) — working")
+            }
+            Log.d(TAG, "FoodNotes API: updateMemberFoodNotes status=${response.status.value}")
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {

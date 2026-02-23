@@ -101,6 +101,7 @@ import lc.fungee.Ingredicheck.memoji.GetStatedScreen
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingPersistence
 import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.onboarding.data.DynamicStepsLoader
 import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
@@ -130,6 +131,24 @@ private fun shareInviteCode(context: Context, code: String) {
         putExtra(Intent.EXTRA_TEXT, msg)
     }
     context.startActivity(Intent.createChooser(shareIntent, "Invite"))
+}
+
+/** Builds the default "Bite Buddy" family request for the Just Me flow (matches iOS createBiteBuddyFamily). */
+private fun buildBiteBuddyFamilyRequest(): CreateFamilyRequest {
+    val selfId = java.util.UUID.randomUUID().toString()
+    val selfMember = FamilyMemberDto(
+        id = selfId,
+        name = "Bite Buddy",
+        color = "#FFFFBA",
+        joined = true,
+        invitePending = null,
+        imageFileHash = "memoji_3"
+    )
+    return CreateFamilyRequest(
+        name = "Bite Buddy",
+        selfMember = selfMember,
+        otherMembers = null
+    )
 }
 
 private fun buildCreateFamilyRequestFromMembers(
@@ -661,9 +680,11 @@ private fun FamilyOverviewBackground(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            painter = painterResource(id = R.drawable.pen_line_icon),
+                                            painter = painterResource(id = R.drawable.pen_line_icon) , tint = Greyscale150
+
+                                            ,
                                             contentDescription = null,
-                                            modifier = Modifier.size(10.dp)
+                                            modifier = Modifier.size(12.dp)
                                         )
                                     }
                                 }
@@ -803,6 +824,7 @@ fun OnboardingHost(
     val vm: OnboardingViewModel = viewModel(factory = factory)
     val step = vm.currentStep
     var isCreatingFamily by remember { mutableStateOf(false) }
+    var isCreatingBiteBuddyFamily by remember { mutableStateOf(false) }
     var isInviting by remember { mutableStateOf(false) }
     val isRestored = vm.isRestored
     val authState by authViewModel.state.collectAsState()
@@ -899,7 +921,12 @@ fun OnboardingHost(
     val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size, restoredMemberId) {
         mutableStateOf(restoredMemberId.ifBlank { EVERYONE_MEMBER_ID })
     }
-    val selectedAllergies = remember { mutableStateListOf<String>() }
+    // Initialize from restored state so first composition after restart shows correct chips (no wait for LaunchedEffect).
+    val selectedAllergies = remember(restoredSelections) {
+        mutableStateListOf<String>().apply {
+            addAll(restoredSelections.values.flatten().toSet())
+        }
+    }
     // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
     val selectedAllergiesByMember = remember(restoredSelections) {
         mutableStateMapOf<String, MutableSet<String>>().apply {
@@ -911,8 +938,11 @@ fun OnboardingHost(
     }
     // Bump on every chip toggle so the sheet reliably recomposes (workaround for SnapshotStateMap).
     var allergySelectionRevision by remember { mutableStateOf(0) }
-    // Explicitly track selections for the active member to force sheet recomposition
-    var activeMemberSelections by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Initialize from restored state so bottom sheet shows correct selections on first composition after restart.
+    val activeKeyRestored = restoredMemberId.ifBlank { EVERYONE_MEMBER_ID }
+    var activeMemberSelections by remember(restoredSelections, activeKeyRestored) {
+        mutableStateOf(restoredSelections[activeKeyRestored] ?: emptySet())
+    }
 
     // Rebuild flat union + active member selections from the restored map so UI shows the
     // same selected chips immediately after an app restart.
@@ -939,19 +969,18 @@ fun OnboardingHost(
 
     // Progress tracking within the fine‑tune flow (allergies, intolerances, etc.)
     // These same steps drive both the CapsuleStepperRow and the AnimatedProgressLine.
-    val allergySteps = remember {
-        listOf(
-            CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
-            CapsuleStep("intolerances", "Intolerances", R.drawable.ic_step_intolerances),
-            CapsuleStep("health_conditions", "Health Conditions", R.drawable.ic_step_health_conditions),
-            CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
-            CapsuleStep("region", "Region", R.drawable.ic_step_region),
-            CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
-            CapsuleStep("life_style", "Life Style", R.drawable.ic_step_diet_preferences),
-            CapsuleStep("nutrition", "Nutrition", R.drawable.ic_step_meals),
-            CapsuleStep("ethical", "Ethical", R.drawable.ic_step_ethical),
-            CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
-        )
+    // Load dynamic JSON from assets (same as iOS) so step order/copy can be driven from dynamicJsonData.json.
+    var dynamicStepsLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        DynamicStepsLoader.ensureLoaded(context)
+        dynamicStepsLoaded = true
+    }
+    val allergySteps = remember(dynamicStepsLoaded) {
+        val steps = DynamicStepsLoader.getSteps()?.map { s ->
+            CapsuleStep(s.id, s.header.name, OnboardingChipData.iconResForStepId(s.id))
+        } ?: emptyList()
+        Log.d("DynamicJsonData", "JSON data: UI using ${steps.size} steps from dynamicJsonData.json (same after restart)")
+        steps
     }
 
     // Restore allergy step index (moved after allergySteps definition)
@@ -1107,7 +1136,7 @@ fun OnboardingHost(
                     }
                     5 -> {
                         FallingCapsulesScreen(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().background(Color.White),
                             bottomInset = sheetHeight
                         )
                     }
@@ -1117,6 +1146,7 @@ fun OnboardingHost(
                                 .fillMaxSize()
                                 .background(Color(0xFFF2F2F7))
                         ) {
+                            if (dynamicStepsLoaded && allergySteps.isNotEmpty()) {
                             Column(
                                 modifier = Modifier.fillMaxSize()
                             ) {
@@ -1175,8 +1205,9 @@ fun OnboardingHost(
                                         selectedAllergies.any { it in stepChipIds }
                                     }
                                 } else {
-                                    // No selections yet – show all steps as empty placeholders.
-                                    (0..maxStepIndex).toList()
+                                    // No selections yet – show only a few empty placeholders so the list is not scroll-heavy.
+                                    val upper = minOf(maxStepIndex, 3)
+                                    (0..upper).toList()
                                 }
 
                                 val cardsListState = rememberLazyListState()
@@ -1206,7 +1237,8 @@ fun OnboardingHost(
                                         .weight(1f, fill = false),
                                     state = cardsListState,
                                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(horizontal = 20.dp)
+                                    contentPadding = PaddingValues(horizontal = 20.dp),
+                                    userScrollEnabled = hasAnySelections
                                 ) {
                                     items(cardSteps) { stepIndex ->
                                         val stepChipIds = OnboardingChipData
@@ -1252,18 +1284,68 @@ fun OnboardingHost(
                                             }
                                         )
                                     }
+
+                                    // When there are selections, add a bit of bottom spacing so the list
+                                    // has room to scroll and bring the current step's card toward the top.
+                                    if (hasAnySelections) {
+                                        item {
+                                            // Extra bottom space so later steps (e.g., Ethical, Taste)
+                                            // have enough scroll range to move toward the top.
+                                            Spacer(modifier = Modifier.height(140.dp))
+                                        }
+                                    }
                                 }
 
-                                // When user switches steps, auto-scroll so that step's card is visible.
-                                LaunchedEffect(allergyStepIndex, cardSteps) {
-                                    if (cardSteps.isEmpty()) return@LaunchedEffect
+                                // When user switches steps, auto-scroll so that the *current* step's card
+                                // is visible – but only starting from Health Conditions and only after
+                                // the user has actually selected chips for that step.
+                                LaunchedEffect(allergyStepIndex, cardSteps, hasAnySelections, allergySelectionRevision) {
+                                    if (!hasAnySelections || cardSteps.isEmpty()) return@LaunchedEffect
 
-                                    // Map the active step index to its position in the list.
-                                    val targetStep = allergyStepIndex.coerceIn(0, 3)
-                                    val targetIndex = cardSteps.indexOf(targetStep)
+                                    val layoutInfo = cardsListState.layoutInfo
+                                    // If everything fits in the viewport (all items visible), there's no scroll range.
+                                    if (layoutInfo.totalItemsCount <= layoutInfo.visibleItemsInfo.size) {
+                                        return@LaunchedEffect
+                                    }
+
+                                    // Find the index of the Health Conditions step from dynamic JSON.
+                                    val healthConditionsIndex = allergySteps.indexOfFirst { it.id == "healthConditions" }
+                                        .takeIf { it >= 0 } ?: 2
+
+                                    // When we're still early in the flow (only Allergies/Intolerances filled),
+                                    // keep the list static. But if the user has already progressed to later
+                                    // steps (Health Conditions or beyond) and then taps back on a capsule
+                                    // like Allergies or Intolerances, allow scrolling back down to those cards.
+                                    val hasLaterCards = cardSteps.any { it >= healthConditionsIndex }
+                                    if (allergyStepIndex < healthConditionsIndex && !hasLaterCards) {
+                                        return@LaunchedEffect
+                                    }
+
+                                    val clampedStep = allergyStepIndex.coerceIn(0, allergySteps.lastIndex)
+
+                                    // Only scroll when the current step actually has selected chips,
+                                    // so we don't auto-scroll for an empty placeholder card.
+                                    val currentStepChipIds = OnboardingChipData
+                                        .chipsForStep(clampedStep)
+                                        .map { it.id }
+                                        .toSet()
+                                    val stepHasSelection = selectedAllergies.any { it in currentStepChipIds }
+                                    if (!stepHasSelection) return@LaunchedEffect
+
+                                    // Map the active step index to its position in the filtered card list.
+                                    val targetIndex = cardSteps.indexOf(clampedStep)
                                     if (targetIndex >= 0) {
                                         cardsListState.animateScrollToItem(targetIndex)
                                     }
+                                }
+                            }
+                            } else {
+                                // Don't render stepper/cards until dynamic JSON is loaded so restored selections are visible.
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
                                 }
                             }
                         }
@@ -1292,6 +1374,17 @@ fun OnboardingHost(
                             )
                         }
                         OnboardingStep.ADD_FAMILY_ALLERGIES -> {
+                            if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
+                                // Don't show sheet content until steps are loaded so chips and question are visible (e.g. after restart).
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
                             // Compute per-member selections for the bottom sheet:
                             // the sheet should reflect ONLY what the currently selected member
                             // (or Everyone) has chosen, not the union across all members.
@@ -1425,6 +1518,7 @@ fun OnboardingHost(
                                     questionStepIndex = allergyStepIndex
                                 )
                             }
+                            }
                         }
                         OnboardingStep.SIGN_IN_INITIAL -> {
                             SignInInitialSheet(
@@ -1503,12 +1597,31 @@ fun OnboardingHost(
                         OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
                             SignInWhoIsThisForSheet(
                                 onBackClick = handleBack,
-                                isLoading = isAuthLoading,
+                                isJustMeLoading = isCreatingBiteBuddyFamily,
+                                isAddFamilyLoading = false,
+                                isAuthLoading = isAuthLoading,
                                 onJustMe = {
-                                    Log.d("OnboardingHost", "Just Me: Navigating to FALLING_CAPSULES")
+                                    Log.d("OnboardingHost", "Just Me: Creating Bite Buddy family then navigating to FALLING_CAPSULES")
                                     authViewModel.debugLogCurrentSession("Just Me clicked")
-                                    // Navigate to FALLING_CAPSULES - signInAsGuest will be handled in LaunchedEffect
-                                    vm.navigateTo(OnboardingStep.FALLING_CAPSULES)
+                                    isCreatingBiteBuddyFamily = true
+                                    val req = buildBiteBuddyFamilyRequest()
+                                    authViewModel.createFamily(req) { result ->
+                                        isCreatingBiteBuddyFamily = false
+                                        result.fold(
+                                            onSuccess = {
+                                                Log.d("OnboardingHost", "Just Me: Bite Buddy family created, navigating to FALLING_CAPSULES")
+                                                vm.navigateTo(OnboardingStep.FALLING_CAPSULES)
+                                            },
+                                            onFailure = { e ->
+                                                Log.e("OnboardingHost", "Just Me: createFamily (Bite Buddy) failed", e)
+                                                Toast.makeText(
+                                                    context,
+                                                    e.localizedMessage ?: "Failed to create profile",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        )
+                                    }
                                 },
                                 onAddFamily = {
                                     authViewModel.debugLogCurrentSession("Add Family clicked")
