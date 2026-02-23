@@ -18,6 +18,9 @@ import lc.fungee.Ingredicheck.memoji.MemojiRepository
 import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
+import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
+import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
+import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 
 enum class AuthProvider {
     Google,
@@ -45,6 +48,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val memojiRepository = MemojiRepository()
     private val familyRepository = FamilyRepository()
     private val dietaryPreferenceRepository = DietaryPreferenceRepository()
+    private val foodNotesRepository = FoodNotesRepository()
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
@@ -106,6 +110,56 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     Log.e("AuthDebug", "DietaryPreference: sync error", e)
                 }
             )
+        }
+    }
+
+    /**
+     * Sync onboarding chip selections to food-notes API (per-member and Everyone), matching iOS.
+     * Called when user taps "All Set!" or completes the last preference step.
+     * - EVERYONE_MEMBER_ID ("ALL") -> PUT family/food-notes
+     * - Each member id -> PUT family/members/{id}/food-notes
+     */
+    fun syncFoodNotesFromOnboarding(selectedAllergiesByMember: Map<String, Set<String>>) {
+        if (selectedAllergiesByMember.isEmpty()) {
+            Log.d("AuthDebug", "FoodNotes: skip sync (empty selections)")
+            return
+        }
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                Log.w("AuthDebug", "FoodNotes: skip sync (no access token)")
+                return@launch
+            }
+            for ((memberKey, chipIds) in selectedAllergiesByMember) {
+                if (chipIds.isEmpty()) continue
+                val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
+                if (content.isEmpty()) continue
+                val isEveryone = memberKey == EVERYONE_MEMBER_ID || memberKey.isBlank()
+                val result = if (isEveryone) {
+                    foodNotesRepository.updateFamilyFoodNotes(
+                        accessToken = accessToken,
+                        content = content,
+                        version = 0
+                    )
+                } else {
+                    foodNotesRepository.updateMemberFoodNotes(
+                        accessToken = accessToken,
+                        memberId = memberKey.lowercase(),
+                        content = content,
+                        version = 0
+                    )
+                }
+                result.fold(
+                    onSuccess = {
+                        pushDebug("FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
+                        Log.d("AuthDebug", "FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
+                    },
+                    onFailure = { e ->
+                        pushDebug("FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey} ${e.message}")
+                        Log.e("AuthDebug", "FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey}", e)
+                    }
+                )
+            }
         }
     }
 

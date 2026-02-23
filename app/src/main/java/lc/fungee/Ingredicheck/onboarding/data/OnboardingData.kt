@@ -498,5 +498,34 @@ object OnboardingChipData {
     /** Resolve chip id to display label for dietary preference sync; returns id if not found. */
     fun labelForChipId(chipId: String): String =
         (0..9).flatMap { chipsForStep(it) }.firstOrNull { it.id == chipId }?.label ?: chipId
+
+    /** Step IDs in order (0..9), matching iOS dynamicJsonData.json for food-notes API. */
+    val foodNotesStepIds: List<String> = listOf(
+        "allergies", "intolerances", "healthConditions", "lifeStage", "region",
+        "avoid", "lifeStyle", "nutrition", "ethical", "taste"
+    )
+
+    /**
+     * Build food-notes API content from a set of selected chip IDs (for one member or Everyone).
+     * Matches iOS buildContentFromPreferences: step id -> list of { "name", "iconName" }.
+     */
+    fun buildFoodNotesContentFromChipIds(chipIds: Set<String>): Map<String, List<Map<String, String>>> {
+        if (chipIds.isEmpty()) return emptyMap()
+        val content = mutableMapOf<String, MutableList<Map<String, String>>>()
+        for (stepIndex in 0..9) {
+            val stepId = foodNotesStepIds.getOrNull(stepIndex) ?: continue
+            val chips = chipsForStep(stepIndex)
+            val selected = chips.filter { it.id in chipIds }.map { chip ->
+                mapOf(
+                    "name" to chip.label,
+                    "iconName" to (chip.iconPrefix.trim().ifEmpty { "" })
+                )
+            }
+            if (selected.isNotEmpty()) {
+                content[stepId] = selected.toMutableList()
+            }
+        }
+        return content
+    }
 }
 

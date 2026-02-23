@@ -28,4 +28,28 @@
    - `DietaryPreference`: GET/POST/PUT/DELETE and status/body length
    - `AuthDebug`: `DietaryPreference: syncing...`, `sync success id=...`, `sync failure...`, or `sync error...`
 
-Filter logcat by `DietaryPreference`, `OnboardingAllergies`, or `AuthDebug` to confirm it’s working.
+Filter logcat by `DietaryPreference`, `OnboardingAllergies`, or `AuthDebug` to confirm it's working.
+
+---
+
+## Food-notes API (per-member / Everyone) – matches iOS
+
+Onboarding chip selections are also synced to the **food-notes** API so that each family member (and "Everyone") has their own note on the backend, matching iOS behavior.
+
+1. **Endpoints**
+   - `PUT family/food-notes` (body: `{ "content": {...}, "version": 0 }`) → "Everyone" / family note
+   - `PUT family/members/{memberId}/food-notes` → one member's note
+   - `GET family/food-notes/all` → load all (family + members) for versions/cache
+
+2. **When we sync**
+   - Same as above: when the user taps "All Set!" or completes the last preference step.
+   - For each key in `selectedAllergiesByMember`: **ALL** → `updateFamilyFoodNotes`; member UUID → `updateMemberFoodNotes(memberId.lowercase(), ...)`.
+
+3. **Where it runs**
+   - **OnboardingHost**: Calls `authViewModel.syncFoodNotesFromOnboarding(...)` in both exit paths (with dietary preference sync).
+   - **AuthViewModel**: `syncFoodNotesFromOnboarding` builds content via `OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)` and calls `FoodNotesRepository` for each member/Everyone.
+   - **FoodNotesRepository**: PUT requests; on 409 retries once with `currentNote.version` or `version = 0`.
+
+4. **Logs**
+   - `FoodNotes`: updateFamilyFoodNotes, updateMemberFoodNotes, status and retries.
+   - `AuthDebug`: `FoodNotes: sync success Everyone` / `FoodNotes: sync success <memberId>`.

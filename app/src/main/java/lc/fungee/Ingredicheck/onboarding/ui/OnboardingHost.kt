@@ -63,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
 import kotlin.math.absoluteValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -125,7 +124,7 @@ private fun Context.findActivity(): Activity? = when (this) {
 }
 
 private fun shareInviteCode(context: Context, code: String) {
-    val msg = "You've been invited to join my IngrediCheck family.\n\nInvite code: $code"
+    val msg = "You've been invited to join my IngredientCheck family.\n\nInvite code: $code"
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, msg)
@@ -327,12 +326,12 @@ private fun FlowRowChips(
         val density = this
         val spacingX = with(density) { horizontalSpacing.roundToPx() }
         val spacingY = with(density) { verticalSpacing.roundToPx() }
-        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
+        val placeable = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
         val maxWidth = constraints.maxWidth
         var x = 0
         var y = 0
         var rowHeight = 0
-        val positions = placeables.map { p ->
+        val positions = placeable.map { p ->
             if (x > 0 && x + p.width > maxWidth) {
                 x = 0
                 y += rowHeight + spacingY
@@ -345,7 +344,7 @@ private fun FlowRowChips(
         }
         val totalHeight = (y + rowHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
         layout(maxWidth, totalHeight) {
-            placeables.forEachIndexed { i, p ->
+            placeable.forEachIndexed { i, p ->
                 val (px, py) = positions[i]
                 p.placeRelative(px, py)
             }
@@ -586,7 +585,7 @@ private fun FamilyOverviewBackground(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     val trimmedUrl = member.generatedAvatarUrl.trim()
-                                    val res = lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData.avatarResOrNull(member.avatarId.trim())
+                                    val res = OnboardingChipData.avatarResOrNull(member.avatarId.trim())
                                     when {
                                         trimmedUrl.isNotBlank() -> {
                                             SubcomposeAsyncImage(
@@ -619,7 +618,7 @@ private fun FamilyOverviewBackground(
                                         }
                                         res != null -> {
                                             Image(
-                                                painter = androidx.compose.ui.res.painterResource(id = res),
+                                                painter = painterResource(id = res),
                                                 contentDescription = null,
                                                 modifier = Modifier
                                                     .size(50.dp)
@@ -795,7 +794,7 @@ fun OnboardingHost(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val savedStateOwner = LocalSavedStateRegistryOwner.current
+    val savedStateOwner = androidx.savedstate.compose.LocalSavedStateRegistryOwner.current
     val persistence = remember(context) { OnboardingPersistence(context.applicationContext) }
     val factory = remember(savedStateOwner, persistence) {
         OnboardingViewModelFactory(owner = savedStateOwner, persistence = persistence)
@@ -807,7 +806,7 @@ fun OnboardingHost(
     var isInviting by remember { mutableStateOf(false) }
     val isRestored = vm.isRestored
     val authState by authViewModel.state.collectAsState()
-    val memojiState by authViewModel.memojiState.collectAsState()
+    val emojiState by authViewModel.memojiState.collectAsState()
     val isAuthLoading = authState is AuthState.Loading
     val currentFamily by authViewModel.currentFamily.collectAsState()
 
@@ -845,8 +844,8 @@ fun OnboardingHost(
         // - If we are on the generating screen and have a saved image URL with
         //   memojiGenerationCompleted == true, restore Success state.
         if (step == OnboardingStep.ADD_FAMILY_AVATAR_GENERATING) {
-            val currentMemoji = authViewModel.memojiState.value
-            if (currentMemoji is MemojiGenState.Idle && vm.memojiGenerationCompleted) {
+            val currentEmoji = authViewModel.memojiState.value
+            if (currentEmoji is MemojiGenState.Idle && vm.memojiGenerationCompleted) {
                 val url = vm.addFamilyGeneratedAvatarUrl.trim()
                 if (url.isNotBlank()) {
                     authViewModel.restoreMemojiSuccess(url)
@@ -1015,9 +1014,9 @@ fun OnboardingHost(
     }
 
     // Keep addFamilyGeneratedAvatarUrl in sync with memoji Success so it can be restored.
-    LaunchedEffect(memojiState) {
-        if (memojiState is MemojiGenState.Success) {
-            vm.addFamilyGeneratedAvatarUrl = (memojiState as MemojiGenState.Success).imageUrl
+    LaunchedEffect(emojiState) {
+        if (emojiState is MemojiGenState.Success) {
+            vm.addFamilyGeneratedAvatarUrl = (emojiState as MemojiGenState.Success).imageUrl
             vm.memojiGenerationCompleted = true
         }
     }
@@ -1406,6 +1405,7 @@ fun OnboardingHost(
                                                 val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
                                                 Log.d("OnboardingAllergies", "[DietaryPreference] onNext complete: syncing textLength=${preferenceText.length}")
                                                 authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
+                                                authViewModel.syncFoodNotesFromOnboarding(selectedAllergiesByMember.mapValues { it.value.toSet() })
                                                 showSummaryScreen = true
                                             }
                                         }
@@ -1416,6 +1416,7 @@ fun OnboardingHost(
                                         val preferenceText = buildDietaryPreferenceText(selectedAllergiesByMember)
                                         Log.d("OnboardingAllergies", "[DietaryPreference] onSkipPreferences: syncing textLength=${preferenceText.length}")
                                         authViewModel.syncDietaryPreferencesFromOnboarding(preferenceText)
+                                        authViewModel.syncFoodNotesFromOnboarding(selectedAllergiesByMember.mapValues { it.value.toSet() })
                                         showFineTuneDecision = false
                                         showSummaryScreen = true
                                     },
@@ -1810,7 +1811,7 @@ fun OnboardingHost(
 
                         OnboardingStep.ADD_FAMILY_AVATAR_GENERATING -> {
                             AddFamilyAvatarGeneratingSheet(
-                                state = memojiState,
+                                state = emojiState,
                                 selections = vm.addFamilyAvatarSelections,
                                 onBackClick = handleBack,
                                 onRetry = { authViewModel.generateAddFamilyMemoji(vm.addFamilyAvatarSelections) },
