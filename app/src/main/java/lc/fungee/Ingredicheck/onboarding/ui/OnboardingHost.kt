@@ -81,7 +81,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
-import kotlinx.coroutines.runBlocking
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
@@ -835,8 +834,14 @@ fun OnboardingHost(
     var sheetHeight by remember { mutableStateOf(0.dp) }
     var memberToInvite by remember { mutableStateOf<OnboardingViewModel.FamilyOverviewMember?>(null) }
 
+    // While onboarding state is still restoring from persistence, show a simple white screen
+    // instead of flashing the default GET_STARTED UI.
     if (!isRestored) {
-        Box(modifier = Modifier.fillMaxSize())
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        )
         return
     }
 
@@ -906,64 +911,69 @@ fun OnboardingHost(
     }
 
     // On first launch show "Everyone" as selected (ALL); user can switch to a member later.
-    // Restore allergy selections state from persistence (per‑member chip ids + active member + step index).
-    val (restoredSelections, restoredMemberId, restoredStepIndex) = remember {
-        runBlocking {
-            try {
-                persistence.getAllergySelectionsState()
-            } catch (e: Exception) {
-                Log.w("OnboardingAllergies", "[RESTORE] getAllergySelectionsState failed", e)
-                Triple(emptyMap<String, Set<String>>(), EVERYONE_MEMBER_ID, 0)
-            }
-        }
+    // Local state for allergy selections (restored asynchronously from DataStore).
+    val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size) {
+        mutableStateOf(EVERYONE_MEMBER_ID)
     }
-
-    val selectedAllergyMemberIdState = remember(vm.familyOverviewMembers.size, restoredMemberId) {
-        mutableStateOf(restoredMemberId.ifBlank { EVERYONE_MEMBER_ID })
-    }
-    // Initialize from restored state so first composition after restart shows correct chips (no wait for LaunchedEffect).
-    val selectedAllergies = remember(restoredSelections) {
-        mutableStateListOf<String>().apply {
-            addAll(restoredSelections.values.flatten().toSet())
-        }
+    val selectedAllergies = remember {
+        mutableStateListOf<String>()
     }
     // memberKey ("ALL" or member.id) -> set of chipIds selected for that member
-    val selectedAllergiesByMember = remember(restoredSelections) {
-        mutableStateMapOf<String, MutableSet<String>>().apply {
-            // Restore persisted selections
-            restoredSelections.forEach { (memberKey, chipIds) ->
-                this[memberKey] = chipIds.toMutableSet()
-            }
-        }
+    val selectedAllergiesByMember = remember {
+        mutableStateMapOf<String, MutableSet<String>>()
     }
     // Bump on every chip toggle so the sheet reliably recomposes (workaround for SnapshotStateMap).
     var allergySelectionRevision by remember { mutableStateOf(0) }
-    // Initialize from restored state so bottom sheet shows correct selections on first composition after restart.
-    val activeKeyRestored = restoredMemberId.ifBlank { EVERYONE_MEMBER_ID }
-    var activeMemberSelections by remember(restoredSelections, activeKeyRestored) {
-        mutableStateOf(restoredSelections[activeKeyRestored] ?: emptySet())
+    // Allergy step index (restored asynchronously below)
+    var allergyStepIndex by remember {
+        mutableStateOf(0)
+    }
+    // Active member's chip selections
+    var activeMemberSelections by remember {
+        mutableStateOf<Set<String>>(emptySet())
     }
 
-    // Rebuild flat union + active member selections from the restored map so UI shows the
-    // same selected chips immediately after an app restart.
-    LaunchedEffect(restoredSelections, restoredMemberId) {
-        if (restoredSelections.isNotEmpty()) {
-            val union = restoredSelections.values.flatten().toSet()
-            selectedAllergies.clear()
-            selectedAllergies.addAll(union)
-            val activeKey = restoredMemberId.ifBlank { EVERYONE_MEMBER_ID }
-            activeMemberSelections = restoredSelections[activeKey] ?: emptySet()
-            Log.d(
-                "OnboardingAllergies",
-                "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
-                    "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
-                    "union=$union activeMemberSelections=$activeMemberSelections"
-            )
-        } else {
-            Log.d(
-                "OnboardingAllergies",
-                "[RESTORE_APPLY] no restoredSelections found; keeping defaults"
-            )
+    // Restore allergy selections state from persistence (per‑member chip ids + active member + step index)
+    // without blocking the main thread.
+    LaunchedEffect(Unit) {
+        try {
+            val (restoredSelections, restoredMemberId, restoredStepIndex) =
+                persistence.getAllergySelectionsState()
+
+            if (restoredSelections.isNotEmpty()) {
+                // Update member id
+                val activeKey = restoredMemberId.ifBlank { EVERYONE_MEMBER_ID }
+                selectedAllergyMemberIdState.value = activeKey
+
+                // Rebuild per-member map
+                selectedAllergiesByMember.clear()
+                restoredSelections.forEach { (memberKey, chipIds) ->
+                    selectedAllergiesByMember[memberKey] = chipIds.toMutableSet()
+                }
+
+                // Rebuild flat union and active member selections
+                val union = restoredSelections.values.flatten().toSet()
+                selectedAllergies.clear()
+                selectedAllergies.addAll(union)
+                activeMemberSelections = restoredSelections[activeKey] ?: emptySet()
+
+                // Restore step index
+                allergyStepIndex = restoredStepIndex
+
+                Log.d(
+                    "OnboardingAllergies",
+                    "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
+                        "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
+                        "union=$union activeMemberSelections=$activeMemberSelections"
+                )
+            } else {
+                Log.d(
+                    "OnboardingAllergies",
+                    "[RESTORE_APPLY] no restoredSelections found; keeping defaults"
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("OnboardingAllergies", "[RESTORE] getAllergySelectionsState failed", e)
         }
     }
 
@@ -981,11 +991,6 @@ fun OnboardingHost(
         } ?: emptyList()
         Log.d("DynamicJsonData", "JSON data: UI using ${steps.size} steps from dynamicJsonData.json (same after restart)")
         steps
-    }
-
-    // Restore allergy step index (moved after allergySteps definition)
-    var allergyStepIndex by remember(restoredStepIndex) {
-        mutableStateOf(restoredStepIndex)
     }
 
     // Persist allergy selections whenever they change
@@ -1164,6 +1169,15 @@ fun OnboardingHost(
                                     animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
                                     label = "allergyProgress"
                                 )
+                                // Keep visited capsule highlight after relaunch by deriving furthest reached step from saved chip selections.
+                                val maxSelectedStepIndex = (0..allergySteps.lastIndex).lastOrNull { stepIndex ->
+                                    val stepChipIds = OnboardingChipData
+                                        .chipsForStep(stepIndex)
+                                        .map { it.id }
+                                        .toSet()
+                                    selectedAllergies.any { it in stepChipIds }
+                                } ?: 0
+                                val maxReachedAllergyStepIndex = maxOf(allergyStepIndex, maxSelectedStepIndex)
 
                                    AnimatedProgressLine(
                                        progress = animatedProgress,
@@ -1176,10 +1190,11 @@ fun OnboardingHost(
                                        CapsuleStepperRow(
                                            steps = allergySteps,
                                            activeIndex = allergyStepIndex,
+                                           maxReachedIndex = maxReachedAllergyStepIndex,
                                            onStepClick = { clickedIndex ->
                                                // Only allow jumping to steps the user has already visited.
                                                val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
-                                               if (clamped <= allergyStepIndex) {
+                                               if (clamped <= maxReachedAllergyStepIndex) {
                                                    allergyStepIndex = clamped
                                                    showFineTuneDecision = false
                                                }

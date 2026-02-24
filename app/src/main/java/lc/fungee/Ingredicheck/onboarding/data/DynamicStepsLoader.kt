@@ -2,6 +2,8 @@ package lc.fungee.Ingredicheck.onboarding.data
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.IOException
 
@@ -24,12 +26,18 @@ object DynamicStepsLoader {
     fun getSteps(): List<DynamicStep>? = cachedSteps
 
     /** Loads from assets if not yet loaded. Safe to call multiple times. */
-    fun ensureLoaded(context: Context): List<DynamicStep>? {
-        if (cachedSteps != null) {
-            Log.d(TAG, "JSON data: using cached steps (count=${cachedSteps!!.size}), already loaded — UI will use same data after restart")
-            return cachedSteps
+    suspend fun ensureLoaded(context: Context): List<DynamicStep>? {
+        // Fast path: already cached in memory.
+        cachedSteps?.let {
+            Log.d(TAG, "JSON data: using cached steps (count=${it.size}), already loaded — UI will use same data after restart")
+            return it
         }
-        val steps = loadFromAssets(context)
+
+        // Do disk I/O + JSON parsing on a background thread so we don't block the UI.
+        val steps = withContext(Dispatchers.IO) {
+            loadFromAssets(context)
+        }
+
         if (steps != null) {
             cachedSteps = steps
             Log.d(TAG, "JSON data: loaded successfully from assets. steps count=${steps.size}, stepIds=${steps.map { it.id }}")

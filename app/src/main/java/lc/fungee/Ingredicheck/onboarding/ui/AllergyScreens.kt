@@ -963,7 +963,7 @@ fun AvoidOptionChip(
                 fontFamily = Manrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
-                color = if (isSelected) Greyscale150 else Color(0xFF303030),
+                color = if (isSelected) Color.White else Greyscale150,
                 maxLines = 1
             )
         }
