@@ -80,6 +80,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
+import com.russhwolf.settings.BuildConfig
+
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
@@ -121,6 +123,7 @@ import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
 import lc.fungee.Ingredicheck.ui.theme.Primary800
+
 import kotlin.random.Random
 
 private fun Context.findActivity(): Activity? = when (this) {
@@ -130,7 +133,7 @@ private fun Context.findActivity(): Activity? = when (this) {
 }
 
 private fun shareInviteCode(context: Context, code: String) {
-    val msg = "You've been invited to join my IngredientCheck family.\n\nInvite code: $code"
+    val msg = "You've been invited to join my IngrediCheck family.\n\nInvite code: $code"
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, msg)
@@ -342,17 +345,21 @@ fun OnboardingHost(
                 // Restore step index
                 allergyStepIndex = restoredStepIndex
 
-                Log.d(
-                    "OnboardingAllergies",
-                    "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
-                        "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
-                        "union=$union activeMemberSelections=$activeMemberSelections"
-                )
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "OnboardingAllergies",
+                        "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
+                            "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
+                            "union=$union activeMemberSelections=$activeMemberSelections"
+                    )
+                }
             } else {
-                Log.d(
-                    "OnboardingAllergies",
-                    "[RESTORE_APPLY] no restoredSelections found; keeping defaults"
-                )
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "OnboardingAllergies",
+                        "[RESTORE_APPLY] no restoredSelections found; keeping defaults"
+                    )
+                }
             }
         } catch (e: Exception) {
             Log.w("OnboardingAllergies", "[RESTORE] getAllergySelectionsState failed", e)
@@ -367,11 +374,13 @@ fun OnboardingHost(
         DynamicStepsLoader.ensureLoaded(context)
         dynamicStepsLoaded = true
     }
-    val allergySteps = remember(dynamicStepsLoaded) {
+        val allergySteps = remember(dynamicStepsLoaded) {
         val steps = DynamicStepsLoader.getSteps()?.map { s ->
             CapsuleStep(s.id, s.header.name, OnboardingChipData.iconResForStepId(s.id))
         } ?: emptyList()
-        Log.d("DynamicJsonData", "JSON data: UI using ${steps.size} steps from dynamicJsonData.json (same after restart)")
+            if (BuildConfig.DEBUG) {
+                Log.d("DynamicJsonData", "JSON data: UI using ${steps.size} steps from dynamicJsonData.json (same after restart)")
+            }
         steps
     }
 
@@ -379,12 +388,14 @@ fun OnboardingHost(
     LaunchedEffect(selectedAllergiesByMember, selectedAllergyMemberIdState.value, allergyStepIndex) {
         if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val snapshot = selectedAllergiesByMember.mapValues { it.value.toSet() }
-            Log.d(
-                "OnboardingAllergies",
-                "[PERSIST_EFFECT] step=$step isRestored=$isRestored " +
-                    "selectedMember=${selectedAllergyMemberIdState.value} " +
-                    "stepIndex=$allergyStepIndex selections=$snapshot"
-            )
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "OnboardingAllergies",
+                    "[PERSIST_EFFECT] step=$step isRestored=$isRestored " +
+                        "selectedMember=${selectedAllergyMemberIdState.value} " +
+                        "stepIndex=$allergyStepIndex selections=$snapshot"
+                )
+            }
             persistence.setAllergySelectionsState(
                 selectedAllergiesByMember = snapshot,
                 selectedAllergyMemberId = selectedAllergyMemberIdState.value,

@@ -17,6 +17,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
+import com.russhwolf.settings.BuildConfig
+
 
 class AppleLoginWebViewActivity : ComponentActivity() {
 
@@ -71,8 +73,10 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                 .toString()
         }
 
-        Log.d("AppleWebView", "Starting Apple WebView auth. redirectUri=$redirectUri")
-        Log.d("AppleWebView", "Auth URL: ${sanitizeUrl(authUrl)}")
+        if (BuildConfig.DEBUG) {
+            Log.d("AppleWebView", "Starting Apple WebView auth. redirectUri=$redirectUri")
+            Log.d("AppleWebView", "Auth URL: ${sanitizeUrl(authUrl)}")
+        }
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(
@@ -98,7 +102,9 @@ class AppleLoginWebViewActivity : ComponentActivity() {
             val uri = Uri.parse(url)
             val resultIntent = Intent()
 
-            Log.d("AppleWebView", "Redirect detected: ${sanitizeUrl(url)}")
+            if (BuildConfig.DEBUG) {
+                Log.d("AppleWebView", "Redirect detected: ${sanitizeUrl(url)}")
+            }
 
             val error = uri.getQueryParameter("error")
             val errorDescription = uri.getQueryParameter("error_description")
@@ -146,7 +152,9 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                     return true
                 }
                 if (url != null) {
-                    Log.d("AppleWebView", "Navigating: ${sanitizeUrl(url)}")
+                    if (BuildConfig.DEBUG) {
+                        Log.d("AppleWebView", "Navigating: ${sanitizeUrl(url)}")
+                    }
                 }
                 return false
             }
@@ -158,21 +166,27 @@ class AppleLoginWebViewActivity : ComponentActivity() {
                     return true
                 }
 
-                Log.d("AppleWebView", "Navigating: ${sanitizeUrl(url)}")
+                if (BuildConfig.DEBUG) {
+                    Log.d("AppleWebView", "Navigating: ${sanitizeUrl(url)}")
+                }
                 return false
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 if (url != null) {
-                    Log.d("AppleWebView", "Page started: ${sanitizeUrl(url)}")
+                    if (BuildConfig.DEBUG) {
+                        Log.d("AppleWebView", "Page started: ${sanitizeUrl(url)}")
+                    }
                 }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 if (url != null) {
-                    Log.d("AppleWebView", "Page finished: ${sanitizeUrl(url)}")
+                    if (BuildConfig.DEBUG) {
+                        Log.d("AppleWebView", "Page finished: ${sanitizeUrl(url)}")
+                    }
                 }
             }
 

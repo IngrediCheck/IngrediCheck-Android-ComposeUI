@@ -12,10 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import com.russhwolf.settings.BuildConfig
 import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.family.CreateFamilyRequest
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
+
 
 /**
  * UI overlay and bottom sheet for inviting a family member.
@@ -78,7 +80,9 @@ internal fun runInviteFlow(
     onDismiss: () -> Unit
 ) {
     setInviting(true)
-    Log.d("OnboardingHost", "Invite confirmed for memberId=${member.id}, name=${member.name}")
+    if (BuildConfig.DEBUG) {
+        Log.d("OnboardingHost", "Invite confirmed for memberId=${member.id}, name=${member.name}")
+    }
 
     if (currentFamily != null) {
         authViewModel.inviteFamilyMember(member.id) { result ->

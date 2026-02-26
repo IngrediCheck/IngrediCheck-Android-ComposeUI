@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.russhwolf.settings.BuildConfig
 import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +22,7 @@ import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
 import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+
 
 enum class AuthProvider {
     Google,
@@ -65,7 +67,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private fun pushDebug(message: String) {
         val line = "${System.currentTimeMillis()} | $message"
         _debugLog.value = (_debugLog.value + line).takeLast(60)
-        Log.d("AuthDebug", message)
+        if (BuildConfig.DEBUG) {
+            Log.d("AuthDebug", message)
+        }
     }
 
     /**
@@ -75,7 +79,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun syncDietaryPreferencesFromOnboarding(preferenceText: String) {
         if (preferenceText.isBlank()) {
-            Log.d("AuthDebug", "DietaryPreference: skip sync (empty text)")
+            if (BuildConfig.DEBUG) {
+                Log.d("AuthDebug", "DietaryPreference: skip sync (empty text)")
+            }
             return
         }
         viewModelScope.launch {
@@ -97,7 +103,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     when (validationResult) {
                         is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Success -> {
                             pushDebug("DietaryPreference: sync success id=${validationResult.preference.id}")
-                            Log.d("AuthDebug", "DietaryPreference: sync success id=${validationResult.preference.id}")
+                            if (BuildConfig.DEBUG) {
+                                Log.d("AuthDebug", "DietaryPreference: sync success id=${validationResult.preference.id}")
+                            }
                         }
                         is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Failure -> {
                             pushDebug("DietaryPreference: sync failure ${validationResult.explanation}")
@@ -121,9 +129,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun syncFoodNotesFromOnboarding(selectedAllergiesByMember: Map<String, Set<String>>) {
         val keys = selectedAllergiesByMember.keys.toList()
-        Log.d("FoodNotesAPI", "FoodNotes API implementation: sync started, keys=${keys}, size=${selectedAllergiesByMember.size}")
+        if (BuildConfig.DEBUG) {
+            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync started, keys=${keys}, size=${selectedAllergiesByMember.size}")
+        }
         if (selectedAllergiesByMember.isEmpty()) {
-            Log.d("FoodNotesAPI", "FoodNotes API: skip sync (empty selections)")
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotes API: skip sync (empty selections)")
+            }
             return
         }
         viewModelScope.launch {
@@ -157,7 +169,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     onSuccess = {
                         successCount++
                         pushDebug("FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
-                        Log.d("FoodNotesAPI", "FoodNotes API implementation: sync success ${if (isEveryone) "Everyone" else "member=$memberKey"} — working")
+                        if (BuildConfig.DEBUG) {
+                            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync success ${if (isEveryone) "Everyone" else "member=$memberKey"} — working")
+                        }
                     },
                     onFailure = { e ->
                         failCount++
@@ -166,7 +180,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 )
             }
-            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
+            }
         }
     }
 

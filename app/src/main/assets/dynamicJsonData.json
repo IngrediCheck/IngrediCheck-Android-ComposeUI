@@ -170,7 +170,7 @@
             "icon": "🫀"
           },
           {
-            "name": "PKU (phenyalanine-sensitive)",
+            "name": "PKU (phenylalanine-sensitive)",
             "icon": "🧬"
           },
           {
@@ -214,7 +214,7 @@
             "icon": "👶"
           },
           {
-            "name": "Toddler pickey-eating adaptations",
+            "name": "Toddler picky-eating adaptations",
             "icon": "🙄"
           },
           {
@@ -413,7 +413,7 @@
                 "icon": "🌴"
               },
               {
-                "name": "Corn / High-frectose corn syrup",
+                "name": "Corn / High-fructose corn syrup",
                 "icon": "🌽"
               }
             ]
@@ -504,7 +504,7 @@
                 "icon": "🌽"
               },
               {
-                "name": "Stevia ? Monk fruit",
+                "name": "Stevia / Monk fruit",
                 "icon": "🍈"
               }
             ]
@@ -692,7 +692,7 @@
           {
             "id": "nutrition_diet_frameworks_patterns",
             "title": "Diet Frameworks & Patterns",
-            "description": "Do you follow a structured eating pan or experiment with fasting?",
+            "description": "Do you follow a structured eating plan or experiment with fasting?",
             "color": "#FFD9B5",
             "bgImageUrl": "leaf-recycle",
             "options": [
