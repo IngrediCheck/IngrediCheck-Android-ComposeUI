@@ -71,7 +71,7 @@ val GrayScale150 = Color(0xFF303030)
 
 val Greyscale40 = GrayScale40
 val Greyscale50 = GrayScale50
-val Greyscale60 = GrayScale60
+  val Greyscale60 = GrayScale60
 val Greyscale70 = GrayScale70
 val Greyscale80 = GrayScale80
 val Greyscale90 = GrayScale90

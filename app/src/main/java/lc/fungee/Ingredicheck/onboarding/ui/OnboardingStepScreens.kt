@@ -1334,6 +1334,14 @@ private fun AddFamilyAllergiesFullPreview_Pixel8Pro() {
                     }
                 },
                 onNext = { },
+                onSkipPreferences = { },
+                showFineTuneDecision = false,
+                showSummaryScreen = false,
+                hasOtherSelection = selectedAllergiesState.any { it.contains("other", ignoreCase = true) },
+                showChatBotIntro = false,
+                showChatConversation = false,
+                onChatBotLetsGo = {},
+                onChatSkip = {},
                 questionStepIndex = 0
             )
         }

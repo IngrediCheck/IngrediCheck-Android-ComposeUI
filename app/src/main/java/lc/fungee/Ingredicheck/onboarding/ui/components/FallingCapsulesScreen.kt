@@ -1,12 +1,14 @@
-    package lc.fungee.Ingredicheck.onboarding.ui
+package lc.fungee.Ingredicheck.onboarding.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,7 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.random.Random
 
 /**
@@ -44,11 +48,11 @@ import kotlin.random.Random
  */
 @Composable
 fun FallingCapsulesScreen(
-    modifier: Modifier = Modifier,
-    seed: Int = remember { Random.nextInt() },
+    modifier: Modifier = Modifier.Companion,
+    seed: Int = remember { Random.Default.nextInt() },
     spawnIntervalMs: Long = 280L, // Slightly faster spawn
     maxCapsules: Int = 22, // More capsules to fill the bottom
-    gravity: Float = 3200f,
+    gravity: Float = 2800f,
     bottomInset: Dp = 0.dp
 ) {
     val bodies = remember { mutableStateListOf<CapsuleBody>() }
@@ -115,28 +119,19 @@ fun FallingCapsulesScreen(
                     val dt = ((now - lastNanos).coerceAtMost(32_000_000L)) / 1_000_000_000f
                     lastNanos = now
 
-                    // Sub-stepping for stability
-                    val steps = 4
+                    // Sub-stepping for stability (more steps = smoother, less stuck/vibrate)
+                    val steps = 6
                     val subDt = dt / steps
-                    
+
                     repeat(steps) {
-                        // 1. Apply Gravity & Movement
+                        // 1. Apply gravity and integrate (no random jitter – like iOS SpriteKit)
                         for (i in bodies.indices) {
                             val b = bodies[i]
-                            
-                            // Simple gravity model similar to typical falling‑text demos:
-                            // each capsule accelerates downward with gravity scaled by its mass.
                             val effectiveGravity = if (b.isSettled) 0f else gravity / b.mass
-                            
-                            // Flight Jitter: Subtle horizontal force to prevent towers
-                            val jitter = if (!b.isSettled) (rng.nextFloat() - 0.5f) * 80f else 0f
-                            
                             val nextVy = b.vy + effectiveGravity * subDt
-                            val nextVx = (b.vx + jitter * subDt) * 0.95f // Air friction
-                            
+                            val nextVx = b.vx * 0.98f // light air friction only
                             val nextX = b.x + nextVx * subDt
                             val nextY = b.y + nextVy * subDt
-
                             bodies[i] = b.copy(
                                 x = nextX,
                                 y = nextY,
@@ -145,21 +140,19 @@ fun FallingCapsulesScreen(
                             )
                         }
 
-                        // 2. Resolve Boundary & Stacking
-                        resolveCollisions(bodies, containerW, containerH, rng)
-                        
-                        // 3. Post-Collision: Check support stability
-                        // Slide-Heavy: 55% support needed to stay settled
+                        resolveCollisions(bodies, containerW, containerH)
+
+                        // 3. Un-settle only if no support and body is clearly above floor (wider tolerance)
                         for (i in bodies.indices) {
                             val b = bodies[i]
-                            if (b.isSettled && b.y + b.h < containerH - 1f) {
+                            if (b.isSettled && b.y + b.h < containerH - 2f) {
                                 var hasSupport = false
                                 for (j in bodies.indices) {
                                     if (i == j) continue
                                     val other = bodies[j]
-                                    val overlapX = min(b.x + b.w, other.x + other.w) - max(b.x, other.x)
-                                    // Requirement: at least 55% overlap to stay settled
-                                    if (abs(other.y - (b.y + b.h)) < 5f && overlapX > b.w * 0.55f) {
+                                    val overlapX =
+                                        min(b.x + b.w, other.x + other.w) - max(b.x, other.x)
+                                    if (abs(other.y - (b.y + b.h)) < 10f && overlapX > b.w * 0.5f) {
                                         hasSupport = true
                                         break
                                     }
@@ -175,11 +168,11 @@ fun FallingCapsulesScreen(
         }
 
         // Render
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.Companion.fillMaxSize()) {
             for (b in bodies) {
                 CapsuleChip(
                     body = b,
-                    modifier = Modifier
+                    modifier = Modifier.Companion
                         .graphicsLayer {
                             translationX = b.x
                             translationY = b.y
@@ -217,22 +210,38 @@ private fun createCapsule(
     // Vary mass slightly per capsule so some fall / settle a bit differently.
     val mass = 0.8f + rng.nextFloat() * 0.7f // 0.8 .. 1.5
 
-    val widthDp = rng.nextInt(spec.minWidthDp.value.toInt(), spec.maxWidthDp.value.toInt() + 1).dp
-    val heightDp = spec.heightDp
+    // Approximate content-based width: emoji (18sp) + text (14sp) + padding.
+    val parts = spec.label.split("   ", limit = 2)
+    val emojiPart = parts.getOrNull(0)?.trim().orEmpty()
+    val textPart = parts.getOrNull(1)?.trim().let { value ->
+        if (value.isNullOrBlank()) spec.label.trim() else value
+    }
 
-    val wPx = with(density) { widthDp.toPx() }
-    val hPx = with(density) { heightDp.toPx() }
+    val emojiFontPx = with(density) { 18.sp.toPx() }
+    val titleFontPx = with(density) { 14.sp.toPx() }
+    val emojiWidthPx = if (emojiPart.isNotEmpty()) emojiFontPx else 0f
+    val avgCharWidthPx = titleFontPx * 0.6f
+    val titleWidthPx = textPart.length * avgCharWidthPx
 
-    // Extreme Spread Spawning: 120% coverage (-10% to 110%)
-    val startX = (rng.nextFloat() * 1.2f - 0.1f) * containerW
+    val horizontalPaddingPx = with(density) { 16.dp.toPx() }
+    val spacingPx = with(density) { 6.dp.toPx() }
+
+    val contentWidthPx =
+        horizontalPaddingPx +
+            emojiWidthPx +
+            (if (emojiWidthPx > 0f && textPart.isNotEmpty()) spacingPx else 0f) +
+            titleWidthPx +
+            horizontalPaddingPx
+
+    val hPx = with(density) { spec.heightDp.toPx() }
+    val wPx = contentWidthPx
+
+    // Spawn in center band (like iOS: avoid edges to reduce wall hits and sliding)
+    val startX = (0.05f + rng.nextFloat() * 0.9f) * containerW
     val y = -hPx * 4f
-    
-    // Guide Velocity: Guide chips from extreme edges back toward the center area
-    val centerX = containerW / 2f
-    val centerAttract = (centerX - startX) * 0.4f
-    val vx = (rng.nextFloat() - 0.5f) * 450f + centerAttract
-    val vy = 100f + rng.nextFloat() * 100f
-    val rot = (rng.nextFloat() - 0.5f) * 20f
+    val vx = (rng.nextFloat() - 0.5f) * 120f
+    val vy = 80f + rng.nextFloat() * 80f
+    val rot = (rng.nextFloat() - 0.5f) * 12f
 
     return CapsuleBody(
         id = id,
@@ -252,71 +261,64 @@ private fun createCapsule(
 private fun resolveCollisions(
     bodies: MutableList<CapsuleBody>,
     containerW: Float,
-    containerH: Float,
-    rng: Random
+    containerH: Float
 ) {
-    val restitution = 0.05f 
-    val settleThreshold = 160f
+    val restitution = 0.2f
+    val settleThreshold = 60f
+    val separationEpsilon = 0.5f
 
     bodies.indices.forEach { i ->
         val b = bodies[i]
 
-        // Floor
         if (b.y + b.h > containerH) {
             if (!b.hasBounced && abs(b.vy) > settleThreshold) {
                 bodies[i] = b.copy(y = containerH - b.h, vy = -b.vy * restitution, hasBounced = true)
             } else {
-                bodies[i] = b.copy(y = containerH - b.h, vy = 0f, isSettled = true)
+                bodies[i] = b.copy(y = containerH - b.h, vy = 0f, vx = 0f, isSettled = true)
             }
         }
 
-        // Walls
-        if (b.x < 0) {
-            bodies[i] = bodies[i].copy(x = 0f, vx = abs(b.vx) * 0.15f)
-        } else if (b.x + b.w > containerW) {
-            bodies[i] = bodies[i].copy(x = containerW - b.w, vx = -abs(b.vx) * 0.15f)
+        if (bodies[i].x < 0) {
+            bodies[i] = bodies[i].copy(x = 0f, vx = 0f)
+        } else if (bodies[i].x + bodies[i].w > containerW) {
+            bodies[i] = bodies[i].copy(x = containerW - bodies[i].w, vx = 0f)
         }
     }
 
-    // Inter-capsule stacking & sliding
-    repeat(2) {
+    repeat(3) {
         for (i in 0 until bodies.size - 1) {
             for (j in i + 1 until bodies.size) {
                 val a = bodies[i]
                 val b = bodies[j]
-
                 val overlapX = min(a.x + a.w, b.x + b.w) - max(a.x, b.x)
                 val overlapY = min(a.y + a.h, b.y + b.h) - max(a.y, b.y)
 
                 if (overlapX > 0 && overlapY > 0) {
-                    // Slide-Heavy Threshold: 55% horizontal overlap
-                    val isVertical = (overlapY < overlapX) && (overlapX > min(a.w, b.w) * 0.55f)
-                    
+                    val isVertical = overlapY < overlapX && overlapX > min(a.w, b.w) * 0.5f
+                    val sepY = overlapY + separationEpsilon
+                    val pushX = (overlapX / 2f) + separationEpsilon * 0.5f
+
                     if (isVertical) {
                         if (a.y < b.y) {
                             if (!a.hasBounced && abs(a.vy) > settleThreshold) {
-                                bodies[i] = a.copy(y = a.y - overlapY, vy = -a.vy * restitution, hasBounced = true)
+                                bodies[i] = a.copy(y = a.y - sepY, vy = -a.vy * restitution, hasBounced = true)
                             } else {
-                                bodies[i] = a.copy(y = a.y - overlapY, vy = 0f, isSettled = true)
+                                bodies[i] = a.copy(y = a.y - sepY, vy = 0f, vx = 0f, isSettled = true)
                             }
                         } else {
                             if (!b.hasBounced && abs(b.vy) > settleThreshold) {
-                                bodies[j] = b.copy(y = b.y - overlapY, vy = -b.vy * restitution, hasBounced = true)
+                                bodies[j] = b.copy(y = b.y - sepY, vy = -b.vy * restitution, hasBounced = true)
                             } else {
-                                bodies[j] = b.copy(y = b.y - overlapY, vy = 0f, isSettled = true)
+                                bodies[j] = b.copy(y = b.y - sepY, vy = 0f, vx = 0f, isSettled = true)
                             }
                         }
                     } else {
-                        // Aggressive Slide Force
-                        val nudge = if (overlapX < min(a.w, b.w) * 0.3f) 2.2f else 1.2f
-                        val push = (overlapX / 2f) * nudge
-                        
                         if (a.x < b.x) {
-                            bodies[i] = a.copy(x = a.x - push, vx = -abs(a.vx) * 0.4f, isSettled = false)
-                            bodies[j] = b.copy(x = b.x + push, vx = abs(b.vx) * 0.4f, isSettled = false)
+                            bodies[i] = a.copy(x = a.x - pushX, vx = a.vx * 0.1f, isSettled = false)
+                            bodies[j] = b.copy(x = b.x + pushX, vx = b.vx * 0.1f, isSettled = false)
                         } else {
-                            bodies[i] = a.copy(x = a.x + push, vx = abs(a.vx) * 0.4f, isSettled = false)
-                            bodies[j] = b.copy(x = b.x - push, vx = -abs(b.vx) * 0.4f, isSettled = false)
+                            bodies[i] = a.copy(x = a.x + pushX, vx = a.vx * 0.1f, isSettled = false)
+                            bodies[j] = b.copy(x = b.x - pushX, vx = b.vx * 0.1f, isSettled = false)
                         }
                     }
                 }
@@ -354,33 +356,52 @@ private fun defaultCapsuleSpecs(): List<CapsuleSpec> {
 @Composable
 private fun CapsuleChip(
     body: CapsuleBody,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier.Companion
 ) {
     val shape = RoundedCornerShape(percent = 50)
-    val brush = remember(body.gradient) { Brush.horizontalGradient(body.gradient) }
+    val brush = remember(body.gradient) { Brush.Companion.horizontalGradient(body.gradient) }
 
     Surface(
         modifier = modifier
-            .size(with(LocalDensity.current) { body.w.toDp() }, with(LocalDensity.current) { body.h.toDp() }),
+            // Let width be driven purely by content; only fix the height.
+            .height(with(LocalDensity.current) { body.h.toDp() }),
         shape = shape,
-        color = Color.Transparent,
+        color = Color.Companion.Transparent,
         shadowElevation = 8.dp
     ) {
         Row(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .clip(shape)
                 .background(brush)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.Companion.CenterVertically
         ) {
-
-            Text(
-                text = body.label,
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            val parts = body.label.split("   ", limit = 2)
+            if (parts.size == 2) {
+                Text(
+                    text = parts[0].trim(),
+                    color = Color.Companion.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Companion.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.Companion.width(4.dp))
+                Text(
+                    text = parts[1].trim(),
+                    color = Color.Companion.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Companion.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                Text(
+                    text = body.label,
+                    color = Color.Companion.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Companion.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
@@ -389,7 +410,7 @@ private fun CapsuleChip(
 @Composable
 private fun FallingCapsulesScreenPreview() {
     FallingCapsulesScreen(
-        modifier = Modifier
+        modifier = Modifier.Companion
             .fillMaxSize()
             .background(Color(0xFFF6F6F6)),
         seed = 42,

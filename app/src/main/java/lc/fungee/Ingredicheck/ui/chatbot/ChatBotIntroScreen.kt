@@ -45,13 +45,18 @@ import lc.fungee.Ingredicheck.ui.theme.Nunito
  */
 @Composable
 fun ChatBotIntroScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMaybeLater: () -> Unit = {},
+    onYesLetsGo: () -> Unit = {},
+    hasOtherSelection: Boolean = false
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
+
             // Make the sheet take roughly 90% of the height when used inside NonDraggableBottomSheet.
-            .fillMaxHeight(0.86f),
+            .fillMaxHeight(0.8f)
+            .padding(horizontal = 20.dp),
         contentAlignment = Alignment.TopCenter
     ) {
         Column(
@@ -113,7 +118,7 @@ fun ChatBotIntroScreen(
                     .padding(horizontal = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(182.dp))
+            Spacer(modifier = Modifier.weight(1f))  // 👈 takes remaining space
             Text(
                 text = "Shall we get started?",
                 fontFamily = Nunito,
@@ -121,41 +126,53 @@ fun ChatBotIntroScreen(
                 fontSize = 20.sp,
                 color = Greyscale110,
                 textAlign = TextAlign.Center,
-
-
             )
 
-
-            val introsubText = buildAnnotatedString {
-                withStyle(
-                    SpanStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Greyscale110
-                    )
-                ) {
-                    append("I noticed you selected ")
+            val introsubText = if (hasOtherSelection) {
+                buildAnnotatedString {
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Greyscale110
+                        )
+                    ) {
+                        append("I noticed you selected ")
+                    }
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Greyscale140
+                        )
+                    ) {
+                        append("“Other”")
+                    }
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Greyscale110
+                        )
+                    ) {
+                        append(" earlier, that’s great! Could you tell me a bit more about it?")
+                    }
                 }
-                withStyle(
-                    SpanStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Greyscale140
-                    )
-                ) {
-                    append("“Other”")
-                }
-                withStyle(
-                    SpanStyle(
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Greyscale110
-                    )
-                ) {
-                    append(" earlier, that’s great! Could you tell me a bit more about it?")
+            } else {
+                buildAnnotatedString {
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp,
+                            color = Greyscale110
+                        )
+                    ) {
+                        append("Tell me a bit about what kind of food experience you’d love here.")
+                    }
                 }
             }
             Text(
@@ -165,11 +182,17 @@ fun ChatBotIntroScreen(
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp))
             {
-                SecondaryButton("Maybe later" ,
-                    textColor = Color(color =0xFF75990E),
-                    modifier = Modifier.weight(1f)
+                SecondaryButton(
+                    "Maybe later",
+                    textColor = Color(color = 0xFF75990E),
+                    modifier = Modifier.weight(1f),
+                    onClick = onMaybeLater
                 )
-                PrimaryButton("Yes, let’s go" , modifier = Modifier.weight(1f))
+                PrimaryButton(
+                    "Yes, let’s go",
+                    modifier = Modifier.weight(1f),
+                    onClick = onYesLetsGo
+                )
 
             }
 
@@ -177,6 +200,7 @@ fun ChatBotIntroScreen(
                 fontWeight = FontWeight.Normal,
                 fontSize =  12.sp ,
                 fontFamily = Manrope ,
+                color = Color(0xFFB6B6B6) ,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )

@@ -63,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import kotlin.math.absoluteValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
@@ -83,7 +82,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.Layout
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
-import lc.fungee.Ingredicheck.ui.components.NonDraggableBottomSheet
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
@@ -108,12 +106,19 @@ import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
+import lc.fungee.Ingredicheck.onboarding.ui.components.FallingCapsulesScreen
+import lc.fungee.Ingredicheck.onboarding.ui.components.PreferenceCapsuleCard
+import lc.fungee.Ingredicheck.onboarding.ui.components.FamilyOverviewBackground
+import lc.fungee.Ingredicheck.onboarding.ui.components.FlowRowChips
+import lc.fungee.Ingredicheck.onboarding.ui.components.SelectedChipPill
+import lc.fungee.Ingredicheck.onboarding.ui.PreferenceSummaryScreen
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
+import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 import kotlin.random.Random
 
@@ -176,634 +181,10 @@ private fun buildCreateFamilyRequestFromMembers(
     )
 }
 
-private fun familyPlaceholderColor(seed: String): Color {
-    val palette = listOf(
-        Color(0xFF9AD0FF),
-        Color(0xFFFFB3C1),
-        Color(0xFFB9F6CA),
-        Color(0xFFFFE29A),
-        Color(0xFFD7B9FF),
-        Color(0xFFFFC59A)
-    )
-    val idx = (seed.hashCode().absoluteValue % palette.size)
-    return palette[idx]
-}
-
-private val SelectedPillBackground = Secondary200
-private val PillShape = RoundedCornerShape(30.dp)
-
 /** Build a single preference string from onboarding chip selections for backend sync (same as iOS). */
 private fun buildDietaryPreferenceText(selectedAllergiesByMember: Map<String, MutableSet<String>>): String {
     val allChipIds = selectedAllergiesByMember.values.flatMap { it.toList() }.toSet()
     return allChipIds.map { OnboardingChipData.labelForChipId(it) }.joinToString(", ")
-}
-
-@Composable
-private fun SelectedChipPill(
-    emoji: String,
-    label: String,
-    trailingAvatars: (@Composable () -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .clip(PillShape)
-            .background(SelectedPillBackground)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = emoji.trim(),
-            fontSize = 16.sp,
-            color = Greyscale150
-        )
-        Text(
-            text = label,
-            fontFamily = Manrope,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            color = Greyscale150,
-            maxLines = 1
-        )
-        if (trailingAvatars != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-            trailingAvatars()
-        }
-    }
-}
-
-@Composable
-private fun CapsuleEveryoneAvatarSmall() {
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(
-                width = 1.dp,
-                color = Greyscale40,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.everyone_seleted_home_icon),
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            contentScale = ContentScale.Fit
-        )
-    }
-}
-
-@Composable
-private fun CapsuleMemberAvatarSmall(member: OnboardingViewModel.FamilyOverviewMember) {
-    val avatarRes = OnboardingChipData.avatarResOrNull(member.avatarId)
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(
-                width = 1.dp,
-                color = Greyscale40,
-                shape = CircleShape
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            member.generatedAvatarUrl.trim().isNotBlank() -> {
-                SubcomposeAsyncImage(
-                    model = member.generatedAvatarUrl.trim(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            avatarRes != null -> {
-                Image(
-                    painter = painterResource(id = avatarRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            else -> {
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .clip(CircleShape)
-                        .background(Greyscale40)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CapsuleChipMemberAvatars(
-    memberIds: Set<String>,
-    members: List<OnboardingViewModel.FamilyOverviewMember>
-) {
-    if (memberIds.isEmpty()) return
-
-    val everyoneId = EVERYONE_MEMBER_ID
-    val hasEveryone = memberIds.contains(everyoneId)
-    val concreteMemberIds = memberIds.filter { it != everyoneId }.toSet()
-    val concreteMembers = members.filter { concreteMemberIds.contains(it.id) }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(-8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        concreteMembers.forEach { m ->
-            CapsuleMemberAvatarSmall(member = m)
-        }
-        if (hasEveryone) {
-            CapsuleEveryoneAvatarSmall()
-        }
-    }
-}
-
-@Composable
-private fun FlowRowChips(
-    modifier: Modifier = Modifier,
-    horizontalSpacing: Dp = 8.dp,
-    verticalSpacing: Dp = 8.dp,
-    content: @Composable () -> Unit
-) {
-    Layout(content = content, modifier = modifier) { measurables, constraints ->
-        if (measurables.isEmpty()) {
-            return@Layout layout(0, 0) {}
-        }
-        val density = this
-        val spacingX = with(density) { horizontalSpacing.roundToPx() }
-        val spacingY = with(density) { verticalSpacing.roundToPx() }
-        val placeable = measurables.map { it.measure(constraints.copy(minWidth = 0, minHeight = 0)) }
-        val maxWidth = constraints.maxWidth
-        var x = 0
-        var y = 0
-        var rowHeight = 0
-        val positions = placeable.map { p ->
-            if (x > 0 && x + p.width > maxWidth) {
-                x = 0
-                y += rowHeight + spacingY
-                rowHeight = 0
-            }
-            val pos = x to y
-            x += p.width + spacingX
-            rowHeight = maxOf(rowHeight, p.height)
-            pos
-        }
-        val totalHeight = (y + rowHeight).coerceIn(constraints.minHeight, constraints.maxHeight)
-        layout(maxWidth, totalHeight) {
-            placeable.forEachIndexed { i, p ->
-                val (px, py) = positions[i]
-                p.placeRelative(px, py)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CapsuleSkeletonBox(
-    modifier: Modifier = Modifier,
-    selectedChipIds: Set<String> = emptySet(),
-    sectionTitle: String = "Allergies",
-    @DrawableRes sectionIconRes: Int = R.drawable.ic_step_allergies,
-    trailingAvatarsForChip: ((String) -> (@Composable () -> Unit)?)? = null
-) {
-    val showSelectedChips = selectedChipIds.isNotEmpty()
-    val resolvedChips = remember(selectedChipIds) {
-        selectedChipIds.mapNotNull { id -> OnboardingChipData.chipForId(id) }
-    }
-    val hasOtherSelection = remember(selectedChipIds) {
-        // Any chip id containing "other" (e.g. "other", "other_sens", "region_*_other", etc.)
-        selectedChipIds.any { it.contains("other", ignoreCase = true) }
-    }
-
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (showSelectedChips) Modifier.heightIn(min = 130.dp)
-                else Modifier.height(130.dp)
-            )
-            .clip(RoundedCornerShape(20.dp))
-            .border((0.25).dp, Greyscale60, RoundedCornerShape(20.dp))
-            .background(Greyscale10)
-            .padding(12.dp)
-    ) {
-        if (showSelectedChips && resolvedChips.isNotEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Row(modifier = Modifier,
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(sectionIconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Greyscale110
-                    )
-                    Text(
-                        text = sectionTitle,
-                        fontFamily = Manrope,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
-                        color = Greyscale110
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowRowChips(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalSpacing = 8.dp,
-                    verticalSpacing = 8.dp
-                ) {
-                    resolvedChips.forEach { def ->
-                        val trailing = trailingAvatarsForChip?.invoke(def.id)
-                        SelectedChipPill(
-                            emoji = def.iconPrefix,
-                            label = def.label,
-                            trailingAvatars = trailing
-                        )
-                    }
-                }
-                if (hasOtherSelection) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.emoji_warning),
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Unspecified
-                        )
-                        Text(
-                            text = "Something else too, don't worry we'll ask later!",
-                            fontFamily = Manrope,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp,
-                            color = Greyscale100
-                        )
-                    }
-                }
-            }
-        } else {
-            val maxWidth = maxWidth
-            val spacing = 8.dp
-            val minFirst = 90.dp
-            val minSecond = 110.dp
-
-            fun randomRowWidths(): Pair<Dp, Dp> {
-                val maxExtra = (maxWidth - spacing - minFirst - minSecond).coerceAtLeast(0.dp)
-                if (maxExtra == 0.dp) {
-                    val second = (maxWidth - spacing - minFirst).coerceAtLeast(minSecond)
-                    return minFirst to second
-                }
-                val extraFraction = Random.nextFloat()
-                val first = minFirst + maxExtra * extraFraction
-                val second = maxWidth - spacing - first
-                return first to second
-            }
-
-            val (row1First, row1Second) = remember(maxWidth) { randomRowWidths() }
-            val (row2First, row2Second) = remember(maxWidth) { randomRowWidths() }
-
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(165.dp)
-                        .height(13.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Greyscale30)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                CapsuleRow(firstWidth = row1First, secondWidth = row1Second)
-                Spacer(modifier = Modifier.height(8.dp))
-                CapsuleRow(firstWidth = row2First, secondWidth = row2Second)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CapsuleRow(
-    firstWidth: Dp,
-    secondWidth: Dp
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .width(firstWidth)
-                .height(36.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(Greyscale30)
-        )
-        Box(
-            modifier = Modifier
-                .width(secondWidth)
-                .height(36.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(Greyscale30)
-        )
-    }
-}
-
-@Composable
-private fun FamilyOverviewBackground(
-    members: List<OnboardingViewModel.FamilyOverviewMember>,
-    modifier: Modifier = Modifier,
-    bottomSheetHeight: Dp = 0.dp,
-    onLeaveFamily: (() -> Unit)? = null,
-    onInvite: ((OnboardingViewModel.FamilyOverviewMember) -> Unit)? = null,
-    onEditMember: ((OnboardingViewModel.FamilyOverviewMember) -> Unit)? = null
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(top = 64.dp, start = 20.dp, end = 20.dp)
-    ) {
-
-        Text(
-            text = "Your Family Overview",
-            style = TextStyle(
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Greyscale150
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = bottomSheetHeight + 24.dp)
-        ) {
-            members.forEachIndexed { index, member ->
-                if (index > 0) Spacer(modifier = Modifier.height(14.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(28.dp))
-                        .border(1.dp, Greyscale110.copy(alpha = 0.28f), RoundedCornerShape(28.dp))
-                        .background(Color.White)
-                        .padding(horizontal = 18.dp, vertical = 16.dp)
-                ) {
-                    Box(
-
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val hasGenerated = member.generatedAvatarUrl.trim().isNotBlank()
-                            val circleBackground = if (hasGenerated) {
-                                avatarBackgroundColorForId(member.backgroundColorId)
-                            } else {
-                                Color.White
-                            }
-
-                            Box(
-                                modifier = Modifier.size(54.dp),
-                                contentAlignment = Alignment.BottomEnd
-                            ) {
-                                // Avatar circle
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .clip(CircleShape)
-                                        .border(2.dp, Primary800.copy(alpha = 0.18f), CircleShape)
-                                        .background(circleBackground),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    val trimmedUrl = member.generatedAvatarUrl.trim()
-                                    val res = OnboardingChipData.avatarResOrNull(member.avatarId.trim())
-                                    when {
-                                        trimmedUrl.isNotBlank() -> {
-                                            SubcomposeAsyncImage(
-                                                model = trimmedUrl,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(50.dp)
-                                                    .clip(CircleShape)
-                                            ) {
-                                                when (painter.state) {
-                                                    is coil.compose.AsyncImagePainter.State.Loading -> {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .fillMaxSize()
-                                                                .background(circleBackground),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            CircularProgressIndicator(
-                                                                modifier = Modifier.size(20.dp),
-                                                                strokeWidth = 2.dp,
-                                                                color = Primary800
-                                                            )
-                                                        }
-                                                    }
-                                                    else -> {
-                                                        SubcomposeAsyncImageContent()
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        res != null -> {
-                                            Image(
-                                                painter = painterResource(id = res),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(50.dp)
-                                                    .clip(CircleShape)
-                                            )
-                                        }
-                                        else -> {
-                                            val bg = familyPlaceholderColor(member.name)
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(50.dp)
-                                                    .clip(CircleShape)
-                                                    .background(bg),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                val initial = member.name.trim().firstOrNull()?.uppercase() ?: "?"
-                                                Text(
-                                                    text = initial,
-                                                    style = TextStyle(
-                                                        fontFamily = Manrope,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 18.sp,
-                                                        color = Color.White
-                                                    )
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Edit (pen) icon overlay
-                                if (onEditMember != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .offset(x = 2.dp, y = 2.dp)
-                                            .size(20.dp)
-                                            .clip(CircleShape)
-                                            .background(color = Greyscale40)
-                                            .clickable { onEditMember(member) },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.pen_line_icon) , tint = Greyscale150
-
-                                            ,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = member.name,
-                                    style = TextStyle(
-                                        fontFamily = Manrope,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Greyscale150
-                                    )
-                                )
-
-                                if (member.invitePending) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(12.50.dp))
-                                            .background(Color(0xFFFFF9ED)) // soft yellow pending pill
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.exclamation_circle),
-                                                contentDescription = null,
-                                                tint = Color(0xFFFAB222),
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "Pending",
-                                                style = TextStyle(
-                                                    fontFamily = Nunito,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 10.sp,
-                                                    color = Color(0xFFFAB222)
-                                                )
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Text(
-                                        text = if (member.joined) "(You)" else "Not joined yet !",
-                                        style = TextStyle(
-                                            fontFamily = Nunito,
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 12.sp,
-                                            color = Greyscale110
-                                        )
-                                    )
-                                }
-                            }
-
-                            val isFirst = index == 0
-                            val isPending = member.invitePending
-                            val actionText = if (isFirst) {
-                                "Leave Family"
-                            } else if (isPending) {
-                                "Re-invite"
-                            } else {
-                                "Invite"
-                            }
-                            val leaveFamilyColor = Color(0xFFFF3F31)
-                            val inviteColor = Color(0xFF75990E)
-                            val actionColor = if (isFirst) leaveFamilyColor else inviteColor
-                            val borderColor = if (isFirst) leaveFamilyColor else Greyscale40
-
-                            Box(
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .border(1.dp, borderColor, RoundedCornerShape(18.dp) ,)
-                                    .clickable {
-                                        if (isFirst) {
-                                            onLeaveFamily?.invoke()
-                                        } else {
-                                            onInvite?.invoke(member)
-                                        }
-                                    }
-                                    .padding(horizontal = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (!isFirst) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.share_icon),
-                                            contentDescription = null,
-                                            tint = actionColor,
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .padding(end = 3.dp)
-                                        )
-                                    }
-
-                                    Text(
-                                        text = actionText,
-                                        style = TextStyle(
-                                            fontFamily = Manrope,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp,
-                                            color = actionColor
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @SuppressLint("SuspiciousIndentation")
@@ -1014,12 +395,19 @@ fun OnboardingHost(
     var showFineTuneDecision by remember { mutableStateOf(false) }
     // When true, show the summary screen with floating robot after completing fine-tune flow
     var showSummaryScreen by remember { mutableStateOf(false) }
+    // When true, show the IngrediBot chat intro screen after the summary completes.
+    var showChatBotIntro by remember { mutableStateOf(false) }
+    // When true, show the AI chat conversation sheet after the intro.
+    var showChatConversation by remember { mutableStateOf(false) }
+    // When true, show the AI summary screen with PreferenceCapsuleCard list.
+    var showPreferenceSummary by remember { mutableStateOf(false) }
 
-    // Exit onboarding after showing summary screen for 3 seconds
+    // After showing the summary screen for a short time, transition smoothly to the chat intro.
     LaunchedEffect(showSummaryScreen) {
         if (showSummaryScreen) {
             delay(3000) // Show summary screen for 3 seconds
-            onExitOnboarding()
+            showSummaryScreen = false
+            showChatBotIntro = true
         }
     }
 
@@ -1146,224 +534,20 @@ fun OnboardingHost(
                         )
                     }
                     6 -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFFF2F2F7))
-                        ) {
-                            if (dynamicStepsLoaded && allergySteps.isNotEmpty()) {
-                            Column(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                         Spacer(modifier = Modifier.height(40.dp))
-
-                                // Animate progress based on current allergyStepIndex.
-                                // NOTE: The fine‑tune decision screen between Life Style and Nutrition
-                                // does NOT advance allergyStepIndex, so progress will not increase
-                                // while that screen is shown.
-                                val rawProgress =
-                                    if (allergySteps.size <= 1) 1f
-                                    else allergyStepIndex.toFloat() / (allergySteps.size - 1).coerceAtLeast(1)
-                                val animatedProgress by animateFloatAsState(
-                                    targetValue = rawProgress.coerceIn(0f, 1f),
-                                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-                                    label = "allergyProgress"
-                                )
-                                // Keep visited capsule highlight after relaunch by deriving furthest reached step from saved chip selections.
-                                val maxSelectedStepIndex = (0..allergySteps.lastIndex).lastOrNull { stepIndex ->
-                                    val stepChipIds = OnboardingChipData
-                                        .chipsForStep(stepIndex)
-                                        .map { it.id }
-                                        .toSet()
-                                    selectedAllergies.any { it in stepChipIds }
-                                } ?: 0
-                                val maxReachedAllergyStepIndex = maxOf(allergyStepIndex, maxSelectedStepIndex)
-
-                                   AnimatedProgressLine(
-                                       progress = animatedProgress,
-                                       modifier = Modifier.padding(horizontal = 20.dp)
-                                   )
-//                                Spacer(modifier = Modifier.height(10.dp))
-
-                                   // Hide CapsuleStepperRow when summary screen is shown
-                                   if (!showSummaryScreen) {
-                                       CapsuleStepperRow(
-                                           steps = allergySteps,
-                                           activeIndex = allergyStepIndex,
-                                           maxReachedIndex = maxReachedAllergyStepIndex,
-                                           onStepClick = { clickedIndex ->
-                                               // Only allow jumping to steps the user has already visited.
-                                               val clamped = clickedIndex.coerceIn(0, allergySteps.lastIndex)
-                                               if (clamped <= maxReachedAllergyStepIndex) {
-                                                   allergyStepIndex = clamped
-                                                   showFineTuneDecision = false
-                                               }
-                                           }
-                                       )
-                                   }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                // Show a scrollable list of CapsuleSkeletonBox cards.
-                                // Steps 0–9: Allergies, Intolerances, Health, Life Stage, Region, Avoid, LifeStyle, Nutrition, Ethical, Taste.
-                                val hasAnySelections = selectedAllergies.isNotEmpty()
-                                val maxStepIndex = allergySteps.lastIndex
-
-                                // Decide which step indices should render cards.
-                                val cardSteps: List<Int> = if (hasAnySelections) {
-                                    // Only steps that have at least one selected chip (including Region, Avoid, LifeStyle, Nutrition).
-                                    (0..maxStepIndex).filter { stepIndex ->
-                                        val stepChipIds = OnboardingChipData
-                                            .chipsForStep(stepIndex)
-                                            .map { it.id }
-                                            .toSet()
-                                        selectedAllergies.any { it in stepChipIds }
-                                    }
-                                } else {
-                                    // No selections yet – show only a few empty placeholders so the list is not scroll-heavy.
-                                    val upper = minOf(maxStepIndex, 3)
-                                    (0..upper).toList()
-                                }
-
-                                val cardsListState = rememberLazyListState()
-
-                                // Small avatar(s) to show who this capsule applies to (Everyone or a member)
-                                val activeMemberId = selectedAllergyMemberIdState.value
-                                val everyoneIdCaps = EVERYONE_MEMBER_ID
-                                val activeMember = vm.familyOverviewMembers
-                                    .firstOrNull { it.id == activeMemberId }
-
-                                val trailingAvatarContent: (@Composable () -> Unit)? =
-                                    when {
-                                        activeMemberId == everyoneIdCaps -> {
-                                            { CapsuleEveryoneAvatarSmall() }
-                                        }
-
-                                        activeMember != null -> {
-                                            { CapsuleMemberAvatarSmall(activeMember) }
-                                        }
-
-                                        else -> null
-                                    }
-
-                                LazyColumn(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f, fill = false),
-                                    state = cardsListState,
-                                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(horizontal = 20.dp),
-                                    userScrollEnabled = hasAnySelections
-                                ) {
-                                    items(cardSteps) { stepIndex ->
-                                        val stepChipIds = OnboardingChipData
-                                            .chipsForStep(stepIndex)
-                                            .map { it.id }
-                                            .toSet()
-                                        val selectedChipsForStep = selectedAllergies
-                                            .filter { it in stepChipIds }
-                                            .toSet()
-
-                                        CapsuleSkeletonBox(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            selectedChipIds = if (hasAnySelections) {
-                                                // When anything is selected, only show chips for this step.
-                                                selectedChipsForStep
-                                            } else {
-                                                // Initial empty state – show skeletons.
-                                                emptySet()
-                                            },
-                                            sectionTitle = allergySteps
-                                                .getOrNull(stepIndex)
-                                                ?.title ?: "Step ${stepIndex + 1}",
-                                            sectionIconRes = allergySteps
-                                                .getOrNull(stepIndex)
-                                                ?.iconRes ?: R.drawable.ic_step_allergies,
-                                            trailingAvatarsForChip = { chipId ->
-                                                // Derive which members have this chip selected
-                                                val memberIds = selectedAllergiesByMember
-                                                    .mapNotNull { (memberKey, chips) ->
-                                                        if (chips.contains(chipId)) memberKey else null
-                                                    }
-                                                    .toSet()
-                                                if (memberIds.isEmpty()) {
-                                                    null
-                                                } else {
-                                                    {
-                                                        CapsuleChipMemberAvatars(
-                                                            memberIds = memberIds,
-                                                            members = vm.familyOverviewMembers.toList()
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-
-                                    // When there are selections, add a bit of bottom spacing so the list
-                                    // has room to scroll and bring the current step's card toward the top.
-                                    if (hasAnySelections) {
-                                        item {
-                                            // Extra bottom space so later steps (e.g., Ethical, Taste)
-                                            // have enough scroll range to move toward the top.
-                                            Spacer(modifier = Modifier.height(140.dp))
-                                        }
-                                    }
-                                }
-
-                                // When user switches steps, auto-scroll so that the *current* step's card
-                                // is visible – but only starting from Health Conditions and only after
-                                // the user has actually selected chips for that step.
-                                LaunchedEffect(allergyStepIndex, cardSteps, hasAnySelections, allergySelectionRevision) {
-                                    if (!hasAnySelections || cardSteps.isEmpty()) return@LaunchedEffect
-
-                                    val layoutInfo = cardsListState.layoutInfo
-                                    // If everything fits in the viewport (all items visible), there's no scroll range.
-                                    if (layoutInfo.totalItemsCount <= layoutInfo.visibleItemsInfo.size) {
-                                        return@LaunchedEffect
-                                    }
-
-                                    // Find the index of the Health Conditions step from dynamic JSON.
-                                    val healthConditionsIndex = allergySteps.indexOfFirst { it.id == "healthConditions" }
-                                        .takeIf { it >= 0 } ?: 2
-
-                                    // When we're still early in the flow (only Allergies/Intolerances filled),
-                                    // keep the list static. But if the user has already progressed to later
-                                    // steps (Health Conditions or beyond) and then taps back on a capsule
-                                    // like Allergies or Intolerances, allow scrolling back down to those cards.
-                                    val hasLaterCards = cardSteps.any { it >= healthConditionsIndex }
-                                    if (allergyStepIndex < healthConditionsIndex && !hasLaterCards) {
-                                        return@LaunchedEffect
-                                    }
-
-                                    val clampedStep = allergyStepIndex.coerceIn(0, allergySteps.lastIndex)
-
-                                    // Only scroll when the current step actually has selected chips,
-                                    // so we don't auto-scroll for an empty placeholder card.
-                                    val currentStepChipIds = OnboardingChipData
-                                        .chipsForStep(clampedStep)
-                                        .map { it.id }
-                                        .toSet()
-                                    val stepHasSelection = selectedAllergies.any { it in currentStepChipIds }
-                                    if (!stepHasSelection) return@LaunchedEffect
-
-                                    // Map the active step index to its position in the filtered card list.
-                                    val targetIndex = cardSteps.indexOf(clampedStep)
-                                    if (targetIndex >= 0) {
-                                        cardsListState.animateScrollToItem(targetIndex)
-                                    }
-                                }
-                            }
-                            } else {
-                                // Don't render stepper/cards until dynamic JSON is loaded so restored selections are visible.
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
+                        OnboardingAllergyBackground(
+                            dynamicStepsLoaded = dynamicStepsLoaded,
+                            allergySteps = allergySteps,
+                            showPreferenceSummary = showPreferenceSummary,
+                            allergyStepIndex = allergyStepIndex,
+                            onAllergyStepIndexChange = { allergyStepIndex = it },
+                            selectedAllergies = selectedAllergies,
+                            selectedAllergyMemberId = selectedAllergyMemberIdState.value,
+                            showSummaryScreen = showSummaryScreen,
+                            showFineTuneDecision = showFineTuneDecision,
+                            onShowFineTuneDecisionChange = { showFineTuneDecision = it },
+                            selectedAllergiesByMember = selectedAllergiesByMember.mapValues { it.value.toSet() },
+                            familyOverviewMembers = vm.familyOverviewMembers.toList()
+                        )
                     }
                 }
             }
@@ -1430,6 +614,8 @@ fun OnboardingHost(
                             // selections so that chip toggles do not recreate the sheet (preserves
                             // stacked card order when user selects chips on 2nd/3rd card).
                             key(activeMemberKey) {
+                                val hasOtherSelection =
+                                    selectedAllergies.any { it.contains("other", ignoreCase = true) }
                                 AddAllergiesSheet(
                                     members = vm.familyOverviewMembers.toList(),
                                     selectedMemberId = selectedAllergyMemberIdState.value,
@@ -1530,25 +716,35 @@ fun OnboardingHost(
                                     },
                                     showFineTuneDecision = showFineTuneDecision,
                                     showSummaryScreen = showSummaryScreen,
+                                    hasOtherSelection = hasOtherSelection,
+                                    showChatBotIntro = showChatBotIntro,
+                                    showChatConversation = showChatConversation,
+                                    onChatBotLetsGo = {
+                                        showChatBotIntro = false
+                                        showChatConversation = true
+                                    },
+                                    onChatSkip = {
+                                        // Close chat and show AI summary screen.
+                                        showChatConversation = false
+                                        showChatBotIntro = false
+                                        showPreferenceSummary = true
+                                    },
                                     questionStepIndex = allergyStepIndex
                                 )
                             }
                             }
                         }
-                        OnboardingStep.SIGN_IN_INITIAL -> {
-                            SignInInitialSheet(
-                                onExistingUserContinue = {
-                                    vm.navigateTo(OnboardingStep.SIGN_IN_SOCIAL_LOGIN)
-                                },
-                                onStartNew = {
-                                    vm.navigateTo(OnboardingStep.SIGN_IN_INVITE_CODE)
-                                }
-                            )
-                        }
-
-                        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> {
-                            SignInSocialLoginSheet(
-                                onBackClick = handleBack,
+                        OnboardingStep.SIGN_IN_INITIAL,
+                        OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
+                        OnboardingStep.SIGN_IN_INVITE_CODE,
+                        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE,
+                        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
+                            OnboardingAuthSheetContent(
+                                step = s,
+                                vm = vm,
+                                authViewModel = authViewModel,
+                                context = context,
+                                onBack = handleBack,
                                 onGoogleClick = {
                                     if (activity != null) {
                                         val client = GoogleAuthDataSource.getClient(activity)
@@ -1567,7 +763,6 @@ fun OnboardingHost(
                                             .appendQueryParameter("redirect_to", redirectUri)
                                             .appendQueryParameter("flow_type", "implicit")
                                             .build()
-
                                         val intent = Intent(
                                             activity,
                                             AppleLoginWebViewActivity::class.java
@@ -1577,71 +772,13 @@ fun OnboardingHost(
                                         }
                                         appleLauncher.launch(intent)
                                     }
-                                }
-                            )
-                        }
-
-                        OnboardingStep.SIGN_IN_INVITE_CODE -> {
-                            SignInInviteCodeSheet(
-                                onBackClick = handleBack,
-                                onEnterInviteCode = {
-                                    vm.navigateTo(OnboardingStep.SIGN_IN_ENTER_INVITE_CODE)
                                 },
-                                onNoContinue = {
-                                    vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
-                                }
-                            )
-                        }
-
-                        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> {
-                            SignInEnterInviteCodeSheet(
-                                inviteCode = vm.inviteCode,
-                                isError = vm.inviteCodeError,
-                                onInviteCodeChange = { vm.inviteCode = it },
-                                onBackClick = handleBack,
-                                onVerifyContinue = {
-                                    if (vm.inviteCode == "ABCXYZ") {
-                                        vm.inviteCodeError = true
-                                    } else {
-                                        vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
-                                    }
-                                }
-                            )
-                        }
-
-                        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> {
-                            SignInWhoIsThisForSheet(
-                                onBackClick = handleBack,
                                 isJustMeLoading = isCreatingBiteBuddyFamily,
-                                isAddFamilyLoading = false,
                                 isAuthLoading = isAuthLoading,
-                                onJustMe = {
-                                    Log.d("OnboardingHost", "Just Me: Creating Bite Buddy family then navigating to FALLING_CAPSULES")
-                                    authViewModel.debugLogCurrentSession("Just Me clicked")
-                                    isCreatingBiteBuddyFamily = true
-                                    val req = buildBiteBuddyFamilyRequest()
-                                    authViewModel.createFamily(req) { result ->
-                                        isCreatingBiteBuddyFamily = false
-                                        result.fold(
-                                            onSuccess = {
-                                                Log.d("OnboardingHost", "Just Me: Bite Buddy family created, navigating to FALLING_CAPSULES")
-                                                vm.navigateTo(OnboardingStep.FALLING_CAPSULES)
-                                            },
-                                            onFailure = { e ->
-                                                Log.e("OnboardingHost", "Just Me: createFamily (Bite Buddy) failed", e)
-                                                Toast.makeText(
-                                                    context,
-                                                    e.localizedMessage ?: "Failed to create profile",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        )
-                                    }
-                                },
-                                onAddFamily = {
-                                    authViewModel.debugLogCurrentSession("Add Family clicked")
-                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_WELCOME)
-                                }
+                                buildBiteBuddyFamilyRequest = { buildBiteBuddyFamilyRequest() },
+                                setCreatingBiteBuddyFamily = { isCreatingBiteBuddyFamily = it },
+                                onNavigateToAddFamilyWelcome = { vm.navigateTo(OnboardingStep.ADD_FAMILY_WELCOME) },
+                                onNavigateToFallingCapsules = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) }
                             )
                         }
 
@@ -2011,185 +1148,56 @@ fun OnboardingHost(
         }
         )
 
-
-        // Overlay with opacity when invite confirmation is shown
-        if (memberToInvite != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.5f)
-                    .background(Color.Black)
-                    .clickable { memberToInvite = null }
+        if (showPreferenceSummary) {
+            PreferenceSummaryScreen(
+                isFamilyFlow = vm.familyOverviewMembers.isNotEmpty(),
+                selectedChipIds = selectedAllergies.toSet(),
+                onEditSection = { stepId ->
+                    showPreferenceSummary = false
+                    val idx = allergySteps.indexOfFirst { it.id == stepId }
+                    if (idx >= 0) {
+                        allergyStepIndex = idx
+                    }
+                },
+                onContinue = {
+                    showPreferenceSummary = false
+                    onExitOnboarding()
+                }
             )
         }
 
-        // Invite confirmation bottom sheet
+        if (memberToInvite != null) {
+            InviteMemberOverlayScrim(onDismiss = { memberToInvite = null })
+        }
+
         memberToInvite?.let { member ->
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                NonDraggableBottomSheet(
-                    onDismissRequest = { memberToInvite = null },
-                    horizontalPaddingEnabled = true
-                ) {
-                    InviteConfirmationSheet(
-                        memberName = member.name,
-                        onMayBeLater = {
-                            if (!isInviting) {
-                                vm.setInvitePending(member.id, true)
-                                memberToInvite = null
-                            }
-                        },
-                        onInvite = {
-                            if (isInviting) return@InviteConfirmationSheet
-                            isInviting = true
-                            Log.d(
-                                "OnboardingHost",
-                                "Invite confirmed for memberId=${member.id}, name=${member.name}"
-                            )
-                            // Ensure family exists on backend before inviting.
-                            if (currentFamily != null) {
-                                authViewModel.inviteFamilyMember(member.id) { result ->
-                                    val code = result.getOrNull()
-                                    if (code != null) {
-                                        vm.setInvitePending(member.id, true)
-                                        memberToInvite = null
-                                        shareInviteCode(context, code)
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Failed to create invite",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                    isInviting = false
-                                }
-                            } else {
-                                val req = buildCreateFamilyRequestFromMembers(vm.familyOverviewMembers.toList())
-                                if (req == null) {
-                                    authViewModel.inviteFamilyMember(member.id) { result ->
-                                        val code = result.getOrNull()
-                                        if (code != null) {
-                                            vm.setInvitePending(member.id, true)
-                                            memberToInvite = null
-                                            shareInviteCode(context, code)
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "Failed to create invite",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        isInviting = false
-                                    }
-                                } else {
-                                    authViewModel.createFamily(req) { createResult ->
-                                        createResult.fold(
-                                            onSuccess = {
-                                                authViewModel.inviteFamilyMember(member.id) { result ->
-                                                    val code = result.getOrNull()
-                                                    if (code != null) {
-                                                        vm.setInvitePending(member.id, true)
-                                                        memberToInvite = null
-                                                        shareInviteCode(context, code)
-                                                    } else {
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Failed to create invite",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                    isInviting = false
-                                                }
-                                            },
-                                            onFailure = {
-                                                val msg = it.localizedMessage.orEmpty()
-                                                val isDuplicateMemberId =
-                                                    msg.contains("members_pkey", ignoreCase = true) ||
-                                                        msg.contains("duplicate key", ignoreCase = true)
-
-                                                if (isDuplicateMemberId) {
-                                                    Log.e(
-                                                        "OnboardingHost",
-                                                        "createFamily failed due to duplicate memberId; regenerating ids + retry",
-                                                        it
-                                                    )
-
-                                                    val idMap = vm.regenerateFamilyOverviewMemberIds()
-                                                    val regeneratedMemberId = idMap[member.id] ?: member.id
-                                                    val retryReq = buildCreateFamilyRequestFromMembers(vm.familyOverviewMembers.toList())
-
-                                                    if (retryReq == null) {
-                                                        isInviting = false
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Failed to retry createFamily",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                        return@createFamily
-                                                    }
-
-                                                    authViewModel.createFamily(retryReq) { retryResult ->
-                                                        retryResult.fold(
-                                                            onSuccess = {
-                                                                authViewModel.inviteFamilyMember(regeneratedMemberId) { result ->
-                                                                    val code = result.getOrNull()
-                                                                    if (code != null) {
-                                                                        vm.setInvitePending(regeneratedMemberId, true)
-                                                                        memberToInvite = null
-                                                                        shareInviteCode(context, code)
-                                                                    } else {
-                                                                        Toast.makeText(
-                                                                            context,
-                                                                            "Failed to create invite",
-                                                                            Toast.LENGTH_SHORT
-                                                                        ).show()
-                                                                    }
-                                                                    isInviting = false
-                                                                }
-                                                            },
-                                                            onFailure = { retryErr ->
-                                                                Log.e(
-                                                                    "OnboardingHost",
-                                                                    "createFamily retry failed; not inviting memberId=$regeneratedMemberId",
-                                                                    retryErr
-                                                                )
-                                                                isInviting = false
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    retryErr.localizedMessage
-                                                                        ?: "Failed to create family",
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                            }
-                                                        )
-                                                    }
-
-                                                    return@createFamily
-                                                }
-
-                                                isInviting = false
-                                                Log.e(
-                                                    "OnboardingHost",
-                                                    "createFamily failed; not inviting memberId=${member.id}",
-                                                    it
-                                                )
-                                                Toast.makeText(
-                                                    context,
-                                                    it.localizedMessage ?: "Failed to create family",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        isLoading = isInviting
-                    )
-                }
-            }
+            InviteMemberOverlay(
+                member = member,
+                onDismiss = { memberToInvite = null },
+                onMaybeLater = {
+                    if (!isInviting) {
+                        vm.setInvitePending(member.id, true)
+                        memberToInvite = null
+                    }
+                },
+                onInvite = {
+                    if (!isInviting) {
+                        runInviteFlow(
+                            context = context,
+                            authViewModel = authViewModel,
+                            vm = vm,
+                            member = member,
+                            currentFamily = currentFamily,
+                            getMembers = { vm.familyOverviewMembers.toList() },
+                            buildCreateFamilyRequestFromMembers = { buildCreateFamilyRequestFromMembers(it) },
+                            shareInviteCode = { c, code -> shareInviteCode(c, code) },
+                            setInviting = { isInviting = it },
+                            onDismiss = { memberToInvite = null }
+                        )
+                    }
+                },
+                isLoading = isInviting
+            )
         }
     }
 }
