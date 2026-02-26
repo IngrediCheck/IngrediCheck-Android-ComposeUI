@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import lc.fungee.Ingredicheck.BuildConfig
 import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.family.CreateFamilyRequest
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
@@ -76,7 +77,9 @@ internal fun OnboardingAuthSheetContent(
                 isAddFamilyLoading = false,
                 isAuthLoading = isAuthLoading,
                 onJustMe = {
-                    Log.d("OnboardingHost", "Just Me: Creating Bite Buddy family then navigating to FALLING_CAPSULES")
+                    if (BuildConfig.DEBUG) {
+                        Log.d("OnboardingHost", "Just Me: Creating Bite Buddy family then navigating to FALLING_CAPSULES")
+                    }
                     authViewModel.debugLogCurrentSession("Just Me clicked")
                     setCreatingBiteBuddyFamily(true)
                     val req = buildBiteBuddyFamilyRequest()
@@ -84,7 +87,9 @@ internal fun OnboardingAuthSheetContent(
                         setCreatingBiteBuddyFamily(false)
                         result.fold(
                             onSuccess = {
-                                Log.d("OnboardingHost", "Just Me: Bite Buddy family created, navigating to FALLING_CAPSULES")
+                                if (BuildConfig.DEBUG) {
+                                    Log.d("OnboardingHost", "Just Me: Bite Buddy family created, navigating to FALLING_CAPSULES")
+                                }
                                 onNavigateToFallingCapsules()
                             },
                             onFailure = { e ->

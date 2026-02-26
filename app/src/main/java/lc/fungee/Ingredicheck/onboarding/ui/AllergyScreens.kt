@@ -222,8 +222,10 @@ internal fun AddAllergiesSheet(
         return
     }
 
+    val stepIds = OnboardingChipData.foodNotesStepIds
+
     AnimatedContent(
-        targetState = questionStepIndex.coerceIn(0, (OnboardingChipData.foodNotesStepIds.size - 1).coerceAtLeast(0)),
+        targetState = questionStepIndex.coerceIn(0, (stepIds.size - 1).coerceAtLeast(0)),
         label = "allergyQuestion",
         transitionSpec = {
             fadeIn(animationSpec = tween(durationMillis = 250)) togetherWith
@@ -231,8 +233,9 @@ internal fun AddAllergiesSheet(
         }
     ) { idx ->
         val (question, subtitle) = OnboardingChipData.questionForStep(idx, flowType)
-        // Hide subtitle for Avoid (5), Life Style (6), and Nutrition (7) steps
-        val shouldShowSubtitle = idx !in listOf(5, 6, 7)
+        // Hide subtitle for dynamic steps with ids "avoid", "lifeStyle", and "nutrition"
+        val stepId = stepIds.getOrNull(idx)
+        val shouldShowSubtitle = stepId !in setOf("avoid", "lifeStyle", "nutrition")
         Column {
             Text(
                 text = buildAnnotatedString {

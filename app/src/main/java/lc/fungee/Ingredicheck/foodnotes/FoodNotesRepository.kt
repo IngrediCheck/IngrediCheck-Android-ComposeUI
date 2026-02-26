@@ -1,6 +1,7 @@
 package lc.fungee.Ingredicheck.foodnotes
 
 import android.util.Log
+import lc.fungee.Ingredicheck.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -21,6 +22,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import lc.fungee.Ingredicheck.AppConfig
+
 
 private const val TAG = "FoodNotes"
 
@@ -83,7 +85,9 @@ class FoodNotesRepository {
      */
     suspend fun fetchFoodNotesAll(accessToken: String): Result<FoodNotesAllResponse?> {
         val url = baseUrl("family/food-notes/all")
-        Log.d(TAG, "fetchFoodNotesAll: GET $url")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "fetchFoodNotesAll: GET $url")
+        }
         return runCatching {
             val response: HttpResponse = client.get(url) {
                 authHeaders(accessToken).forEach { (k, v) -> header(k, v) }
@@ -92,11 +96,15 @@ class FoodNotesRepository {
             val body = response.bodyAsText()
             when {
                 response.status.value == 404 -> {
-                    Log.d(TAG, "FoodNotes API: fetchFoodNotesAll 404, no notes yet")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "FoodNotes API: fetchFoodNotesAll 404, no notes yet")
+                    }
                     return@runCatching null
                 }
                 body.isBlank() || body.trim() == "null" -> {
-                    Log.d(TAG, "FoodNotes API: fetchFoodNotesAll null/empty body")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "FoodNotes API: fetchFoodNotesAll null/empty body")
+                    }
                     return@runCatching null
                 }
                 !response.status.isSuccess() -> {
@@ -105,7 +113,9 @@ class FoodNotesRepository {
                 }
                 else -> {
                     val parsed = json.decodeFromString<FoodNotesAllResponse>(body)
-                    Log.d(TAG, "FoodNotes API implementation: fetchFoodNotesAll success — data loaded")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "FoodNotes API implementation: fetchFoodNotesAll success — data loaded")
+                    }
                     parsed
                 }
             }
@@ -124,7 +134,9 @@ class FoodNotesRepository {
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/food-notes")
-        Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes PUT $url version=$version")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes PUT $url version=$version")
+        }
         return runCatching {
             val body = json.encodeToString(FoodNotesUpdateRequest(requestContent, version))
             val response: HttpResponse = client.put(url) {
@@ -134,18 +146,26 @@ class FoodNotesRepository {
             }
             val responseBody = response.bodyAsText()
             if (response.status.isSuccess()) {
-                Log.d(TAG, "FoodNotes API implementation: updateFamilyFoodNotes success (Everyone) — working")
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "FoodNotes API implementation: updateFamilyFoodNotes success (Everyone) — working")
+                }
             }
-            Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes status=${response.status.value}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes status=${response.status.value}")
+            }
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {
                     val currentVersion = parseVersionFrom409Response(responseBody)
                     if (currentVersion != null) {
-                        Log.d(TAG, "updateFamilyFoodNotes: 409 retry with version=$currentVersion")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "updateFamilyFoodNotes: 409 retry with version=$currentVersion")
+                        }
                         updateFamilyFoodNotes(accessToken, content, currentVersion).getOrThrow()
                     } else {
-                        Log.d(TAG, "updateFamilyFoodNotes: 409 currentNote=null, retry with version=0")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "updateFamilyFoodNotes: 409 currentNote=null, retry with version=0")
+                        }
                         updateFamilyFoodNotes(accessToken, content, 0).getOrThrow()
                     }
                 }
@@ -166,7 +186,9 @@ class FoodNotesRepository {
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/members/$memberId/food-notes")
-        Log.d(TAG, "FoodNotes API: updateMemberFoodNotes PUT $url version=$version")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "FoodNotes API: updateMemberFoodNotes PUT $url version=$version")
+        }
         return runCatching {
             val body = json.encodeToString(FoodNotesUpdateRequest(requestContent, version))
             val response: HttpResponse = client.put(url) {
@@ -176,18 +198,26 @@ class FoodNotesRepository {
             }
             val responseBody = response.bodyAsText()
             if (response.status.isSuccess()) {
-                Log.d(TAG, "FoodNotes API implementation: updateMemberFoodNotes success (memberId=$memberId) — working")
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "FoodNotes API implementation: updateMemberFoodNotes success (memberId=$memberId) — working")
+                }
             }
-            Log.d(TAG, "FoodNotes API: updateMemberFoodNotes status=${response.status.value}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "FoodNotes API: updateMemberFoodNotes status=${response.status.value}")
+            }
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {
                     val currentVersion = parseVersionFrom409Response(responseBody)
                     if (currentVersion != null) {
-                        Log.d(TAG, "updateMemberFoodNotes: 409 retry with version=$currentVersion")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "updateMemberFoodNotes: 409 retry with version=$currentVersion")
+                        }
                         updateMemberFoodNotes(accessToken, memberId, content, currentVersion).getOrThrow()
                     } else {
-                        Log.d(TAG, "updateMemberFoodNotes: 409 currentNote=null, retry with version=0")
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "updateMemberFoodNotes: 409 currentNote=null, retry with version=0")
+                        }
                         updateMemberFoodNotes(accessToken, memberId, content, 0).getOrThrow()
                     }
                 }

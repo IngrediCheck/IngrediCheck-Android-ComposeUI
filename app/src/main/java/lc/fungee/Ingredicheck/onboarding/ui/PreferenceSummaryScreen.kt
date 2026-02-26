@@ -52,7 +52,7 @@ fun PreferenceSummaryScreen(
         ) {
             Spacer(modifier = Modifier.Companion.height(30.dp))
             Text(
-                text = if (isFamilyFlow) "Your IngrideFam Food Notes" else "Your Food Notes",
+                text = if (isFamilyFlow) "Your IngrediFam Food Notes" else "Your Food Notes",
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Companion.Bold,
                 fontSize = 20.sp,
@@ -89,22 +89,7 @@ fun PreferenceSummaryScreen(
                     }
                 }
 
-                item {
-                    if (isFamilyFlow) {
-                        Spacer(modifier = Modifier.Companion.height(16.dp))
-                        Text(
-                            text = "Your IngrideFam Food Notes",
-                            fontFamily = Nunito,
-                            fontWeight = FontWeight.Companion.Bold,
-                            fontSize = 20.sp,
-                            color = Greyscale150,
-                            textAlign = TextAlign.Companion.Center,
-                            modifier = Modifier.Companion
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        )
-                    }
-                }
+
             }
         }
 
