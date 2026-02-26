@@ -154,6 +154,7 @@ internal fun OnboardingAllergyBackground(
     selectedAllergies: List<String>,
     selectedAllergyMemberId: String,
     showSummaryScreen: Boolean,
+    hideProgressLine: Boolean,
     showFineTuneDecision: Boolean,
     onShowFineTuneDecisionChange: (Boolean) -> Unit,
     selectedAllergiesByMember: Map<String, Set<String>>,
@@ -188,10 +189,12 @@ internal fun OnboardingAllergyBackground(
                 } ?: 0
                 val maxReachedAllergyStepIndex = maxOf(allergyStepIndex, maxSelectedStepIndex)
 
-                AnimatedProgressLine(
-                    progress = animatedProgress,
-                    modifier = Modifier.padding(horizontal = 20.dp)
-                )
+                if (!hideProgressLine) {
+                    AnimatedProgressLine(
+                        progress = animatedProgress,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                }
 
                 if (!showSummaryScreen) {
                     CapsuleStepperRow(

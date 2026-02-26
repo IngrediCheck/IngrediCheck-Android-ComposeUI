@@ -111,6 +111,7 @@ import lc.fungee.Ingredicheck.onboarding.ui.components.PreferenceCapsuleCard
 import lc.fungee.Ingredicheck.onboarding.ui.components.FamilyOverviewBackground
 import lc.fungee.Ingredicheck.onboarding.ui.components.FlowRowChips
 import lc.fungee.Ingredicheck.onboarding.ui.components.SelectedChipPill
+import lc.fungee.Ingredicheck.onboarding.ui.PreferenceSummaryMember
 import lc.fungee.Ingredicheck.onboarding.ui.PreferenceSummaryScreen
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
@@ -543,6 +544,7 @@ fun OnboardingHost(
                             selectedAllergies = selectedAllergies,
                             selectedAllergyMemberId = selectedAllergyMemberIdState.value,
                             showSummaryScreen = showSummaryScreen,
+                            hideProgressLine = showChatBotIntro || showChatConversation,
                             showFineTuneDecision = showFineTuneDecision,
                             onShowFineTuneDecisionChange = { showFineTuneDecision = it },
                             selectedAllergiesByMember = selectedAllergiesByMember.mapValues { it.value.toSet() },
@@ -1152,6 +1154,13 @@ fun OnboardingHost(
             PreferenceSummaryScreen(
                 isFamilyFlow = vm.familyOverviewMembers.isNotEmpty(),
                 selectedChipIds = selectedAllergies.toSet(),
+                familyMembers = vm.familyOverviewMembers.toList().map { member ->
+                    PreferenceSummaryMember(
+                        name = member.name.trim().split(" ").firstOrNull() ?: member.name,
+                        avatarUrl = member.generatedAvatarUrl.trim().ifBlank { null },
+                        avatarRes = OnboardingChipData.avatarResOrNull(member.avatarId)
+                    )
+                },
                 onEditSection = { stepId ->
                     showPreferenceSummary = false
                     val idx = allergySteps.indexOfFirst { it.id == stepId }
