@@ -1,7 +1,7 @@
 package lc.fungee.Ingredicheck.foodnotes
 
 import android.util.Log
-import lc.fungee.Ingredicheck.BuildConfig
+import com.russhwolf.settings.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout

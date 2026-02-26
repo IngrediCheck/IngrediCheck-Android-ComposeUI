@@ -17,7 +17,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
-import lc.fungee.Ingredicheck.BuildConfig
+import com.russhwolf.settings.BuildConfig
 
 
 class AppleLoginWebViewActivity : ComponentActivity() {
