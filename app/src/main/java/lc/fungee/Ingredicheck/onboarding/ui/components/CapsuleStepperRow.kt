@@ -78,7 +78,6 @@ fun CapsuleStepperRow(
     } else {
         clampedMaxReached
     }
-
     // Layout model (fixed widths so we can compute the progress fill length deterministically)
     val collapsedHeight = 44.dp
     val collapsedWidth = 64.dp
