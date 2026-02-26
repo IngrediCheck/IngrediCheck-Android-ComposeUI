@@ -27,7 +27,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
 import androidx.annotation.DrawableRes
@@ -57,6 +56,32 @@ fun PreferenceSummaryScreen(
     onEditSection: (String) -> Unit = {},
     onContinue: () -> Unit = {}
 ) {
+    val mode = if (isFamilyFlow) FoodNotesMode.SummaryFamily else FoodNotesMode.SummaryJustMe
+    FoodNotesCanvas(
+        modifier = modifier,
+        mode = mode,
+        selectedChipIds = selectedChipIds,
+        familyMembers = familyMembers,
+        onEditSection = onEditSection,
+        onContinue = onContinue
+    )
+}
+
+enum class FoodNotesMode {
+    SummaryJustMe,
+    SummaryFamily
+}
+
+@Composable
+fun FoodNotesCanvas(
+    modifier: Modifier = Modifier,
+    mode: FoodNotesMode,
+    selectedChipIds: Set<String>,
+    familyMembers: List<PreferenceSummaryMember> = emptyList(),
+    onEditSection: (String) -> Unit = {},
+    onContinue: () -> Unit = {}
+) {
+    val isFamilyFlow = mode == FoodNotesMode.SummaryFamily
     val steps = OnboardingChipData.foodNotesStepIds
 
     Box(
@@ -196,7 +221,7 @@ fun PreferenceSummaryScreen(
                             textAlign = TextAlign.Companion.Center,
                             modifier = Modifier.Companion
                                 .fillMaxWidth()
-                                .padding(top = 8.dp).background(Color.Red)
+                                .padding(top = 8.dp)
                         )
                     }
                 }
