@@ -117,7 +117,13 @@ internal fun AddAllergiesSheet(
     showChatConversation: Boolean = false,
     onChatBotLetsGo: () -> Unit = {},
     onChatSkip: () -> Unit = {},
-    questionStepIndex: Int = 0
+    questionStepIndex: Int = 0,
+    // When true, this sheet is being used as an "Edit section" sheet from the
+    // preference summary screen (iOS EditSectionBottomSheet equivalent). In this
+    // mode we (1) skip summary/chat/fine-tune branches and (2) show a "Done"
+    // primary button instead of the forward arrow.
+    isEditMode: Boolean = false,
+    onEditDone: () -> Unit = {}
 ) {
     val everyoneId = EVERYONE_MEMBER_ID
     val fallbackMembers = remember(members) {
@@ -136,14 +142,16 @@ internal fun AddAllergiesSheet(
         }
     }
 
-    // Summary screen with floating robot (shown after last step completes)
-    if (showSummaryScreen) {
+    // Summary screen with floating robot (shown after last step completes).
+    // Skip this when we're in edit mode from the summary screen.
+    if (!isEditMode && showSummaryScreen) {
         SummaryScreenWithFloatingRobot()
         return
     }
 
     // After the summary completes, show the IngrediBot chat intro UI.
-    if (showChatBotIntro) {
+    // Skip chat states when we're in edit mode.
+    if (!isEditMode && showChatBotIntro) {
         ChatBotIntroScreen(
             onMaybeLater = onChatSkip,
             onYesLetsGo = onChatBotLetsGo,
@@ -153,7 +161,8 @@ internal fun AddAllergiesSheet(
     }
 
     // After tapping "Yes, let’s go", show the static chat conversation UI.
-    if (showChatConversation) {
+    // Skip chat states when we're in edit mode.
+    if (!isEditMode && showChatConversation) {
         ChatBotConversationScreen(
             onSkip = onChatSkip
         )
@@ -161,7 +170,8 @@ internal fun AddAllergiesSheet(
     }
 
     // Special fine‑tune decision screen between Life Style and Nutrition.
-    if (showFineTuneDecision) {
+    // Skip this branch when we're using the sheet in edit mode.
+    if (!isEditMode && showFineTuneDecision) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -550,37 +560,53 @@ internal fun AddAllergiesSheet(
         }
     }
 
-    // Single global forward arrow button at the bottom-right of the sheet
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-           .padding( horizontal = 20.dp)
-            .padding(top = 4.dp ,end =10.dp)
-
-        ,
-        contentAlignment = Alignment.BottomEnd
-    ) {
+    // CTA at the bottom-right of the sheet.
+    // - Normal mode: circular forward arrow (Next)
+    // - Edit mode (from summary): "Done" primary button
+    if (isEditMode) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            PrimaryButton(
+                title = "Done",
+                takeFullWidth = false,
+                onClick = onEditDone
+            )
+        }
+    } else {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .primaryButtonEffect(
-                    isDisabled = false,
-                    shape = RoundedCornerShape(percent = 50),
-                    disabledBackgroundColor = Greyscale40
-                )
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { onNext() },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(top = 4.dp, end = 10.dp),
+            contentAlignment = Alignment.BottomEnd
         ) {
-            Icon(
-                painter = painterResource(R.drawable.forward_arow_line_1),
-                contentDescription = null,
-             tint = Color.Unspecified ,
-                modifier = Modifier.size(32.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .primaryButtonEffect(
+                        isDisabled = false,
+                        shape = RoundedCornerShape(percent = 50),
+                        disabledBackgroundColor = Greyscale40
+                    )
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onNext() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.forward_arow_line_1),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }

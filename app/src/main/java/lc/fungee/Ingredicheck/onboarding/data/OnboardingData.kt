@@ -61,8 +61,11 @@ object OnboardingChipData {
 
     private fun dynamicStepToChips(step: DynamicStep): List<ChipDefinition> {
         return when (step.type) {
+            // Simple chip lists (e.g., allergies, intolerances, health conditions).
+            // Prefix chip id with the step id so that common labels like "Other"
+            // remain independent per step (e.g., "allergies_other" vs "healthConditions_other").
             "type-1" -> step.content.options?.map { o ->
-                ChipDefinition(slug(o.name), o.name, o.icon + "  ")
+                ChipDefinition("${step.id}_${slug(o.name)}", o.name, o.icon + "  ")
             } ?: emptyList()
             "type-2" -> step.content.subSteps?.flatMap { sub ->
                 (sub.options ?: emptyList()).map { o ->

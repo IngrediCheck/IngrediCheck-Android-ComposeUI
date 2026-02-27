@@ -55,6 +55,8 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import kotlinx.coroutines.delay
+import lc.fungee.Ingredicheck.onboarding.data.memberAvatarBackgroundColor
+import lc.fungee.Ingredicheck.ui.theme.Greyscale130
 
 @Composable
 internal fun CapsuleEveryoneAvatarSmall() {
@@ -77,6 +79,10 @@ internal fun CapsuleEveryoneAvatarSmall() {
 @Composable
 internal fun CapsuleMemberAvatarSmall(member: OnboardingViewModel.FamilyOverviewMember) {
     val avatarRes = OnboardingChipData.avatarResOrNull(member.avatarId)
+    // Resolve the same background color used everywhere else for this member:
+    // - backgroundColorId (explicit memoji color), or
+    // - colorHex (random pastel assigned at creation).
+    val memberBgColor = memberAvatarBackgroundColor(member.backgroundColorId, member.colorHex)
     Box(
         modifier = Modifier
             .size(24.dp)
@@ -112,8 +118,18 @@ internal fun CapsuleMemberAvatarSmall(member: OnboardingViewModel.FamilyOverview
                     modifier = Modifier
                         .size(22.dp)
                         .clip(CircleShape)
-                        .background(Secondary200)
-                )
+                        .background(memberBgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val initial = member.name.trim().firstOrNull()?.uppercase() ?: "?"
+                    Text(
+                        text = initial,
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 10.sp,
+                        color = Greyscale130
+                    )
+                }
             }
         }
     }

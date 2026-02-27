@@ -25,8 +25,10 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
+import lc.fungee.Ingredicheck.ui.theme.Greyscale130
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Manrope
+import lc.fungee.Ingredicheck.ui.theme.Nunito
 
 @Composable
 fun PreferenceCapsuleCard(
@@ -76,9 +78,9 @@ fun PreferenceCapsuleCard(
                     )
                     Text(
                         text = sectionTitle,
-                        fontFamily = Manrope,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
                         color = Greyscale110
                     )
                     Spacer(modifier = Modifier.weight(1f))
@@ -86,24 +88,28 @@ fun PreferenceCapsuleCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier
+                            modifier = Modifier.clip(shape = RoundedCornerShape(16.dp))
+                                .background(color = Greyscale30)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+
                                 .clickable(enabled = onEditClick != null) {
                                     onEditClick?.invoke()
                                 }
                         ) {
-                            Text(
-                                text = "Edit",
-                                fontFamily = Manrope,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
-                                color = Greyscale110
-                            )
                             Icon(
                                 painter = painterResource(id = R.drawable.pen_line_icon),
                                 contentDescription = null,
                                 modifier = Modifier.size(12.dp),
-                                tint = Greyscale110
+                                tint = Greyscale130
                             )
+                            Text(
+                                text = "Edit",
+                                fontFamily = Nunito,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                color = Greyscale130
+                            )
+
                         }
                     }
                 }
