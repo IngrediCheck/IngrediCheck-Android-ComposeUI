@@ -61,9 +61,10 @@ internal fun OnboardingAuthSheetContent(
                 onInviteCodeChange = { vm.inviteCode = it },
                 onBackClick = onBack,
                 onVerifyContinue = {
-                    if (vm.inviteCode == "ABCXYZ") {
+                    if (vm.inviteCode.isBlank()) {
                         vm.inviteCodeError = true
                     } else {
+                        vm.inviteCodeError = false
                         vm.navigateTo(OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR)
                     }
                 }

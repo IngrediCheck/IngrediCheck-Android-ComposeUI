@@ -25,6 +25,7 @@ import lc.fungee.Ingredicheck.AppConfig
 
 
 private const val TAG = "FoodNotes"
+private const val MAX_VERSION_RETRY = 2
 
 /**
  * Food-notes API: per-member and "Everyone" chip selections (allergies, intolerances, etc.).
@@ -130,7 +131,8 @@ class FoodNotesRepository {
     suspend fun updateFamilyFoodNotes(
         accessToken: String,
         content: Map<String, List<Map<String, String>>>,
-        version: Int
+        version: Int,
+        retryCount: Int = 0
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/food-notes")
@@ -156,18 +158,24 @@ class FoodNotesRepository {
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {
-                    val currentVersion = parseVersionFrom409Response(responseBody)
-                    if (currentVersion != null) {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "updateFamilyFoodNotes: 409 retry with version=$currentVersion")
-                        }
-                        updateFamilyFoodNotes(accessToken, content, currentVersion).getOrThrow()
-                    } else {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "updateFamilyFoodNotes: 409 currentNote=null, retry with version=0")
-                        }
-                        updateFamilyFoodNotes(accessToken, content, 0).getOrThrow()
+                    if (retryCount >= MAX_VERSION_RETRY) {
+                        Log.w(TAG, "updateFamilyFoodNotes: 409 conflict after $MAX_VERSION_RETRY retries, giving up")
+                        throw IllegalStateException("version conflict (family) after $MAX_VERSION_RETRY retries")
                     }
+                    val currentVersion = parseVersionFrom409Response(responseBody)
+                    val nextVersion = currentVersion ?: 0
+                    if (BuildConfig.DEBUG) {
+                        Log.d(
+                            TAG,
+                            "updateFamilyFoodNotes: 409 retry=${retryCount + 1} with version=$nextVersion (currentVersion=$currentVersion)"
+                        )
+                    }
+                    updateFamilyFoodNotes(
+                        accessToken = accessToken,
+                        content = content,
+                        version = nextVersion,
+                        retryCount = retryCount + 1
+                    ).getOrThrow()
                 }
                 else -> throw IllegalStateException("PUT failed: ${response.status.value} $responseBody")
             }
@@ -182,7 +190,8 @@ class FoodNotesRepository {
         accessToken: String,
         memberId: String,
         content: Map<String, List<Map<String, String>>>,
-        version: Int
+        version: Int,
+        retryCount: Int = 0
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
         val url = baseUrl("family/members/$memberId/food-notes")
@@ -208,18 +217,25 @@ class FoodNotesRepository {
             when {
                 response.status.isSuccess() -> parseFoodNotesResponse(responseBody)
                 response.status.value == 409 -> {
-                    val currentVersion = parseVersionFrom409Response(responseBody)
-                    if (currentVersion != null) {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "updateMemberFoodNotes: 409 retry with version=$currentVersion")
-                        }
-                        updateMemberFoodNotes(accessToken, memberId, content, currentVersion).getOrThrow()
-                    } else {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "updateMemberFoodNotes: 409 currentNote=null, retry with version=0")
-                        }
-                        updateMemberFoodNotes(accessToken, memberId, content, 0).getOrThrow()
+                    if (retryCount >= MAX_VERSION_RETRY) {
+                        Log.w(TAG, "updateMemberFoodNotes: 409 conflict after $MAX_VERSION_RETRY retries (memberId=$memberId), giving up")
+                        throw IllegalStateException("version conflict (memberId=$memberId) after $MAX_VERSION_RETRY retries")
                     }
+                    val currentVersion = parseVersionFrom409Response(responseBody)
+                    val nextVersion = currentVersion ?: 0
+                    if (BuildConfig.DEBUG) {
+                        Log.d(
+                            TAG,
+                            "updateMemberFoodNotes: 409 retry=${retryCount + 1} with version=$nextVersion (currentVersion=$currentVersion)"
+                        )
+                    }
+                    updateMemberFoodNotes(
+                        accessToken = accessToken,
+                        memberId = memberId,
+                        content = content,
+                        version = nextVersion,
+                        retryCount = retryCount + 1
+                    ).getOrThrow()
                 }
                 else -> throw IllegalStateException("PUT failed: ${response.status.value} $responseBody")
             }

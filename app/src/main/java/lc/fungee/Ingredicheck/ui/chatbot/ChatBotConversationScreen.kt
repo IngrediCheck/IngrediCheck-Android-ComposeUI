@@ -172,11 +172,6 @@ fun ChatBotConversationScreen(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(28.dp)
-//                                        .shadow(
-//                                            elevation = 5.dp,
-//                                            ambientColor = Color(0xFFBDBDBD),
-//                                            spotColor = Color(0xFF949292)
-//                                        )
                                         .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
