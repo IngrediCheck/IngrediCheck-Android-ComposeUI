@@ -33,9 +33,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -47,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -64,6 +70,7 @@ import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.auth.MemojiGenState
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.components.buttons.SecondaryButton
+import lc.fungee.Ingredicheck.onboarding.data.DynamicStepsLoader
 import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
 import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
@@ -88,6 +95,7 @@ import lc.fungee.Ingredicheck.ui.theme.Primary800
 import lc.fungee.Ingredicheck.ui.theme.sheetTitleTextStyle
 import lc.fungee.Ingredicheck.ui.theme.sheetSubtitleTextStyle
 import lc.fungee.Ingredicheck.memoji.avatarOptionsForCategory
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun AddFamilyAvatarPickerSheet(
@@ -234,25 +242,8 @@ internal fun AddFamilyAvatarGeneratingSheet(
         label = "shimmerProgress"
     )
 
-    val botX by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "botX"
-    )
-
-    val botY by infinite.animateFloat(
-        initialValue = 0f,
-        targetValue = -6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2500, delayMillis = 500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "botY"
-    )
+    // Use common floating robot animation
+    val (botX, botY) = OnboardingAnimations.rememberFloatingRobotOffsets(label = "avatarGenerating")
 
     Column(
         modifier = Modifier
@@ -359,51 +350,25 @@ internal fun AddFamilyAvatarGeneratingSheet(
             }
 
             is MemojiGenState.Success -> {
-                Spacer(modifier = Modifier.height(10.dp))
-
                 // Determine the background color from the user's selected color category (index 5)
                 val selectedColorId = selections[5]
                 val avatarBackgroundColor = remember(selectedColorId) {
                     avatarBackgroundColorForId(selectedColorId)
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    SubcomposeAsyncImage(
-                        model = state.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(170.dp)
-                            .clip(CircleShape)
-                            .background(avatarBackgroundColor),
-                        contentScale = ContentScale.Crop
-                    ) {
-                        when (painter.state) {
-                            is coil.compose.AsyncImagePainter.State.Loading -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(avatarBackgroundColor),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(160.dp),
-                                        strokeWidth = 3.dp,
-                                        color = Primary800
-                                    )
-                                }
-                            }
-                            else -> {
-                                SubcomposeAsyncImageContent()
-                            }
-                        }
-                    }
-                }
+                // Confetti overlay: match iOS behavior (start after 0.4s, stop after ~5.4s),
+                // without changing the layout or height of the sheet.
+                var showConfetti by remember { mutableStateOf(false) }
+                val confettiComposition by rememberLottieComposition(
+                    LottieCompositionSpec.RawRes(R.raw.confetti)
+                )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                LaunchedEffect(Unit) {
+                    delay(400L)
+                    showConfetti = true
+                    delay(5000L)
+                    showConfetti = false
+                }
 
                 val selectedMembers = remember(selections) {
                     (0..5).mapNotNull { index ->
@@ -412,76 +377,133 @@ internal fun AddFamilyAvatarGeneratingSheet(
                     }
                 }
 
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Text(
-                        text = "Selected",
-                        style = sheetSubtitleTextStyle(),
-                        color = Greyscale110,
-                        modifier = Modifier.padding(horizontal = 20.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
+                    Column(
                         modifier = Modifier
-                            .padding(horizontal = 20.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Greyscale30)
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        selectedMembers.forEach { member ->
-                            Box(
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            SubcomposeAsyncImage(
+                                model = state.imageUrl,
+                                contentDescription = null,
                                 modifier = Modifier
-                                    .size(30.dp)
+                                    .size(170.dp)
+                                    .clip(CircleShape)
+                                    .background(avatarBackgroundColor),
+                                contentScale = ContentScale.Crop
                             ) {
-                                Image(
-                                    painter = painterResource(id = member.iconRes),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(2.dp),
-                                    contentScale = ContentScale.Fit
-                                )
+                                when (painter.state) {
+                                    is coil.compose.AsyncImagePainter.State.Loading -> {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(avatarBackgroundColor),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(160.dp),
+                                                strokeWidth = 3.dp,
+                                                color = Primary800
+                                            )
+                                        }
+                                    }
+                                    else -> {
+                                        SubcomposeAsyncImageContent()
+                                    }
+                                }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Selected",
+                            style = sheetSubtitleTextStyle(),
+                            color = Greyscale110,
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 20.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Greyscale30)
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            selectedMembers.forEach { member ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = member.iconRes),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(2.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Text(
+                            text = "Meet your new avatar,\nlooking good!",
+                            style = sheetTitleTextStyle(),
+                            color = Greyscale150,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SecondaryButton(
+                                title = "Regenerate",
+                                textColor = Primary800,
+                                icon = R.drawable.two_star_image,
+                                takeFullWidth = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                onClick = onRegenerate
+                            )
+
+                            PrimaryButton(
+                                title = "Assign",
+                                takeFullWidth = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                onClick = { onAssign(state.imageUrl) }
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Text(
-                        text = "Meet your new avatar,\nlooking good!",
-                        style = sheetTitleTextStyle(),
-                        color = Greyscale150,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SecondaryButton(
-                            title = "Regenerate",
-                            textColor = Primary800,
-                            icon = R.drawable.two_star_image,
-                            takeFullWidth = true,
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            onClick = onRegenerate
-                        )
-
-                        PrimaryButton(
-                            title = "Assign",
-                            takeFullWidth = true,
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                            onClick = { onAssign(state.imageUrl) }
+                    if (showConfetti && confettiComposition != null) {
+                        LottieAnimation(
+                            composition = confettiComposition,
+                            iterations = LottieConstants.IterateForever,
+                            modifier = Modifier
+                                .matchParentSize()
                         )
                     }
                 }
@@ -1267,6 +1289,17 @@ private fun AddFamilyAllergiesFullPreview_Pixel8Pro() {
 
     val selectedMemberIdState = remember { mutableStateOf(members.first().id) }
     val selectedAllergiesState = remember { mutableStateListOf<String>() }
+    val context = LocalContext.current
+    var dynamicLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        DynamicStepsLoader.ensureLoaded(context)
+        dynamicLoaded = true
+    }
+    val steps = remember(dynamicLoaded) {
+        DynamicStepsLoader.getSteps()?.map { s ->
+            CapsuleStep(s.id, s.header.name, OnboardingChipData.iconResForStepId(s.id))
+        } ?: emptyList()
+    }
 
     OnboardingShell(
         onDismissRequest = { },
@@ -1281,26 +1314,7 @@ private fun AddFamilyAllergiesFullPreview_Pixel8Pro() {
                     AnimatedProgressLine(progress = 0.1f)
                     Spacer(modifier = Modifier.height(10.dp))
                     CapsuleStepperRow(
-                        steps = listOf(
-                            CapsuleStep("allergies", "Allergies", R.drawable.ic_step_allergies),
-                            CapsuleStep("intolerances", "Intolerances", R.drawable.ic_step_intolerances),
-                            CapsuleStep(
-                                "health_conditions",
-                                "Health Conditions",
-                                R.drawable.ic_step_health_conditions
-                            ),
-                            CapsuleStep("life_stage", "Life Stage", R.drawable.ic_step_life_style),
-                            CapsuleStep("region", "Region", R.drawable.ic_step_region),
-                            CapsuleStep("avoid", "Avoid", R.drawable.ic_step_avoid_cross),
-                            CapsuleStep(
-                                "life_style",
-                                "Life Style",
-                                R.drawable.ic_step_diet_preferences
-                            ),
-                            CapsuleStep("nutrition", "Nutrition", R.drawable.ic_step_meals),
-                            CapsuleStep("ethical", "Ethical", R.drawable.ic_step_ethical),
-                            CapsuleStep("taste", "Taste", R.drawable.iconoir_chocolate)
-                        ),
+                        steps = steps,
                         activeIndex = 0
                     )
                 }
@@ -1320,6 +1334,14 @@ private fun AddFamilyAllergiesFullPreview_Pixel8Pro() {
                     }
                 },
                 onNext = { },
+                onSkipPreferences = { },
+                showFineTuneDecision = false,
+                showSummaryScreen = false,
+                hasOtherSelection = selectedAllergiesState.any { it.contains("other", ignoreCase = true) },
+                showChatBotIntro = false,
+                showChatConversation = false,
+                onChatBotLetsGo = {},
+                onChatSkip = {},
                 questionStepIndex = 0
             )
         }

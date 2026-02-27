@@ -1,6 +1,7 @@
 package lc.fungee.Ingredicheck.dietary
 
 import android.util.Log
+import com.russhwolf.settings.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
@@ -22,6 +23,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import lc.fungee.Ingredicheck.AppConfig
+
 
 private const val TAG = "DietaryPreference"
 
@@ -65,21 +67,27 @@ class DietaryPreferenceRepository {
     /** GET list of dietary preferences. */
     suspend fun getDietaryPreferences(accessToken: String): Result<List<DietaryPreferenceDto>> {
         val url = baseUrl("preferencelists/default")
-        Log.d(TAG, "getDietaryPreferences: GET $url")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "getDietaryPreferences: GET $url")
+        }
         return runCatching {
             val response: HttpResponse = client.get(url) {
                 authHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
             }
             val body = response.bodyAsText()
-            Log.d(TAG, "getDietaryPreferences: status=${response.status.value} bodyLength=${body.length}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "getDietaryPreferences: status=${response.status.value} bodyLength=${body.length}")
+            }
             if (!response.status.isSuccess()) {
                 Log.e(TAG, "getDietaryPreferences: failed ${response.status.value} $body")
                 throw IllegalStateException("GET failed: ${response.status.value}")
             }
             json.decodeFromString<List<DietaryPreferenceDto>>(body)
         }.onSuccess { list ->
-            Log.d(TAG, "getDietaryPreferences: success count=${list.size}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "getDietaryPreferences: success count=${list.size}")
+            }
         }.onFailure { e ->
             Log.e(TAG, "getDietaryPreferences: error", e)
         }
@@ -98,7 +106,9 @@ class DietaryPreferenceRepository {
         val path = if (id != null) "preferencelists/default/$id" else "preferencelists/default"
         val method = if (id != null) "PUT" else "POST"
         val url = baseUrl(path)
-        Log.d(TAG, "addOrEditDietaryPreference: $method $url clientActivityId=$clientActivityId preferenceLength=${preferenceText.length} id=$id")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "addOrEditDietaryPreference: $method $url clientActivityId=$clientActivityId preferenceLength=${preferenceText.length} id=$id")
+        }
         return runCatching {
             val formBody = MultiPartFormDataContent(formData {
                 append("clientActivityId", clientActivityId)
@@ -119,7 +129,9 @@ class DietaryPreferenceRepository {
             }
             val res = response as HttpResponse
             val body = res.bodyAsText()
-            Log.d(TAG, "addOrEditDietaryPreference: status=${res.status.value} bodyLength=${body.length}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "addOrEditDietaryPreference: status=${res.status.value} bodyLength=${body.length}")
+            }
             if (!res.status.isSuccess() && res.status.value !in 200..299 && res.status.value != 422) {
                 Log.e(TAG, "addOrEditDietaryPreference: bad status ${res.status.value} $body")
                 throw IllegalStateException("Request failed: ${res.status.value}")
@@ -128,7 +140,9 @@ class DietaryPreferenceRepository {
         }.onSuccess { result ->
             when (result) {
                 is PreferenceValidationResult.Success ->
-                    Log.d(TAG, "addOrEditDietaryPreference: success id=${result.preference.id}")
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "addOrEditDietaryPreference: success id=${result.preference.id}")
+                    }
                 is PreferenceValidationResult.Failure ->
                     Log.w(TAG, "addOrEditDietaryPreference: failure explanation=${result.explanation}")
             }
@@ -144,7 +158,9 @@ class DietaryPreferenceRepository {
         id: Int
     ): Result<Unit> {
         val url = baseUrl("preferencelists/default/$id")
-        Log.d(TAG, "deleteDietaryPreference: DELETE $url id=$id")
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, "deleteDietaryPreference: DELETE $url id=$id")
+        }
         return runCatching {
             val formBody = MultiPartFormDataContent(formData {
                 append("clientActivityId", clientActivityId)
@@ -153,7 +169,9 @@ class DietaryPreferenceRepository {
                 authHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 setBody(formBody)
             }
-            Log.d(TAG, "deleteDietaryPreference: status=${response.status.value}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "deleteDietaryPreference: status=${response.status.value}")
+            }
             if (response.status.value != 204 && !response.status.isSuccess()) {
                 throw IllegalStateException("DELETE failed: ${response.status.value}")
             }

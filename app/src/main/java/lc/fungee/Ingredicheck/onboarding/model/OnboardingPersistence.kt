@@ -1,6 +1,7 @@
 package lc.fungee.Ingredicheck.onboarding.model
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -29,6 +30,9 @@ class OnboardingPersistence(
         private val KEY_ADD_FAMILY_GENERATED_AVATAR_URL = stringPreferencesKey("onboarding_add_family_generated_avatar_url")
         private val KEY_MEMOJI_GENERATION_COMPLETED = booleanPreferencesKey("onboarding_memoji_generation_completed")
         private val KEY_FAMILY_OVERVIEW_MEMBERS = stringPreferencesKey("onboarding_family_overview_members")
+        private val KEY_SELECTED_ALLERGIES_BY_MEMBER = stringPreferencesKey("onboarding_selected_allergies_by_member")
+        private val KEY_SELECTED_ALLERGY_MEMBER_ID = stringPreferencesKey("onboarding_selected_allergy_member_id")
+        private val KEY_ALLERGY_STEP_INDEX = stringPreferencesKey("onboarding_allergy_step_index")
     }
 
     data class SavedState(
@@ -124,5 +128,52 @@ class OnboardingPersistence(
             prefs[KEY_MEMOJI_GENERATION_COMPLETED] = memojiGenerationCompleted
             prefs[KEY_FAMILY_OVERVIEW_MEMBERS] = Json.encodeToString(familyOverviewMembers)
         }
+    }
+
+    /**
+     * Save allergy selections state (selected chips/cards per member and current step index).
+     */
+    suspend fun setAllergySelectionsState(
+        selectedAllergiesByMember: Map<String, Set<String>>,
+        selectedAllergyMemberId: String,
+        allergyStepIndex: Int
+    ) {
+        Log.d(
+            "OnboardingAllergies",
+            "[PERSIST] setAllergySelectionsState selections=$selectedAllergiesByMember " +
+                "selectedMember=$selectedAllergyMemberId stepIndex=$allergyStepIndex"
+        )
+        context.onboardingDataStore.edit { prefs ->
+            // Convert Map<String, Set<String>> to JSON
+            val selectionsJson = Json.encodeToString(
+                selectedAllergiesByMember.mapValues { it.value.toList() }
+            )
+            prefs[KEY_SELECTED_ALLERGIES_BY_MEMBER] = selectionsJson
+            prefs[KEY_SELECTED_ALLERGY_MEMBER_ID] = selectedAllergyMemberId
+            prefs[KEY_ALLERGY_STEP_INDEX] = allergyStepIndex.toString()
+        }
+    }
+
+    /**
+     * Get allergy selections state (selected chips/cards per member and current step index).
+     */
+    suspend fun getAllergySelectionsState(): Triple<Map<String, Set<String>>, String, Int> {
+        val prefs = context.onboardingDataStore.data.first()
+        val selectionsJson = prefs[KEY_SELECTED_ALLERGIES_BY_MEMBER].orEmpty()
+        val selectedAllergiesByMember = if (selectionsJson.isNotBlank()) {
+            runCatching {
+                Json.decodeFromString<Map<String, List<String>>>(selectionsJson)
+                    .mapValues { it.value.toSet() }
+            }.getOrElse { emptyMap() }
+        } else emptyMap()
+        val selectedAllergyMemberId = prefs[KEY_SELECTED_ALLERGY_MEMBER_ID].orEmpty()
+        val allergyStepIndex = prefs[KEY_ALLERGY_STEP_INDEX]?.toIntOrNull() ?: 0
+        Log.d(
+            "OnboardingAllergies",
+            "[RESTORE] getAllergySelectionsState selections=$selectedAllergiesByMember " +
+                "selectedMember=$selectedAllergyMemberId stepIndex=$allergyStepIndex " +
+                "jsonLength=${selectionsJson.length}"
+        )
+        return Triple(selectedAllergiesByMember, selectedAllergyMemberId, allergyStepIndex)
     }
 }

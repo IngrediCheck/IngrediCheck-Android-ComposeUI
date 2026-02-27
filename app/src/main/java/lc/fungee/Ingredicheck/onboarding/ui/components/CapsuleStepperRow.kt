@@ -56,6 +56,7 @@ data class CapsuleStep(
 fun CapsuleStepperRow(
     steps: List<CapsuleStep>,
     activeIndex: Int,
+    maxReachedIndex: Int = activeIndex,
     modifier: Modifier = Modifier.Companion,
     onStepClick: ((Int) -> Unit)? = null,
     inactiveColor: Color = Color(0xFFF6FCED),
@@ -69,19 +70,14 @@ fun CapsuleStepperRow(
     if (steps.isEmpty()) return
 
     val clampedActive = activeIndex.coerceIn(0, steps.lastIndex)
-
-    var maxReachedIndex by remember { mutableIntStateOf(clampedActive) }
-    if (clampedActive > maxReachedIndex) {
-        maxReachedIndex = clampedActive
-    }
+    val clampedMaxReached = maxReachedIndex.coerceIn(clampedActive, steps.lastIndex)
     
     // Adjust maxReachedIndex for progress calculation: exclude the excluded step
-    val effectiveMaxReachedIndex = if (progressExcludedIndex != null && maxReachedIndex > progressExcludedIndex) {
-        maxReachedIndex - 1
+    val effectiveMaxReachedIndex = if (progressExcludedIndex != null && clampedMaxReached > progressExcludedIndex) {
+        clampedMaxReached - 1
     } else {
-        maxReachedIndex
+        clampedMaxReached
     }
-
     // Layout model (fixed widths so we can compute the progress fill length deterministically)
     val collapsedHeight = 44.dp
     val collapsedWidth = 64.dp
@@ -94,10 +90,10 @@ fun CapsuleStepperRow(
     // Calculate fill width to the max reached index.
     // If the active item is before the max reached index, we must add the expansion delta
     // because the active item (which is wider) pushes the subsequent items (up to max) further to the right.
-    val baseFill = (collapsedWidth + itemSpacing) * maxReachedIndex
+    val baseFill = (collapsedWidth + itemSpacing) * clampedMaxReached
     // Use the *measured* active capsule width instead of the old fixed expandedWidth,
     // so the filled line stops exactly before the first *unvisited* capsule.
-    val expansionDelta = if (clampedActive < maxReachedIndex) (activeItemWidth - collapsedWidth) else 0.dp
+    val expansionDelta = if (clampedActive < clampedMaxReached) (activeItemWidth - collapsedWidth) else 0.dp
     val fillToStartOfActive = baseFill + expansionDelta
 
     val fillToStartOfActiveState by animateDpAsState(

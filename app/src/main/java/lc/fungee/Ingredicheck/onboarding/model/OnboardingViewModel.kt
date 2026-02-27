@@ -263,6 +263,12 @@ class OnboardingViewModel(
                 memojiGenerationCompleted = false,
                 familyOverviewMembers = emptyList()
             )
+            // Clear allergy selections state
+            persistence.setAllergySelectionsState(
+                selectedAllergiesByMember = emptyMap(),
+                selectedAllergyMemberId = "",
+                allergyStepIndex = 0
+            )
         }
     }
 

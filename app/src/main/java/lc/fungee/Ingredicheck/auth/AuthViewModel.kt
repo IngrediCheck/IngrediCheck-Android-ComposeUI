@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.russhwolf.settings.BuildConfig
 import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +19,10 @@ import lc.fungee.Ingredicheck.memoji.MemojiRepository
 import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
+import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
+import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
+import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+
 
 enum class AuthProvider {
     Google,
@@ -45,6 +50,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val memojiRepository = MemojiRepository()
     private val familyRepository = FamilyRepository()
     private val dietaryPreferenceRepository = DietaryPreferenceRepository()
+    private val foodNotesRepository = FoodNotesRepository()
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
@@ -61,7 +67,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private fun pushDebug(message: String) {
         val line = "${System.currentTimeMillis()} | $message"
         _debugLog.value = (_debugLog.value + line).takeLast(60)
-        Log.d("AuthDebug", message)
+        if (BuildConfig.DEBUG) {
+            Log.d("AuthDebug", message)
+        }
     }
 
     /**
@@ -71,7 +79,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun syncDietaryPreferencesFromOnboarding(preferenceText: String) {
         if (preferenceText.isBlank()) {
-            Log.d("AuthDebug", "DietaryPreference: skip sync (empty text)")
+            if (BuildConfig.DEBUG) {
+                Log.d("AuthDebug", "DietaryPreference: skip sync (empty text)")
+            }
             return
         }
         viewModelScope.launch {
@@ -93,7 +103,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     when (validationResult) {
                         is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Success -> {
                             pushDebug("DietaryPreference: sync success id=${validationResult.preference.id}")
-                            Log.d("AuthDebug", "DietaryPreference: sync success id=${validationResult.preference.id}")
+                            if (BuildConfig.DEBUG) {
+                                Log.d("AuthDebug", "DietaryPreference: sync success id=${validationResult.preference.id}")
+                            }
                         }
                         is lc.fungee.Ingredicheck.dietary.PreferenceValidationResult.Failure -> {
                             pushDebug("DietaryPreference: sync failure ${validationResult.explanation}")
@@ -106,6 +118,71 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     Log.e("AuthDebug", "DietaryPreference: sync error", e)
                 }
             )
+        }
+    }
+
+    /**
+     * Sync onboarding chip selections to food-notes API (per-member and Everyone), matching iOS.
+     * Called when user taps "All Set!" or completes the last preference step.
+     * - EVERYONE_MEMBER_ID ("ALL") -> PUT family/food-notes
+     * - Each member id -> PUT family/members/{id}/food-notes
+     */
+    fun syncFoodNotesFromOnboarding(selectedAllergiesByMember: Map<String, Set<String>>) {
+        val keys = selectedAllergiesByMember.keys.toList()
+        if (BuildConfig.DEBUG) {
+            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync started, keys=${keys}, size=${selectedAllergiesByMember.size}")
+        }
+        if (selectedAllergiesByMember.isEmpty()) {
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotes API: skip sync (empty selections)")
+            }
+            return
+        }
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                Log.w("FoodNotesAPI", "FoodNotes API: skip sync (no access token)")
+                return@launch
+            }
+            var successCount = 0
+            var failCount = 0
+            for ((memberKey, chipIds) in selectedAllergiesByMember) {
+                if (chipIds.isEmpty()) continue
+                val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
+                if (content.isEmpty()) continue
+                val isEveryone = memberKey == EVERYONE_MEMBER_ID || memberKey.isBlank()
+                val result = if (isEveryone) {
+                    foodNotesRepository.updateFamilyFoodNotes(
+                        accessToken = accessToken,
+                        content = content,
+                        version = 0
+                    )
+                } else {
+                    foodNotesRepository.updateMemberFoodNotes(
+                        accessToken = accessToken,
+                        memberId = memberKey.lowercase(),
+                        content = content,
+                        version = 0
+                    )
+                }
+                result.fold(
+                    onSuccess = {
+                        successCount++
+                        pushDebug("FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
+                        if (BuildConfig.DEBUG) {
+                            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync success ${if (isEveryone) "Everyone" else "member=$memberKey"} — working")
+                        }
+                    },
+                    onFailure = { e ->
+                        failCount++
+                        pushDebug("FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey} ${e.message}")
+                        Log.e("FoodNotesAPI", "FoodNotes API: sync error ${if (isEveryone) "Everyone" else memberKey}", e)
+                    }
+                )
+            }
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
+            }
         }
     }
 
