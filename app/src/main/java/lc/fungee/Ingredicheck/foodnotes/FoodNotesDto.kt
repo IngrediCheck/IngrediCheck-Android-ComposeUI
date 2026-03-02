@@ -24,3 +24,14 @@ data class FoodNotesResponse(
     val version: Int,
     @SerialName("updatedAt") val updatedAt: String = ""
 )
+
+/**
+ * Response from GET family/food-notes/summary.
+ * Matches iOS DTO.FoodNotesSummaryResponse.
+ */
+@Serializable
+data class FoodNotesSummaryResponse(
+    val summary: String,
+    @SerialName("generated_at") val generatedAt: String = "",
+    @SerialName("is_cached") val isCached: Boolean = false
+)

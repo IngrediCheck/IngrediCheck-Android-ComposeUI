@@ -64,6 +64,10 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val _memojiState = MutableStateFlow<MemojiGenState>(MemojiGenState.Idle)
     val memojiState: StateFlow<MemojiGenState> = _memojiState.asStateFlow()
 
+    // AI-generated summary of food notes (text), matching iOS FoodNotesStore.foodNotesSummary.
+    private val _foodNotesSummary = MutableStateFlow<String?>(null)
+    val foodNotesSummary: StateFlow<String?> = _foodNotesSummary.asStateFlow()
+
     private fun pushDebug(message: String) {
         val line = "${System.currentTimeMillis()} | $message"
         _debugLog.value = (_debugLog.value + line).takeLast(60)
@@ -144,6 +148,19 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 Log.w("FoodNotesAPI", "FoodNotes API: skip sync (no access token)")
                 return@launch
             }
+            val familySnapshot = _currentFamily.value
+            if (BuildConfig.DEBUG) {
+                val familyMemberIds = familySnapshot?.let { family ->
+                    buildList {
+                        add(family.selfMember.id)
+                        addAll(family.otherMembers.map { it.id })
+                    }.joinToString(",")
+                } ?: "none"
+                Log.d(
+                    "FoodNotesAPI",
+                    "FoodNotes API implementation: currentFamily memberIds=[$familyMemberIds]"
+                )
+            }
             var successCount = 0
             var failCount = 0
             for ((memberKey, chipIds) in selectedAllergiesByMember) {
@@ -151,6 +168,14 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
                 if (content.isEmpty()) continue
                 val isEveryone = memberKey == EVERYONE_MEMBER_ID || memberKey.isBlank()
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "FoodNotesAPI",
+                        "FoodNotes API implementation: syncing key=$memberKey " +
+                                "isEveryone=$isEveryone lowerMemberId=${if (isEveryone) "EVERYONE" else memberKey.lowercase()} " +
+                                "chipCount=${chipIds.size}"
+                    )
+                }
                 val result = if (isEveryone) {
                     foodNotesRepository.updateFamilyFoodNotes(
                         accessToken = accessToken,
@@ -183,6 +208,48 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             if (BuildConfig.DEBUG) {
                 Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
             }
+            // Kick off AI summary load immediately after sync so it completes
+            // while the user is seeing the robot / chat, reducing wait in summary screen.
+            loadFoodNotesSummary(force = true)
+        }
+    }
+
+    /**
+     * Load AI-generated food-notes summary text from backend (GET family/food-notes/summary).
+     * When [force] is false and we already have a summary, this is a no-op. When [force] is true,
+     * we always hit the backend (used after food-notes sync to match iOS refreshSummary behavior).
+     */
+    fun loadFoodNotesSummary(force: Boolean = false) {
+        if (!force && _foodNotesSummary.value != null) {
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotesSummary: already loaded, skipping fetch")
+            }
+            return
+        }
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                Log.w("FoodNotesAPI", "FoodNotesSummary: skip load (no access token)")
+                return@launch
+            }
+            if (BuildConfig.DEBUG) {
+                Log.d("FoodNotesAPI", "FoodNotesSummary: starting load")
+            }
+            val result = foodNotesRepository.fetchFoodNotesSummary(accessToken)
+            result.fold(
+                onSuccess = { response ->
+                    _foodNotesSummary.value = response?.summary
+                    if (BuildConfig.DEBUG) {
+                        Log.d(
+                            "FoodNotesAPI",
+                            "FoodNotesSummary: loaded summary length=${response?.summary?.length ?: 0} textPreview=${response?.summary?.take(120)}"
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    Log.e("FoodNotesAPI", "FoodNotesSummary: load error", e)
+                }
+            )
         }
     }
 

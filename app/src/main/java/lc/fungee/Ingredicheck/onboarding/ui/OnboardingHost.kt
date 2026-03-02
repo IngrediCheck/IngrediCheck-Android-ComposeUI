@@ -113,15 +113,15 @@ import lc.fungee.Ingredicheck.onboarding.ui.components.PreferenceCapsuleCard
 import lc.fungee.Ingredicheck.onboarding.ui.components.FamilyOverviewBackground
 import lc.fungee.Ingredicheck.onboarding.ui.components.FlowRowChips
 import lc.fungee.Ingredicheck.onboarding.ui.components.SelectedChipPill
-import lc.fungee.Ingredicheck.onboarding.ui.PreferenceSummaryBackground
-import lc.fungee.Ingredicheck.onboarding.ui.PreferenceSummarySheetContent
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
+import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
+import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 
 import kotlin.random.Random
@@ -157,6 +157,69 @@ private fun buildBiteBuddyFamilyRequest(): CreateFamilyRequest {
         selfMember = selfMember,
         otherMembers = null
     )
+}
+
+/**
+ * Bottom‑sheet content for the preferences‑added success state.
+ * Mirrors iOS's `PreferencesAddedSuccessSheet`.
+ */
+@Composable
+private fun PreferenceSummarySheetContent(
+    isFamilyFlow: Boolean,
+    onContinue: () -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = if (isFamilyFlow) "All set to join your family!" else "Preferences added successfully!",
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = Greyscale150,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = if (isFamilyFlow) {
+                    "Your family’s food preferences are already added."
+                } else {
+                    "Your food preferences are saved. You can review them anytime,"
+                },
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale120,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "or edit a specific preference section by tapping Edit.",
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale120,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 2
+            )
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+        PrimaryButton(
+            title = "Continue",
+            takeFullWidth = false,
+            onClick = onContinue
+        )
+    }
 }
 
 private fun buildCreateFamilyRequestFromMembers(
@@ -215,6 +278,7 @@ fun OnboardingHost(
     val emojiState by authViewModel.memojiState.collectAsState()
     val isAuthLoading = authState is AuthState.Loading
     val currentFamily by authViewModel.currentFamily.collectAsState()
+    val foodNotesSummary by authViewModel.foodNotesSummary.collectAsState()
 
     var sheetHeight by remember { mutableStateOf(0.dp) }
     var memberToInvite by remember { mutableStateOf<OnboardingViewModel.FamilyOverviewMember?>(null) }
@@ -439,6 +503,19 @@ fun OnboardingHost(
         }
     }
 
+    // When we arrive at the AI summary screen, load the backend "Summarized with AI" text.
+    LaunchedEffect(showPreferenceSummary) {
+        if (showPreferenceSummary) {
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "OnboardingAllergies",
+                    "[AI_SUMMARY] showPreferenceSummary=true, requesting FoodNotesSummary from backend"
+                )
+            }
+            authViewModel.loadFoodNotesSummary()
+        }
+    }
+
     if (step == OnboardingStep.GET_STARTED) {
         GetStatedScreen(
             onGetStarted = { vm.navigateTo(OnboardingStep.SIGN_IN_INITIAL) }
@@ -477,126 +554,9 @@ fun OnboardingHost(
     Box(modifier = Modifier.fillMaxSize()) {
         val isFamilyFlow = vm.familyOverviewMembers.isNotEmpty()
 
-        // Preference summary state: show summary canvas + success bottom sheet
-        // or edit-section sheet, similar to iOS summaryJustMe + preferencesAddedSuccess
-        // and EditSectionBottomSheet.
-        if (showPreferenceSummary) {
-            OnboardingShell(
-                onDismissRequest = onExitOnboarding,
-                horizontalPaddingEnabled = true,
-                showFocusedShadow = false,
-                baseBottomPaddingOverride = null,
-                onSheetHeightChanged = { sheetHeight = it },
-                backgroundContent = {
-                    // Compute which chip ids to show based on selected member filter.
-                    val summarySelectedChipIds = remember(
-                        selectedAllergiesByMember,
-                        summarySelectedMemberId
-                    ) {
-                        val map = selectedAllergiesByMember.mapValues { it.value.toSet() }
-                        if (summarySelectedMemberId.isNullOrBlank()) {
-                            // No member filter -> union of all chips.
-                            map.values.flatten().toSet()
-                        } else {
-                            map[summarySelectedMemberId] ?: emptySet()
-                        }
-                    }
-                    PreferenceSummaryBackground(
-                        isFamilyFlow = isFamilyFlow,
-                        selectedChipIds = summarySelectedChipIds,
-                        members = vm.familyOverviewMembers.toList(),
-                        selectedMemberId = summarySelectedMemberId,
-                        onMemberSelected = { newId ->
-                            summarySelectedMemberId = newId
-                        },
-                        onEditSection = { stepId ->
-                            val idx = allergySteps.indexOfFirst { it.id == stepId }
-                            if (idx >= 0) {
-                                editingSummaryStepIndex = idx
-                            }
-                        }
-                    )
-                },
-                sheetContent = {
-                    val editIndex = editingSummaryStepIndex
-                    if (editIndex == null) {
-                        // Normal success sheet
-                        PreferenceSummarySheetContent(
-                            isFamilyFlow = isFamilyFlow,
-                            onContinue = {
-                                showPreferenceSummary = false
-                                onExitOnboarding()
-                            }
-                        )
-                    } else {
-                        // Edit section sheet: reuse AddAllergiesSheet in edit mode so user
-                        // can tweak selections for a specific step without leaving summary.
-                        val activeMemberId = selectedAllergyMemberIdState.value
-                        val activeMemberKey =
-                            if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
-                        val activeSelectionsForMember =
-                            selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
-
-                        AddAllergiesSheet(
-                            members = vm.familyOverviewMembers.toList(),
-                            selectedMemberId = selectedAllergyMemberIdState.value,
-                            selectedAllergies = activeSelectionsForMember,
-                            onMemberSelected = { memberId ->
-                                selectedAllergyMemberIdState.value = memberId
-                                val key =
-                                    if (memberId.isBlank()) EVERYONE_MEMBER_ID else memberId
-                                editingSummaryStepIndex = editIndex
-                                // When switching members, ensure the sheet reflects that member's chips.
-                            },
-                            onToggleAllergy = { allergyId ->
-                                val memberId = selectedAllergyMemberIdState.value
-                                val memberKey =
-                                    if (memberId.isBlank()) EVERYONE_MEMBER_ID else memberId
-                                val chipsForMember =
-                                    (selectedAllergiesByMember[memberKey]?.toMutableSet()
-                                        ?: mutableSetOf())
-                                if (chipsForMember.contains(allergyId)) {
-                                    chipsForMember.remove(allergyId)
-                                    if (chipsForMember.isEmpty()) {
-                                        selectedAllergiesByMember.remove(memberKey)
-                                    } else {
-                                        selectedAllergiesByMember[memberKey] = chipsForMember
-                                    }
-                                } else {
-                                    chipsForMember.add(allergyId)
-                                    selectedAllergiesByMember[memberKey] = chipsForMember
-                                }
-
-                                // Rebuild union for capsules/background.
-                                selectedAllergies.clear()
-                                selectedAllergies.addAll(
-                                    selectedAllergiesByMember.values
-                                        .flatMap { it }
-                                        .toSet()
-                                )
-                            },
-                            onNext = { /* unused in edit mode */ },
-                            onSkipPreferences = {},
-                            showFineTuneDecision = false,
-                            showSummaryScreen = false,
-                            hasOtherSelection = selectedAllergies.any {
-                                it.contains("other", ignoreCase = true)
-                            },
-                            showChatBotIntro = false,
-                            showChatConversation = false,
-                            onChatBotLetsGo = {},
-                            onChatSkip = {},
-                            questionStepIndex = editIndex,
-                            isEditMode = true,
-                            onEditDone = {
-                                editingSummaryStepIndex = null
-                            }
-                        )
-                    }
-                }
-            )
-        } else {
-            OnboardingShell(
+        // Single Shell: background shows allergy/summary in one place; sheet content
+        // branches for flow vs preference summary (success or edit).
+        OnboardingShell(
                 onDismissRequest = onExitOnboarding,
                 horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER && step != OnboardingStep.ADD_FAMILY_ALLERGIES,
                 showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
@@ -717,7 +677,22 @@ fun OnboardingHost(
                                     showFineTuneDecision = showFineTuneDecision,
                                     onShowFineTuneDecisionChange = { showFineTuneDecision = it },
                                     selectedAllergiesByMember = selectedAllergiesByMember.mapValues { it.value.toSet() },
-                                    familyOverviewMembers = vm.familyOverviewMembers.toList()
+                                    familyOverviewMembers = vm.familyOverviewMembers.toList(),
+                                    summarySelectedMemberId = summarySelectedMemberId,
+                                    onSummaryMemberSelected = { summarySelectedMemberId = it },
+                                    onEditSection = { stepId ->
+                                        val idx = allergySteps.indexOfFirst { it.id == stepId }
+                                        if (idx >= 0) {
+                                            // When editing from the summary screen, mirror the current
+                                            // member filter in the bottom sheet so it opens with the
+                                            // same person (or Everyone) selected, matching iOS.
+                                            selectedAllergyMemberIdState.value =
+                                                summarySelectedMemberId ?: ""
+                                            editingSummaryStepIndex = idx
+                                        }
+                                    },
+                                    aiSummaryText = foodNotesSummary,
+                                    bottomInset = sheetHeight
                                 )
                             }
                         }
@@ -754,6 +729,84 @@ fun OnboardingHost(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             CircularProgressIndicator()
+                                        }
+                                    } else if (showPreferenceSummary) {
+                                        // Preference summary: success sheet or edit-section sheet (single Shell, same background).
+                                        val editIndex = editingSummaryStepIndex
+                                        if (editIndex == null) {
+                                            PreferenceSummarySheetContent(
+                                                isFamilyFlow = isFamilyFlow,
+                                                onContinue = {
+                                                    showPreferenceSummary = false
+                                                    onExitOnboarding()
+                                                }
+                                            )
+                                        } else {
+                                            val activeMemberKey =
+                                                if (selectedAllergyMemberIdState.value.isBlank()) EVERYONE_MEMBER_ID else selectedAllergyMemberIdState.value
+                                            val activeSelectionsForMember =
+                                                selectedAllergiesByMember[activeMemberKey]?.toSet() ?: emptySet()
+                                            AddAllergiesSheet(
+                                                members = vm.familyOverviewMembers.toList(),
+                                                selectedMemberId = selectedAllergyMemberIdState.value,
+                                                selectedAllergies = activeSelectionsForMember,
+                                                onMemberSelected = {
+                                                    selectedAllergyMemberIdState.value = it
+                                                    editingSummaryStepIndex = editIndex
+                                                },
+                                                onToggleAllergy = { allergyId ->
+                                                    val memberKey =
+                                                        if (selectedAllergyMemberIdState.value.isBlank()) EVERYONE_MEMBER_ID else selectedAllergyMemberIdState.value
+                                                    val chipsForMember =
+                                                        (selectedAllergiesByMember[memberKey]?.toMutableSet() ?: mutableSetOf())
+                                                    if (chipsForMember.contains(allergyId)) {
+                                                        chipsForMember.remove(allergyId)
+                                                        if (chipsForMember.isEmpty()) {
+                                                            selectedAllergiesByMember.remove(memberKey)
+                                                        } else {
+                                                            selectedAllergiesByMember[memberKey] = chipsForMember
+                                                        }
+                                                    } else {
+                                                        chipsForMember.add(allergyId)
+                                                        selectedAllergiesByMember[memberKey] = chipsForMember
+                                                    }
+                                                    selectedAllergies.clear()
+                                                    selectedAllergies.addAll(
+                                                        selectedAllergiesByMember.values.flatMap { it }.toSet()
+                                                    )
+                                                },
+                                                onNext = { },
+                                                onSkipPreferences = { },
+                                                showFineTuneDecision = false,
+                                                showSummaryScreen = false,
+                                                hasOtherSelection = selectedAllergies.any { it.contains("other", ignoreCase = true) },
+                                                showChatBotIntro = false,
+                                                showChatConversation = false,
+                                                onChatBotLetsGo = { },
+                                                onChatSkip = { },
+                                                questionStepIndex = editIndex,
+                                                isEditMode = true,
+                                                onEditDone = {
+                                                    // User finished editing from the summary screen.
+                                                    // Sync updated food notes to backend and refresh the
+                                                    // AI summary so the "Summarized with AI" text reflects
+                                                    // the latest preferences (matches iOS behavior).
+                                                    if (BuildConfig.DEBUG) {
+                                                        val snapshot = selectedAllergiesByMember
+                                                            .mapValues { it.value.toSet() }
+                                                        Log.d(
+                                                            "OnboardingAllergies",
+                                                            "[SUMMARY_EDIT] onEditDone stepIndex=$editIndex " +
+                                                                    "memberFilter=${summarySelectedMemberId ?: "ALL"} " +
+                                                                    "keys=${snapshot.keys} sizes=${snapshot.values.map { it.size }}"
+                                                        )
+                                                    }
+                                                    authViewModel.syncFoodNotesFromOnboarding(
+                                                        selectedAllergiesByMember.mapValues { it.value.toSet() }
+                                                    )
+                                                    editingSummaryStepIndex = null
+                                                }
+                                            )
                                         }
                                     } else {
                                         // Compute per-member selections for the bottom sheet:
@@ -1436,7 +1489,5 @@ fun OnboardingHost(
                     isLoading = isInviting
                 )
             }
-        }
-
     }
 }
