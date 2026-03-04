@@ -53,9 +53,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -260,6 +262,7 @@ fun OnboardingHost(
     authViewModel: AuthViewModel,
     onExitOnboarding: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val savedStateOwner = androidx.savedstate.compose.LocalSavedStateRegistryOwner.current
@@ -384,13 +387,22 @@ fun OnboardingHost(
     var activeMemberSelections by remember {
         mutableStateOf<Set<String>>(emptySet())
     }
+    // Last allergy sub-phase restored from persistence (chips / summary_robot / chat_intro /
+    // chat_conversation / preference_summary). Used to re-open AI summary/chat after restart.
+    var restoredAllergyPhase by remember { mutableStateOf<String?>(null) }
+    // Becomes true once we have applied any restored allergy selections from DataStore.
+    // This prevents the persistence effect from writing default/empty state back to
+    // DataStore before restore has finished (which would overwrite the real values).
+    var hasAppliedRestoredAllergies by remember { mutableStateOf(false) }
 
     // Restore allergy selections state from persistence (per‑member chip ids + active member + step index)
     // without blocking the main thread.
     LaunchedEffect(Unit) {
         try {
-            val (restoredSelections, restoredMemberId, restoredStepIndex) =
-                persistence.getAllergySelectionsState()
+            val restoredState = persistence.getAllergySelectionsState()
+            val restoredSelections = restoredState.selectedAllergiesByMember
+            val restoredMemberId = restoredState.selectedAllergyMemberId
+            val restoredStepIndex = restoredState.allergyStepIndex
 
             if (restoredSelections.isNotEmpty()) {
                 // Update member id
@@ -412,12 +424,17 @@ fun OnboardingHost(
                 // Restore step index
                 allergyStepIndex = restoredStepIndex
 
+                // Remember the restored allergy sub-phase so we can re-open the appropriate
+                // sheet (AI summary / chat) after restart.
+                restoredAllergyPhase = restoredState.allergyPhase
+
                 if (BuildConfig.DEBUG) {
                     Log.d(
                         "OnboardingAllergies",
                         "[RESTORE_APPLY] restoredSelections=$restoredSelections " +
                                 "restoredMemberId=$restoredMemberId restoredStepIndex=$restoredStepIndex " +
-                                "union=$union activeMemberSelections=$activeMemberSelections"
+                                "union=$union activeMemberSelections=$activeMemberSelections " +
+                                "phase=${restoredState.allergyPhase}"
                     )
                 }
             } else {
@@ -428,6 +445,9 @@ fun OnboardingHost(
                     )
                 }
             }
+            // Mark that we have finished applying any restored allergy selections so that
+            // the persistence effect can start writing changes safely.
+            hasAppliedRestoredAllergies = true
         } catch (e: Exception) {
             Log.w("OnboardingAllergies", "[RESTORE] getAllergySelectionsState failed", e)
         }
@@ -460,7 +480,7 @@ fun OnboardingHost(
         selectedAllergyMemberIdState.value,
         allergyStepIndex
     ) {
-        if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
+        if (isRestored && hasAppliedRestoredAllergies && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val snapshot = selectedAllergiesByMember.mapValues { it.value.toSet() }
             if (BuildConfig.DEBUG) {
                 Log.d(
@@ -493,6 +513,73 @@ fun OnboardingHost(
     // When non-null, indicates which member's food notes are currently filtered in the
     // preference summary background (null = show all members).
     var summarySelectedMemberId by remember { mutableStateOf<String?>(null) }
+
+    // On cold start, if we restored a non-chips allergy sub-phase, re-open the correct
+    // sheet. We intentionally never resume on the transient summary_robot animation:
+    // for that phase we fall back to showing the chips/question UI at the current step.
+    LaunchedEffect(restoredAllergyPhase) {
+        val phase = restoredAllergyPhase
+        if (phase != null && isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
+            when (phase) {
+                "preference_summary" -> {
+                    showPreferenceSummary = true
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
+                "chat_conversation" -> {
+                    showChatConversation = true
+                    showPreferenceSummary = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
+                "chat_intro" -> {
+                    showChatBotIntro = true
+                    showChatConversation = false
+                    showPreferenceSummary = false
+                    showSummaryScreen = false
+                }
+                "summary_robot", "chips", "", null -> {
+                    // Do not resume onto robot; show normal chips UI.
+                    showSummaryScreen = false
+                    showChatBotIntro = false
+                    showChatConversation = false
+                    showPreferenceSummary = false
+                }
+                else -> {
+                    // Unknown phase: be safe and show chips UI.
+                    showSummaryScreen = false
+                    showChatBotIntro = false
+                    showChatConversation = false
+                    showPreferenceSummary = false
+                }
+            }
+            // Consume so this effect doesn't re-run unnecessarily.
+            restoredAllergyPhase = null
+        }
+    }
+
+    // Persist allergy sub-phase (summary_robot / chat_intro / chat_conversation / preference_summary) so user
+    // lands on a consistent screen after kill/launch. Treat summary_robot as transient; after restart we prefer
+    // to show the chips/question UI at the same step index rather than the robot itself.
+    LaunchedEffect(
+        step,
+        showSummaryScreen,
+        showChatBotIntro,
+        showChatConversation,
+        showPreferenceSummary
+    ) {
+        if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
+            val phase = when {
+                showPreferenceSummary -> "preference_summary"
+                showChatConversation -> "chat_conversation"
+                showChatBotIntro -> "chat_intro"
+                showSummaryScreen -> "summary_robot"
+                else -> "chips"
+            }
+            persistence.setAllergyPhase(phase)
+        }
+    }
 
     // After showing the summary screen for a short time, transition smoothly to the chat intro.
     LaunchedEffect(showSummaryScreen) {
@@ -804,6 +891,18 @@ fun OnboardingHost(
                                                 authViewModel.syncFoodNotesFromOnboarding(
                                                     selectedAllergiesByMember.mapValues { it.value.toSet() }
                                                 )
+                                                // Persist the edited selections immediately so that if the
+                                                // user kills the app right after tapping Done, the latest
+                                                // preferences (including life stage changes) are restored.
+                                                coroutineScope.launch {
+                                                    val snapshot = selectedAllergiesByMember
+                                                        .mapValues { it.value.toSet() }
+                                                    persistence.setAllergySelectionsState(
+                                                        selectedAllergiesByMember = snapshot,
+                                                        selectedAllergyMemberId = selectedAllergyMemberIdState.value,
+                                                        allergyStepIndex = allergyStepIndex
+                                                    )
+                                                }
                                                 editingSummaryStepIndex = null
                                             }
                                         )
