@@ -269,7 +269,9 @@ fun AiSummaryPreferenceCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             val parsedSummary = remember(summaryText) {
-                parseAiSummaryMarkdown(summaryText)
+                // Inject food emojis into the AI summary (like iOS) before parsing markdown.
+                val withEmojis = injectFoodEmojisIntoSummary(summaryText)
+                parseAiSummaryMarkdown(withEmojis)
             }
             Text(
                 text = parsedSummary,
@@ -319,6 +321,91 @@ private fun parseAiSummaryMarkdown(raw: String): AnnotatedString {
     }
 
     return builder.toAnnotatedString()
+}
+
+/**
+ * Inject food emojis into the AI summary text based on dynamicJsonData.json icons,
+ * mirroring iOS FoodEmojiMapper behavior. For example:
+ * - "peanuts" -> "🥜 peanuts"
+ * - "milk" -> "🥛 milk"
+ */
+private fun injectFoodEmojisIntoSummary(raw: String): String {
+    if (raw.isEmpty()) return raw
+
+    // Build a mapping from lowercased chip labels to their emoji/iconPrefix.
+    val mapping = mutableMapOf<String, String>()
+    val stepIds = OnboardingChipData.foodNotesStepIds
+    for (stepIndex in stepIds.indices) {
+        val chips = OnboardingChipData.chipsForStep(stepIndex)
+        for (chip in chips) {
+            val emoji = chip.iconPrefix.trim()
+            if (emoji.isNotEmpty()) {
+                mapping[chip.label.lowercase()] = emoji
+            }
+        }
+    }
+
+    // Add a few common aliases similar to iOS to make summaries richer.
+    mapping["red meat"] = mapping["red meat"] ?: "🥩"
+    mapping["meat"] = mapping["meat"] ?: "🥩"
+    mapping["chicken"] = mapping["chicken"] ?: "🍗"
+    mapping["poultry"] = mapping["poultry"] ?: "🍗"
+    mapping["soda"] = mapping["soda"] ?: "🥤"
+    mapping["sugar"] = mapping["sugar"] ?: "🍬"
+    mapping["salt"] = mapping["salt"] ?: "🧂"
+    mapping["fried food"] = mapping["fried food"] ?: "🍟"
+    mapping["fried foods"] = mapping["fried foods"] ?: "🍟"
+    mapping["fast food"] = mapping["fast food"] ?: "🍔"
+
+    if (mapping.isEmpty()) return raw
+
+    var result = raw
+
+    // Sort keys by length descending so longer phrases match first.
+    val sortedNames = mapping.keys.sortedByDescending { it.length }
+
+    for (name in sortedNames) {
+        val emoji = mapping[name] ?: continue
+        if (name.isBlank()) continue
+
+        // Case-insensitive whole-word match using word boundaries.
+        val pattern = "\\b${Regex.escape(name)}\\b"
+        val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+
+        result = regex.replace(result) { matchResult ->
+            val range = matchResult.range
+            // Check if there's already an emoji immediately before this match to avoid duplicates.
+            val hasEmojiBefore = if (range.first > 0) {
+                val prevChar = result[range.first - 1]
+                // Many emojis are surrogate pairs; treat any surrogate as "likely emoji".
+                Character.getType(prevChar).toInt() == Character.SURROGATE.toInt() ||
+                    prevChar.isEmojiCompat()
+            } else {
+                false
+            }
+
+            val matchedText = matchResult.value
+            if (hasEmojiBefore) {
+                matchedText
+            } else {
+                "$emoji $matchedText"
+            }
+        }
+    }
+
+    return result
+}
+
+/**
+ * Very small helper to guess if a Char is an emoji (best‑effort; used only to avoid
+ * double‑injecting emojis in the AI summary text).
+ */
+private fun Char.isEmojiCompat(): Boolean {
+    val block = Character.UnicodeBlock.of(this)
+    return block == Character.UnicodeBlock.EMOTICONS ||
+        block == Character.UnicodeBlock.MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS ||
+        block == Character.UnicodeBlock.TRANSPORT_AND_MAP_SYMBOLS ||
+        block == Character.UnicodeBlock.SUPPLEMENTAL_SYMBOLS_AND_PICTOGRAPHS
 }
 
 @Composable

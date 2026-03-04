@@ -33,7 +33,22 @@ class OnboardingPersistence(
         private val KEY_SELECTED_ALLERGIES_BY_MEMBER = stringPreferencesKey("onboarding_selected_allergies_by_member")
         private val KEY_SELECTED_ALLERGY_MEMBER_ID = stringPreferencesKey("onboarding_selected_allergy_member_id")
         private val KEY_ALLERGY_STEP_INDEX = stringPreferencesKey("onboarding_allergy_step_index")
+        private val KEY_ALLERGY_PHASE = stringPreferencesKey("onboarding_allergy_phase")
+
+        /** Sub-phase within ADD_FAMILY_ALLERGIES for restore-after-kill. */
+        const val ALLERGY_PHASE_CHIPS = "chips"
+        const val ALLERGY_PHASE_SUMMARY_ROBOT = "summary_robot"
+        const val ALLERGY_PHASE_CHAT_INTRO = "chat_intro"
+        const val ALLERGY_PHASE_CHAT_CONVERSATION = "chat_conversation"
+        const val ALLERGY_PHASE_PREFERENCE_SUMMARY = "preference_summary"
     }
+
+    data class RestoredAllergyState(
+        val selectedAllergiesByMember: Map<String, Set<String>>,
+        val selectedAllergyMemberId: String,
+        val allergyStepIndex: Int,
+        val allergyPhase: String
+    )
 
     data class SavedState(
         val currentStep: OnboardingStep,
@@ -155,9 +170,9 @@ class OnboardingPersistence(
     }
 
     /**
-     * Get allergy selections state (selected chips/cards per member and current step index).
+     * Get allergy selections state (selected chips/cards per member, step index, and allergy sub-phase).
      */
-    suspend fun getAllergySelectionsState(): Triple<Map<String, Set<String>>, String, Int> {
+    suspend fun getAllergySelectionsState(): RestoredAllergyState {
         val prefs = context.onboardingDataStore.data.first()
         val selectionsJson = prefs[KEY_SELECTED_ALLERGIES_BY_MEMBER].orEmpty()
         val selectedAllergiesByMember = if (selectionsJson.isNotBlank()) {
@@ -168,12 +183,28 @@ class OnboardingPersistence(
         } else emptyMap()
         val selectedAllergyMemberId = prefs[KEY_SELECTED_ALLERGY_MEMBER_ID].orEmpty()
         val allergyStepIndex = prefs[KEY_ALLERGY_STEP_INDEX]?.toIntOrNull() ?: 0
+        val allergyPhase = prefs[KEY_ALLERGY_PHASE].orEmpty().ifBlank { ALLERGY_PHASE_CHIPS }
         Log.d(
             "OnboardingAllergies",
             "[RESTORE] getAllergySelectionsState selections=$selectedAllergiesByMember " +
-                "selectedMember=$selectedAllergyMemberId stepIndex=$allergyStepIndex " +
+                "selectedMember=$selectedAllergyMemberId stepIndex=$allergyStepIndex phase=$allergyPhase " +
                 "jsonLength=${selectionsJson.length}"
         )
-        return Triple(selectedAllergiesByMember, selectedAllergyMemberId, allergyStepIndex)
+        return RestoredAllergyState(
+            selectedAllergiesByMember = selectedAllergiesByMember,
+            selectedAllergyMemberId = selectedAllergyMemberId,
+            allergyStepIndex = allergyStepIndex,
+            allergyPhase = allergyPhase
+        )
+    }
+
+    /**
+     * Save the current allergy sub-phase (chips / summary_robot / chat_intro / chat_conversation / preference_summary)
+     * so the user lands on the correct screen after process kill.
+     */
+    suspend fun setAllergyPhase(phase: String) {
+        context.onboardingDataStore.edit { prefs ->
+            prefs[KEY_ALLERGY_PHASE] = phase
+        }
     }
 }

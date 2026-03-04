@@ -161,6 +161,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     "FoodNotes API implementation: currentFamily memberIds=[$familyMemberIds]"
                 )
             }
+            // Only sync for concrete backend members that actually exist in the current family,
+            // plus the synthetic EVERYONE_MEMBER_ID key. This mirrors iOS behavior where
+            // FoodNotesStore drives sync from the server-backed family model instead of any
+            // local-only onboarding member ids.
+            val validMemberIds: Set<String> = familySnapshot?.let { family ->
+                buildSet {
+                    add(family.selfMember.id.lowercase())
+                    addAll(family.otherMembers.map { it.id.lowercase() })
+                }
+            } ?: emptySet()
             var successCount = 0
             var failCount = 0
             for ((memberKey, chipIds) in selectedAllergiesByMember) {
@@ -168,6 +178,19 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
                 if (content.isEmpty()) continue
                 val isEveryone = memberKey == EVERYONE_MEMBER_ID || memberKey.isBlank()
+                // Skip any non-Everyone keys that do not correspond to a real backend member.
+                // This prevents 400 \"Member does not exist in your family\" errors when local-only
+                // onboarding members (e.g. drafts that were never created on the server) still
+                // have chip selections in selectedAllergiesByMember.
+                if (!isEveryone && memberKey.lowercase() !in validMemberIds) {
+                    if (BuildConfig.DEBUG) {
+                        Log.w(
+                            "FoodNotesAPI",
+                            "FoodNotes API: skipping sync for unknown memberId=$memberKey (not in current family)"
+                        )
+                    }
+                    continue
+                }
                 if (BuildConfig.DEBUG) {
                     Log.d(
                         "FoodNotesAPI",
