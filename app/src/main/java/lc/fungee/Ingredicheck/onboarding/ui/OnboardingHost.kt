@@ -314,6 +314,10 @@ fun OnboardingHost(
             authViewModel.debugLogCurrentSession("Entered $step (before ensureAnonymousSession)")
             authViewModel.ensureAnonymousSession()
         }
+        
+        // Note: signInAsGuest() should NOT be called here because it sets authState to Success,
+        // which causes MainActivity to immediately exit onboarding. Guest sign-in should happen
+        // only when onboarding is actually completed (e.g., when user exits after completing allergies).
 
         // Note: signInAsGuest() should NOT be called here because it sets authState to Success,
         // which causes MainActivity to immediately exit onboarding. Guest sign-in should happen
