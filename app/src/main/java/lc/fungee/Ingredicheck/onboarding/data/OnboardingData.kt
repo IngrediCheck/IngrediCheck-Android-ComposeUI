@@ -61,8 +61,11 @@ object OnboardingChipData {
 
     private fun dynamicStepToChips(step: DynamicStep): List<ChipDefinition> {
         return when (step.type) {
+            // Simple chip lists (e.g., allergies, intolerances, health conditions).
+            // Prefix chip id with the step id so that common labels like "Other"
+            // remain independent per step (e.g., "allergies_other" vs "healthConditions_other").
             "type-1" -> step.content.options?.map { o ->
-                ChipDefinition(slug(o.name), o.name, o.icon + "  ")
+                ChipDefinition("${step.id}_${slug(o.name)}", o.name, o.icon + "  ")
             } ?: emptyList()
             "type-2" -> step.content.subSteps?.flatMap { sub ->
                 (sub.options ?: emptyList()).map { o ->
@@ -106,62 +109,38 @@ object OnboardingChipData {
         return emptyList()
     }
 
+    /**
+     * Shared helper to build stacked cards (Avoid/LifeStyle/Nutrition) for a given dynamic
+     * step id. All three card lists share the same mapping from subSteps -> AvoidCardDefinition.
+     */
+    private fun cardsForStepId(stepId: String): List<AvoidCardDefinition> {
+        dynamicSteps()?.find { it.id == stepId }?.content?.subSteps?.let { subSteps ->
+            return subSteps.map { sub ->
+                AvoidCardDefinition(
+                    id = sub.id,
+                    title = sub.title,
+                    description = sub.description,
+                    colorHex = sub.color,
+                    options = (sub.options ?: emptyList()).map { o ->
+                        AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
+                    }
+                )
+            }
+        }
+        return emptyList()
+    }
+
     // Avoid stacked cards (type-2) from dynamic JSON "avoid" step.
     val avoidCards: List<AvoidCardDefinition>
-        get() {
-            dynamicSteps()?.find { it.id == "avoid" }?.content?.subSteps?.let { subSteps ->
-                return subSteps.map { sub ->
-                    AvoidCardDefinition(
-                        id = sub.id,
-                        title = sub.title,
-                        description = sub.description,
-                        colorHex = sub.color,
-                        options = (sub.options ?: emptyList()).map { o ->
-                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
-                        }
-                    )
-                }
-            }
-            return emptyList()
-        }
+        get() = cardsForStepId("avoid")
 
     /** LifeStyle stacked cards from dynamic JSON "lifeStyle" step. */
     val lifestyleCards: List<AvoidCardDefinition>
-        get() {
-            dynamicSteps()?.find { it.id == "lifeStyle" }?.content?.subSteps?.let { subSteps ->
-                return subSteps.map { sub ->
-                    AvoidCardDefinition(
-                        id = sub.id,
-                        title = sub.title,
-                        description = sub.description,
-                        colorHex = sub.color,
-                        options = (sub.options ?: emptyList()).map { o ->
-                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
-                        }
-                    )
-                }
-            }
-            return emptyList()
-        }
+        get() = cardsForStepId("lifeStyle")
 
     /** Nutrition stacked cards from dynamic JSON "nutrition" step. */
     val nutritionCards: List<AvoidCardDefinition>
-        get() {
-            dynamicSteps()?.find { it.id == "nutrition" }?.content?.subSteps?.let { subSteps ->
-                return subSteps.map { sub ->
-                    AvoidCardDefinition(
-                        id = sub.id,
-                        title = sub.title,
-                        description = sub.description,
-                        colorHex = sub.color,
-                        options = (sub.options ?: emptyList()).map { o ->
-                            AvoidOptionDefinition("${sub.id}_${slug(o.name)}", o.name, o.icon + "  ")
-                        }
-                    )
-                }
-            }
-            return emptyList()
-        }
+        get() = cardsForStepId("nutrition")
 
     /** Cultural / regional food traditions from dynamic JSON "region" step. */
     val regions: List<RegionDefinition>

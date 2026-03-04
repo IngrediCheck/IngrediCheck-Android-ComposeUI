@@ -20,8 +20,7 @@ import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
-import lc.fungee.Ingredicheck.onboarding.data.EVERYONE_MEMBER_ID
-import lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData
+import lc.fungee.Ingredicheck.foodnotes.FoodNotesUseCase
 
 
 enum class AuthProvider {
@@ -50,7 +49,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val memojiRepository = MemojiRepository()
     private val familyRepository = FamilyRepository()
     private val dietaryPreferenceRepository = DietaryPreferenceRepository()
-    private val foodNotesRepository = FoodNotesRepository()
+    private val foodNotesUseCase = FoodNotesUseCase(
+        scope = viewModelScope,
+        authRepository = repository,
+        foodNotesRepository = FoodNotesRepository(),
+        currentFamilyProvider = { _currentFamily.value },
+        debugLogger = { message -> pushDebug(message) }
+    )
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
@@ -63,6 +68,9 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _memojiState = MutableStateFlow<MemojiGenState>(MemojiGenState.Idle)
     val memojiState: StateFlow<MemojiGenState> = _memojiState.asStateFlow()
+
+    // AI-generated summary of food notes (text), exposed from FoodNotesUseCase.
+    val foodNotesSummary: StateFlow<String?> = foodNotesUseCase.foodNotesSummary
 
     private fun pushDebug(message: String) {
         val line = "${System.currentTimeMillis()} | $message"
@@ -122,68 +130,15 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Sync onboarding chip selections to food-notes API (per-member and Everyone), matching iOS.
-     * Called when user taps "All Set!" or completes the last preference step.
-     * - EVERYONE_MEMBER_ID ("ALL") -> PUT family/food-notes
-     * - Each member id -> PUT family/members/{id}/food-notes
+     * Delegate food-notes sync and AI summary loading to FoodNotesUseCase so this ViewModel
+     * doesn't directly own that domain logic.
      */
     fun syncFoodNotesFromOnboarding(selectedAllergiesByMember: Map<String, Set<String>>) {
-        val keys = selectedAllergiesByMember.keys.toList()
-        if (BuildConfig.DEBUG) {
-            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync started, keys=${keys}, size=${selectedAllergiesByMember.size}")
-        }
-        if (selectedAllergiesByMember.isEmpty()) {
-            if (BuildConfig.DEBUG) {
-                Log.d("FoodNotesAPI", "FoodNotes API: skip sync (empty selections)")
-            }
-            return
-        }
-        viewModelScope.launch {
-            val accessToken = repository.accessTokenOrNull()
-            if (accessToken.isNullOrBlank()) {
-                Log.w("FoodNotesAPI", "FoodNotes API: skip sync (no access token)")
-                return@launch
-            }
-            var successCount = 0
-            var failCount = 0
-            for ((memberKey, chipIds) in selectedAllergiesByMember) {
-                if (chipIds.isEmpty()) continue
-                val content = OnboardingChipData.buildFoodNotesContentFromChipIds(chipIds)
-                if (content.isEmpty()) continue
-                val isEveryone = memberKey == EVERYONE_MEMBER_ID || memberKey.isBlank()
-                val result = if (isEveryone) {
-                    foodNotesRepository.updateFamilyFoodNotes(
-                        accessToken = accessToken,
-                        content = content,
-                        version = 0
-                    )
-                } else {
-                    foodNotesRepository.updateMemberFoodNotes(
-                        accessToken = accessToken,
-                        memberId = memberKey.lowercase(),
-                        content = content,
-                        version = 0
-                    )
-                }
-                result.fold(
-                    onSuccess = {
-                        successCount++
-                        pushDebug("FoodNotes: sync success ${if (isEveryone) "Everyone" else memberKey}")
-                        if (BuildConfig.DEBUG) {
-                            Log.d("FoodNotesAPI", "FoodNotes API implementation: sync success ${if (isEveryone) "Everyone" else "member=$memberKey"} — working")
-                        }
-                    },
-                    onFailure = { e ->
-                        failCount++
-                        pushDebug("FoodNotes: sync error ${if (isEveryone) "Everyone" else memberKey} ${e.message}")
-                        Log.e("FoodNotesAPI", "FoodNotes API: sync error ${if (isEveryone) "Everyone" else memberKey}", e)
-                    }
-                )
-            }
-            if (BuildConfig.DEBUG) {
-                Log.d("FoodNotesAPI", "FoodNotes API implementation: sync completed — success=$successCount fail=$failCount (check logs above for details)")
-            }
-        }
+        foodNotesUseCase.syncFoodNotesFromOnboarding(selectedAllergiesByMember)
+    }
+
+    fun loadFoodNotesSummary(force: Boolean = false) {
+        foodNotesUseCase.loadFoodNotesSummary(force)
     }
 
     fun addFamilyMember(member: FamilyMemberDto, onResult: (Result<FamilyDto>) -> Unit) {
