@@ -43,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -215,6 +216,122 @@ private fun PreferenceSummarySheetContent(
             )
         }
 
+        Spacer(modifier = Modifier.height(28.dp))
+        PrimaryButton(
+            title = "Continue",
+            takeFullWidth = false,
+            onClick = onContinue
+        )
+    }
+}
+
+/**
+ * Bottom-sheet content for the Just Me flow after AI summary Continue: "Meet your profile"
+ * with Hello + family name from backend and profile/avatar explanation.
+ */
+@Composable
+private fun JustMeMeetProfileSheetContent(
+    familyName: String,
+    onBackClick: () -> Unit = {},
+    onContinue: () -> Unit = {}
+) {
+    val avatarOptions = listOf(
+        R.drawable.father,
+        R.drawable.mom,
+        R.drawable.grand_father,
+        R.drawable.grand_mother,
+        R.drawable.young_son,
+        R.drawable.young_daughter,
+        R.drawable.avtar_cat,
+        R.drawable.avtar_dog,
+        R.drawable.avtar_pear,
+        R.drawable.avtar_tomato,
+        R.drawable.avtar_lichi,
+        R.drawable.avtar_potatto
+    )
+    // Deterministic "random" avatar based on familyName so it stays the same
+    // across app restarts until the user chooses a custom avatar.
+    val defaultAvatarRes = remember(familyName) {
+        val idx = kotlin.math.abs(familyName.hashCode()) % avatarOptions.size
+        avatarOptions[idx]
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).background(Color.Yellow),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .background(Color.Red)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ion_chevron_back),
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp),
+                    tint = Greyscale150
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .align(Alignment.Center)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .border(
+                            width = 2.dp,
+                            color = Greyscale40,
+                            shape = CircleShape
+                        )
+                        .align(Alignment.Center),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = defaultAvatarRes),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(84.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                // Small top circle
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .background(Color.Blue, CircleShape)
+                        .offset(x = 400.dp, y = (-400).dp)
+                )
+            }
+
+        }
+
+        Text(
+            text = "Hello $familyName",
+            fontFamily = Nunito,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = Greyscale150,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = "We've created a profile name and avatar based on your preferences. You can edit the name or avatar anytime to make it truly yours.",
+            fontFamily = Manrope,
+            fontWeight = FontWeight.Normal,
+            fontSize = 14.sp,
+            color = Greyscale120,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(modifier = Modifier.height(28.dp))
         PrimaryButton(
             title = "Continue",
@@ -511,6 +628,8 @@ fun OnboardingHost(
     var showChatConversation by remember { mutableStateOf(false) }
     // When true, show the AI summary screen with PreferenceCapsuleCard list.
     var showPreferenceSummary by remember { mutableStateOf(false) }
+    // Just Me flow only: when true, show "Meet your profile" (no step change; avoids jerky back).
+    var showJustMeMeetProfile by remember { mutableStateOf(false) }
     // When non-null, indicates we are editing a specific preference section from the
     // summary screen (iOS EditSectionBottomSheet equivalent).
     var editingSummaryStepIndex by remember { mutableStateOf<Int?>(null) }
@@ -525,8 +644,16 @@ fun OnboardingHost(
         val phase = restoredAllergyPhase
         if (phase != null && isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             when (phase) {
+                "just_me_meet_profile" -> {
+                    showJustMeMeetProfile = true
+                    showPreferenceSummary = false
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
                 "preference_summary" -> {
                     showPreferenceSummary = true
+                    showJustMeMeetProfile = false
                     showChatConversation = false
                     showChatBotIntro = false
                     showSummaryScreen = false
@@ -534,6 +661,7 @@ fun OnboardingHost(
                 "chat_conversation" -> {
                     showChatConversation = true
                     showPreferenceSummary = false
+                    showJustMeMeetProfile = false
                     showChatBotIntro = false
                     showSummaryScreen = false
                 }
@@ -541,6 +669,7 @@ fun OnboardingHost(
                     showChatBotIntro = true
                     showChatConversation = false
                     showPreferenceSummary = false
+                    showJustMeMeetProfile = false
                     showSummaryScreen = false
                 }
                 "summary_robot", "chips", "", null -> {
@@ -549,6 +678,7 @@ fun OnboardingHost(
                     showChatBotIntro = false
                     showChatConversation = false
                     showPreferenceSummary = false
+                    showJustMeMeetProfile = false
                 }
                 else -> {
                     // Unknown phase: be safe and show chips UI.
@@ -571,10 +701,12 @@ fun OnboardingHost(
         showSummaryScreen,
         showChatBotIntro,
         showChatConversation,
-        showPreferenceSummary
+        showPreferenceSummary,
+        showJustMeMeetProfile
     ) {
         if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val phase = when {
+                showJustMeMeetProfile -> "just_me_meet_profile"
                 showPreferenceSummary -> "preference_summary"
                 showChatConversation -> "chat_conversation"
                 showChatBotIntro -> "chat_intro"
@@ -614,23 +746,18 @@ fun OnboardingHost(
         return
     }
 
-    val backgroundKey = when (step) {
-        OnboardingStep.SIGN_IN_INITIAL,
-        OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 1
-
-        OnboardingStep.SIGN_IN_INVITE_CODE,
-        OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> 2
-
-        OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> 3
-        OnboardingStep.ADD_FAMILY_WELCOME,
-        OnboardingStep.ADD_FAMILY_NAME,
-        OnboardingStep.ADD_FAMILY_AVATAR_PICKER,
-        OnboardingStep.ADD_FAMILY_AVATAR_GENERATING,
-        OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE,
-        OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> 4
-
-        OnboardingStep.FALLING_CAPSULES -> 5
-        OnboardingStep.ADD_FAMILY_ALLERGIES -> 6
+    val backgroundKey = when {
+        step == OnboardingStep.SIGN_IN_INITIAL || step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> 1
+        step == OnboardingStep.SIGN_IN_INVITE_CODE || step == OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> 2
+        step == OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> 3
+        step == OnboardingStep.ADD_FAMILY_WELCOME || step == OnboardingStep.ADD_FAMILY_NAME ||
+            step == OnboardingStep.ADD_FAMILY_AVATAR_PICKER || step == OnboardingStep.ADD_FAMILY_AVATAR_GENERATING ||
+            step == OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE || step == OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> 4
+        step == OnboardingStep.FALLING_CAPSULES -> 5
+        // For ADD_FAMILY_ALLERGIES we keep a single key (6) and switch the actual background
+        // internally based on showJustMeMeetProfile. This avoids crossfading two heavy
+        // composables (allergy summary vs meet profile art), which was causing jank.
+        step == OnboardingStep.ADD_FAMILY_ALLERGIES -> 6
         else -> 0
     }
 
@@ -756,38 +883,50 @@ fun OnboardingHost(
                         }
 
                         6 -> {
-                            OnboardingAllergyBackground(
-                                dynamicStepsLoaded = dynamicStepsLoaded,
-                                allergySteps = allergySteps,
-                                showPreferenceSummary = showPreferenceSummary,
-                                allergyStepIndex = allergyStepIndex,
-                                onAllergyStepIndexChange = { allergyStepIndex = it },
-                                selectedAllergies = selectedAllergies,
-                                selectedAllergyMemberId = selectedAllergyMemberIdState.value,
-                                showSummaryScreen = showSummaryScreen,
-                                showFineTuneDecision = showFineTuneDecision,
-                                onShowFineTuneDecisionChange = { showFineTuneDecision = it },
-                                selectedAllergiesByMember = selectedAllergiesByMember.mapValues { it.value.toSet() },
-                                familyOverviewMembers = vm.familyOverviewMembers.toList(),
-                                summarySelectedMemberId = summarySelectedMemberId,
-                                onSummaryMemberSelected = { summarySelectedMemberId = it },
-                                onEditSection = { stepId ->
-                                    val idx = allergySteps.indexOfFirst { it.id == stepId }
-                                    if (idx >= 0) {
-                                        // When editing from the summary screen, mirror the current
-                                        // member filter in the bottom sheet so it opens with the
-                                        // same person (or Everyone) selected, matching iOS.
-                                        selectedAllergyMemberIdState.value =
-                                            summarySelectedMemberId ?: ""
-                                        editingSummaryStepIndex = idx
-                                    }
-                                },
-                                aiSummaryText = foodNotesSummary,
-                                bottomInset = sheetHeight
-                            )
+                            if (showJustMeMeetProfile) {
+                                // Just Me flow: "Meet your profile" (same layout as Add Family welcome)
+                                SignInBackground(
+                                    imageRes = R.drawable.family_img_add_family,
+                                    showLogo = false,
+                                    title = "Meet your profile",
+                                    subtitle = "This helps us tailor food checks and tips just for you.",
+                                    aspectRatio = 1f
+                                )
+                            } else {
+                                OnboardingAllergyBackground(
+                                    dynamicStepsLoaded = dynamicStepsLoaded,
+                                    allergySteps = allergySteps,
+                                    showPreferenceSummary = showPreferenceSummary,
+                                    allergyStepIndex = allergyStepIndex,
+                                    onAllergyStepIndexChange = { allergyStepIndex = it },
+                                    selectedAllergies = selectedAllergies,
+                                    selectedAllergyMemberId = selectedAllergyMemberIdState.value,
+                                    showSummaryScreen = showSummaryScreen,
+                                    showFineTuneDecision = showFineTuneDecision,
+                                    onShowFineTuneDecisionChange = { showFineTuneDecision = it },
+                                    selectedAllergiesByMember = selectedAllergiesByMember.mapValues { it.value.toSet() },
+                                    familyOverviewMembers = vm.familyOverviewMembers.toList(),
+                                    summarySelectedMemberId = summarySelectedMemberId,
+                                    onSummaryMemberSelected = { summarySelectedMemberId = it },
+                                    onEditSection = { stepId ->
+                                        val idx = allergySteps.indexOfFirst { it.id == stepId }
+                                        if (idx >= 0) {
+                                            // When editing from the summary screen, mirror the current
+                                            // member filter in the bottom sheet so it opens with the
+                                            // same person (or Everyone) selected, matching iOS.
+                                            selectedAllergyMemberIdState.value =
+                                                summarySelectedMemberId ?: ""
+                                            editingSummaryStepIndex = idx
+                                        }
+                                    },
+                                    aiSummaryText = foodNotesSummary,
+                                    bottomInset = sheetHeight
+                                )
+                            }
                         }
                     }
                 }
+
             },
             sheetContent = {
                 AnimatedContent(
@@ -811,7 +950,19 @@ fun OnboardingHost(
                             }
 
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
-                                if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
+                                if (showJustMeMeetProfile) {
+                                    val profileName = currentFamily?.name
+                                        ?: currentFamily?.selfMember?.name
+                                        ?: "Bite Buddy"
+                                    JustMeMeetProfileSheetContent(
+                                        familyName = profileName,
+                                        onBackClick = {
+                                            showJustMeMeetProfile = false
+                                            showPreferenceSummary = true
+                                        },
+                                        onContinue = onExitOnboarding
+                                    )
+                                } else if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
                                     // Don't show sheet content until steps are loaded so chips and question are visible (e.g. after restart).
                                     Box(
                                         modifier = Modifier
@@ -829,7 +980,13 @@ fun OnboardingHost(
                                             isFamilyFlow = isFamilyFlow,
                                             onContinue = {
                                                 showPreferenceSummary = false
-                                                onExitOnboarding()
+                                                if (isFamilyFlow) {
+                                                    onExitOnboarding()
+                                                } else {
+                                                    // Just me flow: show "Meet your profile" (local state, no step change = smooth back)
+                                                    showPreferenceSummary = false
+                                                    showJustMeMeetProfile = true
+                                                }
                                             }
                                         )
                                     } else {
@@ -1550,6 +1707,8 @@ fun OnboardingHost(
 
                             OnboardingStep.GET_STARTED -> {
                             }
+
+                            else -> {}
                         }
                     }
                 }

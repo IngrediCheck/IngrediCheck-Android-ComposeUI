@@ -512,6 +512,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             OnboardingStep.ADD_FAMILY_EDIT_MEMBER,
             OnboardingStep.FALLING_CAPSULES,
             OnboardingStep.ADD_FAMILY_ALLERGIES -> "pre_onboarding"
+
+
+            else -> {
+                ""
+            }
         }
 
         viewModelScope.launch {

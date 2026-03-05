@@ -14,5 +14,7 @@ enum class OnboardingStep {
     ADD_FAMILY_ALL_SET_OR_MORE,
     ADD_FAMILY_EDIT_MEMBER,
     FALLING_CAPSULES,
-    ADD_FAMILY_ALLERGIES
+    ADD_FAMILY_ALLERGIES,
+    /** Just Me flow only: shown after AI summary Continue; "Meet your profile" with Hello + family name. */
+    JUST_ME_MEET_PROFILE
 }

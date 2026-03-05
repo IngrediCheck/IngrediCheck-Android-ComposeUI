@@ -99,7 +99,9 @@ fun PreferenceSummaryScreen(
         ) {
             Column(
                 modifier = Modifier.Companion
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                ,
                 horizontalAlignment = Alignment.Companion.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
