@@ -141,6 +141,41 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         foodNotesUseCase.loadFoodNotesSummary(force)
     }
 
+    /**
+     * Update the current family's self member name (used in Just Me \"Meet your profile\" flow).
+     * Mirrors iOS MeetYourProfileView.commitPrimaryName behavior for the self member only.
+     */
+    fun updateSelfMemberName(newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isBlank()) return
+
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            val snapshot = _currentFamily.value
+            if (accessToken.isNullOrBlank() || snapshot == null) return@launch
+
+            val self = snapshot.selfMember
+            if (self.name == trimmed) return@launch
+
+            val updatedSelf = self.copy(name = trimmed)
+            pushDebug("Family editMember (self) started id=${self.id}, name=$trimmed")
+            val result = familyRepository.editMember(
+                accessToken = accessToken,
+                memberId = self.id,
+                member = updatedSelf
+            )
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    pushDebug("Family editMember (self) success name=${family.selfMember.name}")
+                },
+                onFailure = { e ->
+                    pushDebug("Family editMember (self) failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+        }
+    }
+
     fun addFamilyMember(member: FamilyMemberDto, onResult: (Result<FamilyDto>) -> Unit) {
         viewModelScope.launch {
             val accessToken = repository.accessTokenOrNull()

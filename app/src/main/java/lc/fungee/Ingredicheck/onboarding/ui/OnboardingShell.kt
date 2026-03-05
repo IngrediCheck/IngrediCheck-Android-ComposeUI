@@ -17,6 +17,9 @@ fun OnboardingShell(
     // Optional override for the base bottom padding of this sheet.
     // When null, the default per‑screen category padding is used.
     baseBottomPaddingOverride: Dp? = null,
+    // When false, the sheet will ignore IME insets (keyboard) and stay anchored,
+    // allowing the keyboard to overlap lower content (used for Just Me name edit).
+    respectImePadding: Boolean = true,
     onSheetHeightChanged: ((androidx.compose.ui.unit.Dp) -> Unit)? = null,
     backgroundContent: @Composable BoxScope.() -> Unit,
     sheetContent: @Composable () -> Unit
@@ -29,6 +32,7 @@ fun OnboardingShell(
             horizontalPaddingEnabled = horizontalPaddingEnabled,
             showFocusedShadow = showFocusedShadow,
             baseBottomPaddingOverride = baseBottomPaddingOverride,
+            respectImePadding = respectImePadding,
             onSheetHeightChanged = onSheetHeightChanged
         ) {
             sheetContent()

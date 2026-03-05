@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -81,15 +83,31 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import com.russhwolf.settings.BuildConfig
+
+// (duplicates of these text/keyboard imports removed below; see lines 84-94)
+import androidx.compose.ui.text.input.TextFieldValue
+
 
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
+import lc.fungee.Ingredicheck.ui.theme.Greyscale80
 import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.auth.AuthEnv
 import lc.fungee.Ingredicheck.auth.AuthState
@@ -173,7 +191,7 @@ private fun PreferenceSummarySheetContent(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth().padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -181,7 +199,7 @@ private fun PreferenceSummarySheetContent(
             text = if (isFamilyFlow) "All set to join your family!" else "Preferences added successfully!",
             fontFamily = Nunito,
             fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
+            fontSize = 24.sp,
             color = Greyscale150,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -193,27 +211,18 @@ private fun PreferenceSummarySheetContent(
         ) {
             Text(
                 text = if (isFamilyFlow) {
-                    "Your family’s food preferences are already added."
+                    "Your family’s food preferences are already added. or edit a specific preference section by tapping Edit."
                 } else {
-                    "Your food preferences are saved. You can review them anytime,"
+                    "Your food preferences are saved. You can review them anytime,or edit a specific preference section by tapping Edit."
                 },
                 fontFamily = Manrope,
                 fontWeight = FontWeight.Normal,
                 fontSize = 14.sp,
                 color = Greyscale120,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             )
-            Text(
-                text = "or edit a specific preference section by tapping Edit.",
-                fontFamily = Manrope,
-                fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
-                color = Greyscale120,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 2
-            )
+
         }
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -222,6 +231,7 @@ private fun PreferenceSummarySheetContent(
             takeFullWidth = false,
             onClick = onContinue
         )
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -233,31 +243,49 @@ private fun PreferenceSummarySheetContent(
 private fun JustMeMeetProfileSheetContent(
     familyName: String,
     onBackClick: () -> Unit = {},
-    onContinue: () -> Unit = {}
+    onContinue: () -> Unit = {},
+    onNameCommitted: (String) -> Unit = {}
 ) {
-    val avatarOptions = listOf(
-        R.drawable.father,
-        R.drawable.mom,
-        R.drawable.grand_father,
-        R.drawable.grand_mother,
-        R.drawable.young_son,
-        R.drawable.young_daughter,
-        R.drawable.avtar_cat,
-        R.drawable.avtar_dog,
-        R.drawable.avtar_pear,
-        R.drawable.avtar_tomato,
-        R.drawable.avtar_lichi,
-        R.drawable.avtar_potatto
-    )
-    // Deterministic "random" avatar based on familyName so it stays the same
-    // across app restarts until the user chooses a custom avatar.
-    val defaultAvatarRes = remember(familyName) {
-        val idx = kotlin.math.abs(familyName.hashCode()) % avatarOptions.size
-        avatarOptions[idx]
+    var nameField by remember(familyName) {
+        mutableStateOf(
+            TextFieldValue(
+                text = familyName,
+                selection = TextRange(familyName.length)
+            )
+        )
+    }
+    var isEditingName by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    // Track IME visibility so we can clear focus (and hide cursor) if the user
+    // closes the keyboard via system controls instead of the Done action.
+    val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+
+    LaunchedEffect(imeBottomPadding) {
+        if (imeBottomPadding == 0.dp && isEditingName) {
+            isEditingName = false
+            focusManager.clearFocus(force = true)
+        }
     }
 
+    val avatarItems = OnboardingChipData.editAvatarItems
+    // Deterministic default avatar id based on familyName, so it stays the same across restarts.
+    val initialAvatarId = remember(familyName) {
+        if (avatarItems.isNotEmpty()) {
+            val idx = kotlin.math.abs(familyName.hashCode()) % avatarItems.size
+            avatarItems[idx].first
+        } else ""
+    }
+    var selectedAvatarId by remember { mutableStateOf(initialAvatarId) }
+    val selectedAvatarRes = avatarItems.firstOrNull { it.first == selectedAvatarId }?.second
+        ?: avatarItems.firstOrNull()?.second
+        ?: R.drawable.father
+    val hasAvatarChanged = selectedAvatarId.isNotBlank() && selectedAvatarId != initialAvatarId
+    var isEditingAvatar by remember { mutableStateOf(false) }
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).background(Color.Yellow),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -268,8 +296,8 @@ private fun JustMeMeetProfileSheetContent(
             IconButton(
                 onClick = onBackClick,
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .background(Color.Red)
+                    .align(Alignment.TopStart)
+
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ion_chevron_back),
@@ -280,64 +308,262 @@ private fun JustMeMeetProfileSheetContent(
             }
             Box(
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(if (isEditingAvatar) 124.dp else 96.dp)
                     .align(Alignment.Center)
+                    .clickable {
+                        // Enter avatar-edit mode; also stop name editing and hide keyboard.
+                        isEditingAvatar = true
+                        isEditingName = false
+                        focusManager.clearFocus(force = true)
+                        keyboardController?.hide()
+                    }
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .border(
-                            width = 2.dp,
-                            color = Greyscale40,
-                            shape = CircleShape
+                if (!isEditingAvatar) {
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .border(
+                                width = 2.dp,
+                                color = Greyscale40,
+                                shape = CircleShape
+                            )
+                            .align(Alignment.Center),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(id = selectedAvatarRes),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(84.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
-                        .align(Alignment.Center),
-                    contentAlignment = Alignment.Center
-                ) {
+                    }
+                    // Edit badge (pen icon) over the avatar, similar to member memoji edit chip
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = -10.dp, y = 2.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(color = Greyscale40),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.pen_line_icon),
+                            tint = Greyscale150,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                } else {
+                    // Avatar edit mode: larger image without outer border, pen chip kept separate.
                     Image(
-                        painter = painterResource(id = defaultAvatarRes),
+                        painter = painterResource(id = selectedAvatarRes),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(84.dp)
+                            .size(124.dp)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 }
-                // Small top circle
-                Box(
-                    modifier = Modifier
-                        .size(22.dp)
-                        .background(Color.Blue, CircleShape)
-                        .offset(x = 400.dp, y = (-400).dp)
-                )
             }
 
         }
 
-        Text(
-            text = "Hello $familyName",
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = Greyscale150,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            text = "We've created a profile name and avatar based on your preferences. You can edit the name or avatar anytime to make it truly yours.",
-            fontFamily = Manrope,
-            fontWeight = FontWeight.Normal,
-            fontSize = 14.sp,
-            color = Greyscale120,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(28.dp))
-        PrimaryButton(
-            title = "Continue",
-            takeFullWidth = false,
-            onClick = onContinue
-        )
+        if (!isEditingAvatar) {
+            // Greeting + family name chip with edit icon, laid out horizontally
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // "Hello," text outside of the chip
+                    Text(
+                        text = "Hello, ",
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Greyscale150
+                    )
+
+                    // Family name editable chip with border and pen icon
+                    BasicTextField(
+                        value = nameField,
+                        onValueChange = { newValue ->
+                        // Mirror iOS filtering: letters + spaces, max 25 chars, max 3 words
+                        var filtered = newValue.text.filter { it.isLetter() || it.isWhitespace() }
+                        if (filtered.length > 25) {
+                            filtered = filtered.take(25)
+                        }
+                        val components = filtered.split(Regex("\\s+")).filter { it.isNotBlank() }
+                        if (components.size > 3) {
+                            filtered = components.take(3).joinToString(" ")
+                        }
+                        nameField = TextFieldValue(
+                            text = filtered,
+                            selection = TextRange(filtered.length)
+                        )
+                    },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            fontFamily = Nunito,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = Greyscale150
+                        ),
+                        cursorBrush = SolidColor(Greyscale150),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            val trimmed = nameField.text.trim()
+                            if (trimmed.isNotBlank()) {
+                                onNameCommitted(trimmed)
+                                // Update local field so greeting reflects committed name
+                                nameField = TextFieldValue(
+                                    text = trimmed,
+                                    selection = TextRange(trimmed.length)
+                                )
+                            }
+                            isEditingName = false
+                            focusManager.clearFocus(force = true)
+                            keyboardController?.hide()
+                        }),
+                        modifier = Modifier
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { focusState ->
+                                isEditingName = focusState.isFocused
+                            },
+                        decorationBox = { innerTextField ->
+                            Row(
+                                modifier = Modifier
+                                    .border(
+                                        width = 0.6.dp,
+                                        color = Greyscale80,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .background(
+                                        color = if (isEditingName) Color(0xFF91B640).copy(alpha = 0.18f) else Color.White,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .clickable {
+                                        isEditingName = true
+                                        focusRequester.requestFocus()
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                innerTextField()
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    painter = painterResource(id = R.drawable.pen_line_icon),
+                                    tint = Color.Unspecified,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clickable {
+                                            isEditingName = true
+                                            focusRequester.requestFocus()
+                                        }
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+
+            Text(
+                text = "We've created a profile name and avatar based on your preferences. You can edit the name or avatar anytime to make it truly yours.",
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale120,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            PrimaryButton(
+                title = "Continue",
+                takeFullWidth = false,
+                onClick = onContinue
+            )
+        } else {
+            // Avatar edit mode content
+            Text(
+                text = "Update your avatar?",
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Greyscale150,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                text = "Select an avatar that reflects your personality.",
+                fontFamily = Manrope,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                color = Greyscale120,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Ensure "Choose Avatar" header and row are laid out with full width and start-aligned,
+            // matching other screens that use ChooseAvatarRow.
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    ChooseAvatarRow(
+                        selectedAvatarId = selectedAvatarId,
+                        avatarItems = avatarItems,
+                        onAddAvatarClick = { /* TODO: hook up avatar generator if needed */ },
+                        onAvatarSelect = { selectedAvatarId = it }
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start)
+            {
+
+                Image(
+                    painter = painterResource(R.drawable.bulb_svgrepo_com),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Text(" Choose an optional avatar or tap + to generate a new one" ,
+                     fontFamily = Nunito ,
+                    fontWeight = FontWeight.Normal ,
+                fontSize = 12.sp ,
+                  color =  Color(color = 0xFFB6B6B6)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                PrimaryButton(
+                    title = "Save",
+                    modifier = Modifier.width(160.dp),
+                    takeFullWidth = false,
+                    onClick = onContinue,
+                    width = 160.dp,
+                    isDisabled = !hasAvatarChanged
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+
     }
 }
 
@@ -780,6 +1006,10 @@ fun OnboardingHost(
             showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
                     step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
             baseBottomPaddingOverride = if (step == OnboardingStep.ADD_FAMILY_ALLERGIES) 8.dp else null,
+            // For the Just Me \"Meet your profile\" sheet we want iOS-like behavior where the
+            // keyboard can overlap the lower description/button but not the greeting row.
+            // Disable IME padding in that sub-phase so the sheet does not get pushed up.
+            respectImePadding = !(step == OnboardingStep.ADD_FAMILY_ALLERGIES && showJustMeMeetProfile),
             onSheetHeightChanged = { sheetHeight = it },
             backgroundContent = {
                 AnimatedContent(
@@ -960,7 +1190,10 @@ fun OnboardingHost(
                                             showJustMeMeetProfile = false
                                             showPreferenceSummary = true
                                         },
-                                        onContinue = onExitOnboarding
+                                        onContinue = onExitOnboarding,
+                                        onNameCommitted = { newName ->
+                                            authViewModel.updateSelfMemberName(newName)
+                                        }
                                     )
                                 } else if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
                                     // Don't show sheet content until steps are loaded so chips and question are visible (e.g. after restart).
@@ -1753,4 +1986,4 @@ fun OnboardingHost(
         }
     }
 }
-    
+            

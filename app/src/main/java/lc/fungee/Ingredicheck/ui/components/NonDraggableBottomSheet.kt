@@ -57,6 +57,9 @@ fun NonDraggableBottomSheet(
     // Optional override for the base bottom padding used by this sheet.
     // When null, the default per‑screen category padding is used.
     baseBottomPaddingOverride: Dp? = null,
+    // When false, ignore IME insets and let content be overlapped by the keyboard.
+    // Used for flows where only the upper part of the sheet must stay visible.
+    respectImePadding: Boolean = true,
     onSheetHeightChanged: ((androidx.compose.ui.unit.Dp) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -170,8 +173,8 @@ fun NonDraggableBottomSheet(
             val imePadding = WindowInsets.ime
                 .asPaddingValues().calculateBottomPadding()
 
-            // When keyboard is visible, keep content ~10.dp above it.
-            val totalBottomPadding = if (imePadding > 0.dp) {
+            // When keyboard is visible, optionally keep content above it.
+            val totalBottomPadding = if (respectImePadding && imePadding > 0.dp) {
                 imePadding + 10.dp
             } else {
                 baseBottomPadding + navBarPadding
