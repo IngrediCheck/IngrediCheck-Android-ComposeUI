@@ -1039,6 +1039,8 @@ fun OnboardingHost(
     var showPreferenceSummary by remember { mutableStateOf(false) }
     // Just Me flow only: when true, show "Meet your profile" (no step change; avoids jerky back).
     var showJustMeMeetProfile by remember { mutableStateOf(false) }
+    // New guidance screen after profile/family summary.
+    var showProductHandyGuidance by remember { mutableStateOf(false) }
     // When non-null, indicates we are editing a specific preference section from the
     // summary screen (iOS EditSectionBottomSheet equivalent).
     var editingSummaryStepIndex by remember { mutableStateOf<Int?>(null) }
@@ -1053,6 +1055,14 @@ fun OnboardingHost(
         val phase = restoredAllergyPhase
         if (phase != null && isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             when (phase) {
+                "product_handy_guidance" -> {
+                    showProductHandyGuidance = true
+                    showJustMeMeetProfile = false
+                    showPreferenceSummary = false
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
                 "just_me_meet_profile" -> {
                     showJustMeMeetProfile = true
                     showPreferenceSummary = false
@@ -1115,6 +1125,7 @@ fun OnboardingHost(
     ) {
         if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val phase = when {
+                showProductHandyGuidance -> "product_handy_guidance"
                 showJustMeMeetProfile -> "just_me_meet_profile"
                 showPreferenceSummary -> "preference_summary"
                 showChatConversation -> "chat_conversation"
@@ -1187,7 +1198,8 @@ fun OnboardingHost(
             onDismissRequest = onExitOnboarding,
             horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER && step != OnboardingStep.ADD_FAMILY_ALLERGIES,
             showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
-                step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
+                step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN ||
+                showProductHandyGuidance,
             baseBottomPaddingOverride = if (step == OnboardingStep.ADD_FAMILY_ALLERGIES) 8.dp else null,
             // For the Just Me \"Meet your profile\" sheet we want iOS-like behavior where the
             // keyboard can overlap the lower description/button but not the greeting row.
@@ -1296,7 +1308,16 @@ fun OnboardingHost(
                     }
 
                         6 -> {
-                            if (showJustMeMeetProfile) {
+                            if (showProductHandyGuidance) {
+                                SignInBackground(
+                                    imageRes = R.drawable.phone_imge_with_product,
+                                    showLogo = false,
+                                    title = "Got a product handy?",
+                                    subtitle = "This helps us tailor food checks and\ntips just for you.",
+                                    aspectRatio = 0.7f,
+                                    stackContent = true
+                                )
+                            } else if (showJustMeMeetProfile) {
                                 // Just Me flow: "Meet your profile" (same layout as Add Family welcome)
                                 SignInBackground(
                                     imageRes = R.drawable.family_img_add_family,
@@ -1363,41 +1384,48 @@ fun OnboardingHost(
                         }
 
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
-                                if (showJustMeMeetProfile) {
-                                    if (isFamilyLoading && currentFamily == null) {
-                                        // Still loading initially, show a placeholder to avoid "Bite Buddy" flicker
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(32.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(color = Color(0xFF91B640))
-                                        }
-                                    } else {
-                                        // For Just Me profile, prefer the self member's name over the
-                                        // family name so that renaming from "Bite Buddy" persists.
-                                        val profileName = currentFamily?.selfMember?.name
-                                            ?: currentFamily?.name
-                                            ?: "Bite Buddy"
-                                        val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
-                                        Log.d(
-                                            "OnboardingHost",
-                                            "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl"
-                                        )
-                                        JustMeMeetProfileSheetContent(
-                                            familyName = profileName,
-                                            selfMemberImageUrl = selfAvatarUrl,
-                                            emojiState = emojiState,
-                                            onBackClick = {
-                                                showJustMeMeetProfile = false
-                                                showPreferenceSummary = true
-                                            },
-                                            onContinue = onExitOnboarding,
-                                            onNameCommitted = { newName ->
-                                                authViewModel.updateSelfMemberName(newName)
-                                                authViewModel.updateFamilyName(newName)
-                                            },
+                                        if (showProductHandyGuidance) {
+                                            GotProductHandyGuidanceSheet(
+                                                onContinue = onExitOnboarding
+                                            )
+                                        } else if (showJustMeMeetProfile) {
+                                            if (isFamilyLoading && currentFamily == null) {
+                                                // Still loading initially, show a placeholder to avoid "Bite Buddy" flicker
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(32.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CircularProgressIndicator(color = Color(0xFF91B640))
+                                                }
+                                            } else {
+                                                // For Just Me profile, prefer the self member's name over the
+                                                // family name so that renaming from "Bite Buddy" persists.
+                                                val profileName = currentFamily?.selfMember?.name
+                                                    ?: currentFamily?.name
+                                                    ?: "Bite Buddy"
+                                                val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
+                                                Log.d(
+                                                    "OnboardingHost",
+                                                    "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl"
+                                                )
+                                                JustMeMeetProfileSheetContent(
+                                                    familyName = profileName,
+                                                    selfMemberImageUrl = selfAvatarUrl,
+                                                    emojiState = emojiState,
+                                                    onBackClick = {
+                                                        showJustMeMeetProfile = false
+                                                        showPreferenceSummary = true
+                                                    },
+                                                    onContinue = {
+                                                        showJustMeMeetProfile = false
+                                                        showProductHandyGuidance = true
+                                                    },
+                                                    onNameCommitted = { newName ->
+                                                        authViewModel.updateSelfMemberName(newName)
+                                                        authViewModel.updateFamilyName(newName)
+                                                    },
                                             onAvatarSaved = { selectedId, generatedImageUrl ->
                                                 // Save updates backend so the new memoji is used everywhere.
                                                 val avatarToSave =
@@ -1426,9 +1454,9 @@ fun OnboardingHost(
                                         PreferenceSummarySheetContent(
                                             isFamilyFlow = isFamilyFlow,
                                             onContinue = {
-                                                showPreferenceSummary = false
                                                 if (isFamilyFlow) {
-                                                    onExitOnboarding()
+                                                    showPreferenceSummary = false
+                                                    showProductHandyGuidance = true
                                                 } else {
                                                     // Just me flow: show "Meet your profile" (local state, no step change = smooth back)
                                                     showPreferenceSummary = false

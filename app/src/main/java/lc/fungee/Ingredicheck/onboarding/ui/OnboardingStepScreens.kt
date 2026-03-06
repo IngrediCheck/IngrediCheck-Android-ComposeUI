@@ -647,6 +647,31 @@ internal fun AddFamilyAllSetOrMoreSheet(
 }
 
 @Composable
+internal fun GotProductHandyGuidanceSheet(
+    onContinue: () -> Unit
+) {
+    SheetHeader(
+        title = "Ready to scan your first product?",
+        subtitle = "Do you have any food product around you right now?",
+        onBackClick = onContinue
+    )
+
+    Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        PrimaryButton(
+            title = "Continue",
+            onClick = onContinue,
+            takeFullWidth = false,
+            width = 180.dp
+        )
+    }
+}
+
+@Composable
 internal fun AddFamilyLetsGoSheet(
     onLetsGo: () -> Unit
 ) {
