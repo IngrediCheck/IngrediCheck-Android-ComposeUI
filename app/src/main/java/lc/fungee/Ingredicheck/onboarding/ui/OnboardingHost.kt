@@ -295,7 +295,7 @@ private fun JustMeMeetProfileSheetContent(
     val avatarItems = OnboardingChipData.editAvatarItems
     // If selfMemberImageUrl is a static ID (not a URL), use it as the selectedAvatarId.
     // Otherwise, fallback to deterministic default avatar id based on familyName.
-    val initialAvatarId = remember {
+    val initialAvatarId = remember(familyName, selfMemberImageUrl) {
         if (selfMemberImageUrl != null && !selfMemberImageUrl.startsWith("http")) {
             selfMemberImageUrl
         } else if (avatarItems.isNotEmpty()) {
@@ -303,32 +303,14 @@ private fun JustMeMeetProfileSheetContent(
             avatarItems[idx].first
         } else ""
     }
-    LaunchedEffect(familyName, selfMemberImageUrl) {
-        if (selfMemberImageUrl != null && !selfMemberImageUrl.startsWith("http")) {
-            // No reset needed if it's already selectedAvatarId
-        } else if (avatarItems.isNotEmpty()) {
-            val idx = kotlin.math.abs(familyName.hashCode()) % avatarItems.size
-            val derivedId = avatarItems[idx].first
-            // Only update selectedAvatarId if it hasn't been manually changed by the user.
-            if (selectedAvatarId == initialAvatarId) {
-                // ... actually maybe simpler to just let user selection stick.
-            }
-        }
-    }
-    var selectedAvatarId by remember { mutableStateOf(initialAvatarId) }
+    var selectedAvatarId by remember(initialAvatarId) { mutableStateOf(initialAvatarId) }
     val selectedAvatarRes = avatarItems.firstOrNull { it.first == selectedAvatarId }?.second
         ?: avatarItems.firstOrNull()?.second
         ?: R.drawable.father
     // Active avatar URL shown in the big circle (current or newly generated memoji).
     // Only treat as URL if it starts with http.
-    var activeAvatarUrl by remember { 
+    var activeAvatarUrl by remember(selfMemberImageUrl) { 
         mutableStateOf(selfMemberImageUrl?.takeIf { it.startsWith("http") }) 
-    }
-    LaunchedEffect(selfMemberImageUrl) {
-        val newUrl = selfMemberImageUrl?.takeIf { it.startsWith("http") }
-        if (newUrl != null && newUrl != activeAvatarUrl) {
-            activeAvatarUrl = newUrl
-        }
     }
     // Local mode for the avatar controls inside this sheet.
     var avatarUiMode by remember { mutableStateOf(JustMeAvatarUiMode.StaticRow) }
@@ -707,7 +689,10 @@ private fun JustMeMeetProfileSheetContent(
                             onAddAvatarClick = {
                                 avatarUiMode = JustMeAvatarUiMode.Picker
                             },
-                            onAvatarSelect = { selectedAvatarId = it }
+                            onAvatarSelect = { 
+                                selectedAvatarId = it 
+                                activeAvatarUrl = null
+                            }
                         )
                     }
                 }
@@ -821,6 +806,7 @@ fun OnboardingHost(
     val emojiState by authViewModel.memojiState.collectAsState()
     val isAuthLoading = authState is AuthState.Loading
     val currentFamily by authViewModel.currentFamily.collectAsState()
+    val isFamilyLoading by authViewModel.isFamilyLoading.collectAsState()
     val foodNotesSummary by authViewModel.foodNotesSummary.collectAsState()
 
     var sheetHeight by remember { mutableStateOf(0.dp) }
@@ -1378,35 +1364,51 @@ fun OnboardingHost(
 
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
                                 if (showJustMeMeetProfile) {
-                                    // For Just Me profile, prefer the self member's name over the
-                                    // family name so that renaming from "Bite Buddy" persists.
-                                    val profileName = currentFamily?.selfMember?.name
-                                        ?: currentFamily?.name
-                                        ?: "Bite Buddy"
-                                    val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
-                                    Log.d("OnboardingHost", "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl")
-                                    JustMeMeetProfileSheetContent(
-                                        familyName = profileName,
-                                        selfMemberImageUrl = selfAvatarUrl,
-                                        emojiState = emojiState,
-                                        onBackClick = {
-                                            showJustMeMeetProfile = false
-                                            showPreferenceSummary = true
-                                        },
-                                        onContinue = onExitOnboarding,
-                                        onNameCommitted = { newName ->
-                                            authViewModel.updateSelfMemberName(newName)
-                                            authViewModel.updateFamilyName(newName)
-                                        },
-                                        onAvatarSaved = { selectedId, generatedImageUrl ->
-                                            // Save updates backend so the new memoji is used everywhere.
-                                            val avatarToSave = if (!generatedImageUrl.isNullOrBlank()) generatedImageUrl else selectedId
-                                            authViewModel.updateSelfMemberAvatar(avatarToSave)
-                                        },
-                                        onGenerateAvatar = { selections ->
-                                            authViewModel.generateAddFamilyMemoji(selections)
+                                    if (isFamilyLoading && currentFamily == null) {
+                                        // Still loading initially, show a placeholder to avoid "Bite Buddy" flicker
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(32.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(color = Color(0xFF91B640))
                                         }
-                                    )
+                                    } else {
+                                        // For Just Me profile, prefer the self member's name over the
+                                        // family name so that renaming from "Bite Buddy" persists.
+                                        val profileName = currentFamily?.selfMember?.name
+                                            ?: currentFamily?.name
+                                            ?: "Bite Buddy"
+                                        val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
+                                        Log.d(
+                                            "OnboardingHost",
+                                            "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl"
+                                        )
+                                        JustMeMeetProfileSheetContent(
+                                            familyName = profileName,
+                                            selfMemberImageUrl = selfAvatarUrl,
+                                            emojiState = emojiState,
+                                            onBackClick = {
+                                                showJustMeMeetProfile = false
+                                                showPreferenceSummary = true
+                                            },
+                                            onContinue = onExitOnboarding,
+                                            onNameCommitted = { newName ->
+                                                authViewModel.updateSelfMemberName(newName)
+                                                authViewModel.updateFamilyName(newName)
+                                            },
+                                            onAvatarSaved = { selectedId, generatedImageUrl ->
+                                                // Save updates backend so the new memoji is used everywhere.
+                                                val avatarToSave =
+                                                    if (!generatedImageUrl.isNullOrBlank()) generatedImageUrl else selectedId
+                                                authViewModel.updateSelfMemberAvatar(avatarToSave)
+                                            },
+                                            onGenerateAvatar = { selections ->
+                                                authViewModel.generateAddFamilyMemoji(selections)
+                                            }
+                                        )
+                                    }
                                 } else if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
                                     // Don't show sheet content until steps are loaded so chips and question are visible (e.g. after restart).
                                     Box(
