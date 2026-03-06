@@ -24,6 +24,8 @@ import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
 import lc.fungee.Ingredicheck.family.UpdateMemberRequest
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesUseCase
+import lc.fungee.Ingredicheck.onboarding.model.OnboardingPersistence
+import kotlinx.serialization.json.Json
 
 
 enum class AuthProvider {
@@ -49,9 +51,11 @@ sealed class AuthState {
 class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = AuthRepository(app.applicationContext)
+    private val persistence = OnboardingPersistence(app.applicationContext)
     private val memojiRepository = MemojiRepository()
     private val familyRepository = FamilyRepository()
     private val dietaryPreferenceRepository = DietaryPreferenceRepository()
+    private val json = Json { ignoreUnknownKeys = true }
     private val foodNotesUseCase = FoodNotesUseCase(
         scope = viewModelScope,
         authRepository = repository,
@@ -64,7 +68,22 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<AuthState> = _state
 
     init {
-        // Fetch current family on startup if a session exists
+        // 1. Immediate local restore from DataStore to avoid "Bite Buddy" flash
+        viewModelScope.launch {
+            persistence.getCachedFamily()?.let { jsonString ->
+                try {
+                    val cached = json.decodeFromString<FamilyDto>(jsonString)
+                    if (_currentFamily.value == null) {
+                        _currentFamily.value = cached
+                        Log.d("AuthViewModel", "Init: Restored cached family name=${cached.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.w("AuthViewModel", "Init: Failed to decode cached family", e)
+                }
+            }
+        }
+
+        // 2. Fetch current family on startup if a session exists
         viewModelScope.launch {
             repository.sessionFlow.collect { session ->
                 if (session != null) {
@@ -176,6 +195,14 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             result.fold(
                 onSuccess = { family ->
                     _currentFamily.value = family
+                    // Cache the successful result
+                    viewModelScope.launch {
+                        try {
+                            persistence.setCachedFamily(json.encodeToString(family))
+                        } catch (e: Exception) {
+                            Log.w("AuthViewModel", "Failed to cache family", e)
+                        }
+                    }
                     Log.d("AuthViewModel", "loadCurrentFamily: Success! familyName=${family.name}, selfName=${family.selfMember.name}, avatar=${family.selfMember.imageFileHash}")
                     pushDebug("loadCurrentFamily: Success name=${family.name}")
                 },
@@ -195,13 +222,30 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     fun updateSelfMemberName(newName: String) {
         val trimmed = newName.trim()
         if (trimmed.isNotBlank()) {
+            val snapshot = _currentFamily.value
+            if (snapshot == null) return
+
+            val self = snapshot.selfMember
+            if (self.name == trimmed) return
+
+            // 1. Optimistic Update
+            val updatedSelf = self.copy(name = trimmed)
+            val optimisticFamily = snapshot.copy(selfMember = updatedSelf)
+            _currentFamily.value = optimisticFamily
+            
+            // 2. Immediate cache update
+            viewModelScope.launch {
+                try {
+                    persistence.setCachedFamily(json.encodeToString(optimisticFamily))
+                } catch (e: Exception) {
+                    Log.w("AuthViewModel", "Failed to cache optimistic family", e)
+                }
+            }
+
+            // 3. Backend sync
             viewModelScope.launch {
                 val accessToken = repository.accessTokenOrNull()
-                val snapshot = _currentFamily.value
-                if (accessToken.isNullOrBlank() || snapshot == null) return@launch
-
-                val self = snapshot.selfMember
-                if (self.name == trimmed) return@launch
+                if (accessToken.isNullOrBlank()) return@launch
 
                 val request = UpdateMemberRequest(
                     name = trimmed,
@@ -218,6 +262,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 result.fold(
                     onSuccess = { family ->
                         _currentFamily.value = family
+                        viewModelScope.launch {
+                            try {
+                                persistence.setCachedFamily(json.encodeToString(family))
+                            } catch (e: Exception) {
+                                Log.w("AuthViewModel", "Failed to cache family after success", e)
+                            }
+                        }
                         Log.d("AuthViewModel", "updateSelfMemberName: Success! Backend now has name=${family.selfMember.name}")
                         pushDebug("Family editMember (self) success name=${family.selfMember.name}")
                     },
@@ -233,6 +284,24 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     fun updateFamilyName(newName: String) {
         val trimmed = newName.trim()
         if (trimmed.isNotBlank()) {
+            val snapshot = _currentFamily.value
+            if (snapshot == null) return
+            if (snapshot.name == trimmed) return
+
+            // 1. Optimistic Update
+            val optimisticFamily = snapshot.copy(name = trimmed)
+            _currentFamily.value = optimisticFamily
+
+            // 2. Immediate cache update
+            viewModelScope.launch {
+                try {
+                    persistence.setCachedFamily(json.encodeToString(optimisticFamily))
+                } catch (e: Exception) {
+                    Log.w("AuthViewModel", "Failed to cache optimistic family name", e)
+                }
+            }
+
+            // 3. Backend sync
             viewModelScope.launch {
                 val accessToken = repository.accessTokenOrNull()
                 if (accessToken.isNullOrBlank()) return@launch
@@ -243,6 +312,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 result.fold(
                     onSuccess = { family ->
                         _currentFamily.value = family
+                        viewModelScope.launch {
+                            try {
+                                persistence.setCachedFamily(json.encodeToString(family))
+                            } catch (e: Exception) {
+                                Log.w("AuthViewModel", "Failed to cache family name after success", e)
+                            }
+                        }
                         Log.d("AuthViewModel", "updateFamilyName: Success! Backend now has family name=${family.name}")
                         pushDebug("Family updateFamily success name=${family.name}")
                     },
@@ -260,14 +336,31 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
      * Used when the user saves a generated or selected avatar in the Just Me "Meet your profile" flow.
      */
     fun updateSelfMemberAvatar(imageFileHash: String?) {
+        val snapshot = _currentFamily.value
+        if (snapshot == null) return
+
+        val self = snapshot.selfMember
+        val cleanedHash = imageFileHash?.takeIf { it.isNotBlank() }
+        if (self.imageFileHash == cleanedHash) return
+
+        // 1. Optimistic Update
+        val updatedSelf = self.copy(imageFileHash = cleanedHash)
+        val optimisticFamily = snapshot.copy(selfMember = updatedSelf)
+        _currentFamily.value = optimisticFamily
+
+        // 2. Immediate cache update
+        viewModelScope.launch {
+            try {
+                persistence.setCachedFamily(json.encodeToString(optimisticFamily))
+            } catch (e: Exception) {
+                Log.w("AuthViewModel", "Failed to cache optimistic family avatar", e)
+            }
+        }
+
+        // 3. Backend sync
         viewModelScope.launch {
             val accessToken = repository.accessTokenOrNull()
-            val snapshot = _currentFamily.value
-            if (accessToken.isNullOrBlank() || snapshot == null) return@launch
-
-            val self = snapshot.selfMember
-            val cleanedHash = imageFileHash?.takeIf { it.isNotBlank() }
-            if (self.imageFileHash == cleanedHash) return@launch
+            if (accessToken.isNullOrBlank()) return@launch
 
             val request = UpdateMemberRequest(
                 name = self.name,
@@ -284,6 +377,13 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             result.fold(
                 onSuccess = { family ->
                     _currentFamily.value = family
+                    viewModelScope.launch {
+                        try {
+                            persistence.setCachedFamily(json.encodeToString(family))
+                        } catch (e: Exception) {
+                            Log.w("AuthViewModel", "Failed to cache avatar after success", e)
+                        }
+                    }
                     Log.d("AuthViewModel", "updateSelfMemberAvatar: Success! Backend now has avatar=${family.selfMember.imageFileHash}")
                     pushDebug("Family editMember (self avatar) success")
                 },

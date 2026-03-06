@@ -295,7 +295,7 @@ private fun JustMeMeetProfileSheetContent(
     val avatarItems = OnboardingChipData.editAvatarItems
     // If selfMemberImageUrl is a static ID (not a URL), use it as the selectedAvatarId.
     // Otherwise, fallback to deterministic default avatar id based on familyName.
-    val initialAvatarId = remember(familyName, selfMemberImageUrl) {
+    val initialAvatarId = remember {
         if (selfMemberImageUrl != null && !selfMemberImageUrl.startsWith("http")) {
             selfMemberImageUrl
         } else if (avatarItems.isNotEmpty()) {
@@ -303,14 +303,32 @@ private fun JustMeMeetProfileSheetContent(
             avatarItems[idx].first
         } else ""
     }
+    LaunchedEffect(familyName, selfMemberImageUrl) {
+        if (selfMemberImageUrl != null && !selfMemberImageUrl.startsWith("http")) {
+            // No reset needed if it's already selectedAvatarId
+        } else if (avatarItems.isNotEmpty()) {
+            val idx = kotlin.math.abs(familyName.hashCode()) % avatarItems.size
+            val derivedId = avatarItems[idx].first
+            // Only update selectedAvatarId if it hasn't been manually changed by the user.
+            if (selectedAvatarId == initialAvatarId) {
+                // ... actually maybe simpler to just let user selection stick.
+            }
+        }
+    }
     var selectedAvatarId by remember { mutableStateOf(initialAvatarId) }
     val selectedAvatarRes = avatarItems.firstOrNull { it.first == selectedAvatarId }?.second
         ?: avatarItems.firstOrNull()?.second
         ?: R.drawable.father
     // Active avatar URL shown in the big circle (current or newly generated memoji).
     // Only treat as URL if it starts with http.
-    var activeAvatarUrl by remember(selfMemberImageUrl) { 
+    var activeAvatarUrl by remember { 
         mutableStateOf(selfMemberImageUrl?.takeIf { it.startsWith("http") }) 
+    }
+    LaunchedEffect(selfMemberImageUrl) {
+        val newUrl = selfMemberImageUrl?.takeIf { it.startsWith("http") }
+        if (newUrl != null && newUrl != activeAvatarUrl) {
+            activeAvatarUrl = newUrl
+        }
     }
     // Local mode for the avatar controls inside this sheet.
     var avatarUiMode by remember { mutableStateOf(JustMeAvatarUiMode.StaticRow) }

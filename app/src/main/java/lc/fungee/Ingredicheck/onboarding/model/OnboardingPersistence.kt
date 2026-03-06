@@ -34,6 +34,7 @@ class OnboardingPersistence(
         private val KEY_SELECTED_ALLERGY_MEMBER_ID = stringPreferencesKey("onboarding_selected_allergy_member_id")
         private val KEY_ALLERGY_STEP_INDEX = stringPreferencesKey("onboarding_allergy_step_index")
         private val KEY_ALLERGY_PHASE = stringPreferencesKey("onboarding_allergy_phase")
+        private val KEY_CACHED_FAMILY = stringPreferencesKey("onboarding_cached_family")
 
         /** Sub-phase within ADD_FAMILY_ALLERGIES for restore-after-kill. */
         const val ALLERGY_PHASE_CHIPS = "chips"
@@ -205,6 +206,17 @@ class OnboardingPersistence(
     suspend fun setAllergyPhase(phase: String) {
         context.onboardingDataStore.edit { prefs ->
             prefs[KEY_ALLERGY_PHASE] = phase
+        }
+    }
+
+    suspend fun getCachedFamily(): String? {
+        val prefs = context.onboardingDataStore.data.first()
+        return prefs[KEY_CACHED_FAMILY]
+    }
+
+    suspend fun setCachedFamily(familyJson: String) {
+        context.onboardingDataStore.edit { prefs ->
+            prefs[KEY_CACHED_FAMILY] = familyJson
         }
     }
 }
