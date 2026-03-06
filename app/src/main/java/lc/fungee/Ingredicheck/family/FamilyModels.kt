@@ -10,18 +10,15 @@ data class FamilyMemberDto(
     val color: String,
     val joined: Boolean? = null,
     val invitePending: Boolean? = null,
-    val imageFileHash: String? = null,
-    @SerialName("image_file_hash") val imageFileHashSnake: String? = null
-) {
-    val resolvedImageFileHash: String?
-        get() = imageFileHash ?: imageFileHashSnake
-}
+    @SerialName("imageFileHash") val imageFileHash: String? = null
+)
 
 @Serializable
 data class FamilyDto(
     val name: String,
     val selfMember: FamilyMemberDto,
-    val otherMembers: List<FamilyMemberDto> = emptyList()
+    val otherMembers: List<FamilyMemberDto> = emptyList(),
+    val version: Long = 0L
 )
 
 @Serializable
@@ -44,6 +41,18 @@ data class InviteResponse(
 @Serializable
 data class JoinFamilyRequest(
     val inviteCode: String
+)
+
+@Serializable
+data class UpdateFamilyRequest(
+    val name: String
+)
+
+@Serializable
+data class UpdateMemberRequest(
+    val name: String,
+    val color: String,
+    @SerialName("imageFileHash") val imageFileHash: String? = null
 )
 
 @Serializable

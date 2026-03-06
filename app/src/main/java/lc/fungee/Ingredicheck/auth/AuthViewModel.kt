@@ -10,6 +10,8 @@ import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import lc.fungee.Ingredicheck.family.CreateFamilyRequest
 import lc.fungee.Ingredicheck.family.FamilyDto
@@ -19,6 +21,7 @@ import lc.fungee.Ingredicheck.memoji.MemojiRepository
 import lc.fungee.Ingredicheck.memoji.MemojiRequestMapper
 import lc.fungee.Ingredicheck.family.FamilyMemberDto
 import lc.fungee.Ingredicheck.dietary.DietaryPreferenceRepository
+import lc.fungee.Ingredicheck.family.UpdateMemberRequest
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesRepository
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesUseCase
 
@@ -59,6 +62,21 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
+
+    init {
+        // Fetch current family on startup if a session exists
+        viewModelScope.launch {
+            repository.sessionFlow.collect { session ->
+                if (session != null) {
+                    Log.d("AuthViewModel", "Session update: Found active session for user=${session.user?.id}")
+                    pushDebug("Session update: Active session found, fetching family")
+                    loadCurrentFamily()
+                } else {
+                    Log.d("AuthViewModel", "Session update: No active session")
+                }
+            }
+        }
+    }
 
     private val _debugLog = MutableStateFlow<List<String>>(emptyList())
     val debugLog: StateFlow<List<String>> = _debugLog.asStateFlow()
@@ -139,6 +157,142 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadFoodNotesSummary(force: Boolean = false) {
         foodNotesUseCase.loadFoodNotesSummary(force)
+    }
+
+    /**
+     * Fetch the current family from the backend and update the local state.
+     */
+    fun loadCurrentFamily() {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            if (accessToken.isNullOrBlank()) {
+                Log.d("AuthViewModel", "loadCurrentFamily: Skipping, no access token")
+                pushDebug("loadCurrentFamily: No access token, skipping")
+                return@launch
+            }
+            Log.d("AuthViewModel", "loadCurrentFamily: Fetching current family from backend...")
+            pushDebug("loadCurrentFamily: Fetching from backend")
+            val result = familyRepository.getFamily(accessToken)
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    Log.d("AuthViewModel", "loadCurrentFamily: Success! familyName=${family.name}, selfName=${family.selfMember.name}, avatar=${family.selfMember.imageFileHash}")
+                    pushDebug("loadCurrentFamily: Success name=${family.name}")
+                },
+                onFailure = { e ->
+                    Log.e("AuthViewModel", "loadCurrentFamily: Failed", e)
+                    pushDebug("loadCurrentFamily: Failed ${e.localizedMessage ?: e.javaClass.simpleName}")
+                    Log.w("AuthDebug", "loadCurrentFamily failed", e)
+                }
+            )
+        }
+    }
+
+    /**
+     * Update the current family's self member name (used in Just Me \"Meet your profile\" flow).
+     * Mirrors iOS MeetYourProfileView.commitPrimaryName behavior for the self member only.
+     */
+    fun updateSelfMemberName(newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isNotBlank()) {
+            viewModelScope.launch {
+                val accessToken = repository.accessTokenOrNull()
+                val snapshot = _currentFamily.value
+                if (accessToken.isNullOrBlank() || snapshot == null) return@launch
+
+                val self = snapshot.selfMember
+                if (self.name == trimmed) return@launch
+
+                val request = UpdateMemberRequest(
+                    name = trimmed,
+                    color = self.color,
+                    imageFileHash = self.imageFileHash
+                )
+                Log.d("AuthViewModel", "updateSelfMemberName: Starting editMember for id=${self.id}, newName=$trimmed")
+                pushDebug("Family editMember (self) started id=${self.id}, name=$trimmed")
+                val result = familyRepository.editMember(
+                    accessToken = accessToken,
+                    memberId = self.id,
+                    request = request
+                )
+                result.fold(
+                    onSuccess = { family ->
+                        _currentFamily.value = family
+                        Log.d("AuthViewModel", "updateSelfMemberName: Success! Backend now has name=${family.selfMember.name}")
+                        pushDebug("Family editMember (self) success name=${family.selfMember.name}")
+                    },
+                    onFailure = { e ->
+                        Log.e("AuthViewModel", "updateSelfMemberName: Failed", e)
+                        pushDebug("Family editMember (self) failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                    }
+                )
+            }
+        }
+    }
+
+    fun updateFamilyName(newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isNotBlank()) {
+            viewModelScope.launch {
+                val accessToken = repository.accessTokenOrNull()
+                if (accessToken.isNullOrBlank()) return@launch
+
+                Log.d("AuthViewModel", "updateFamilyName: Starting updateFamily for newName=$trimmed")
+                pushDebug("Family updateFamily started name=$trimmed")
+                val result = familyRepository.updateFamily(accessToken = accessToken, name = trimmed)
+                result.fold(
+                    onSuccess = { family ->
+                        _currentFamily.value = family
+                        Log.d("AuthViewModel", "updateFamilyName: Success! Backend now has family name=${family.name}")
+                        pushDebug("Family updateFamily success name=${family.name}")
+                    },
+                    onFailure = { e ->
+                        Log.e("AuthViewModel", "updateFamilyName: Failed", e)
+                        pushDebug("Family updateFamily failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                    }
+                )
+            }
+        }
+    }
+
+    /**
+     * Update the current family's self member avatar (imageFileHash).
+     * Used when the user saves a generated or selected avatar in the Just Me "Meet your profile" flow.
+     */
+    fun updateSelfMemberAvatar(imageFileHash: String?) {
+        viewModelScope.launch {
+            val accessToken = repository.accessTokenOrNull()
+            val snapshot = _currentFamily.value
+            if (accessToken.isNullOrBlank() || snapshot == null) return@launch
+
+            val self = snapshot.selfMember
+            val cleanedHash = imageFileHash?.takeIf { it.isNotBlank() }
+            if (self.imageFileHash == cleanedHash) return@launch
+
+            val request = UpdateMemberRequest(
+                name = self.name,
+                color = self.color,
+                imageFileHash = cleanedHash
+            )
+            Log.d("AuthViewModel", "updateSelfMemberAvatar: Starting editMember for id=${self.id}, newAvatar=$cleanedHash")
+            pushDebug("Family editMember (self avatar) started id=${self.id}")
+            val result = familyRepository.editMember(
+                accessToken = accessToken,
+                memberId = self.id,
+                request = request
+            )
+            result.fold(
+                onSuccess = { family ->
+                    _currentFamily.value = family
+                    Log.d("AuthViewModel", "updateSelfMemberAvatar: Success! Backend now has avatar=${family.selfMember.imageFileHash}")
+                    pushDebug("Family editMember (self avatar) success")
+                },
+                onFailure = { e ->
+                    Log.e("AuthViewModel", "updateSelfMemberAvatar: Failed", e)
+                    pushDebug("Family editMember (self avatar) failed: ${e.localizedMessage ?: e.javaClass.simpleName}")
+                }
+            )
+        }
     }
 
     fun addFamilyMember(member: FamilyMemberDto, onResult: (Result<FamilyDto>) -> Unit) {
@@ -486,6 +640,8 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                         "Anonymous session created userId=${session.user?.id}, email=${session.user?.email}"
                     )
                     pushDebug("Anonymous session created userId=${session.user?.id}")
+                    // Fetch family after creating anonymous session
+                    loadCurrentFamily()
                 },
                 onFailure = { e ->
                     Log.e("AuthViewModel", "Anonymous session creation failed", e)
@@ -512,6 +668,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
             OnboardingStep.ADD_FAMILY_EDIT_MEMBER,
             OnboardingStep.FALLING_CAPSULES,
             OnboardingStep.ADD_FAMILY_ALLERGIES -> "pre_onboarding"
+
+
+            else -> {
+                ""
+            }
         }
 
         viewModelScope.launch {

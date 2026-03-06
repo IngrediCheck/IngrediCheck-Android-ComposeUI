@@ -472,7 +472,9 @@ internal fun AddFamilyAvatarGeneratingSheet(
                         Spacer(modifier = Modifier.height(18.dp))
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {

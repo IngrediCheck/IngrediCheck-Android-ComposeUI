@@ -233,8 +233,21 @@ class FamilyRepository {
         }
     }
 
-    suspend fun editMember(accessToken: String, memberId: String, member: FamilyMemberDto): Result<FamilyDto> {
-        val body = json.encodeToString(member)
+    suspend fun updateFamily(accessToken: String, name: String): Result<FamilyDto> {
+        val body = json.encodeToString(UpdateFamilyRequest(name = name))
+        return runCatching {
+            val responseText = client.patch(url("family")) {
+                baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
+                accept(ContentType.Application.Json)
+                setBody(body)
+            }.bodyAsText()
+
+            json.decodeFromString<FamilyDto>(responseText)
+        }
+    }
+
+    suspend fun editMember(accessToken: String, memberId: String, request: UpdateMemberRequest): Result<FamilyDto> {
+        val body = json.encodeToString(request)
         return runCatching {
             val responseText = client.patch(url("family/members/$memberId")) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
