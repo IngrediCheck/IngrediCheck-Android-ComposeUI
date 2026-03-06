@@ -50,7 +50,7 @@ internal fun SheetHeader(
         Text(
             text = title,
             style = sheetTitleTextStyle(),
-            maxLines = 1,
+            maxLines = 2,
             color = Greyscale150,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()

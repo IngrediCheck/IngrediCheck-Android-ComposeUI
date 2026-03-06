@@ -651,24 +651,37 @@ internal fun GotProductHandyGuidanceSheet(
     onContinue: () -> Unit
 ) {
     SheetHeader(
-        title = "Ready to scan your first product?",
+        title = "Ready to scan your\n first product?",
         subtitle = "Do you have any food product around you right now?",
         onBackClick = onContinue
     )
 
     Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        SecondaryButton(
+            title = "Not right now",
+            modifier = Modifier.weight(1f),
+            takeFullWidth = true,
+            width = 0.dp,
+            onClick = null,
+            textColor = lc.fungee.Ingredicheck.ui.theme.Primary800,
+            borderColor = Greyscale40,
+            disabledBackgroundColor = Greyscale40
+        )
         PrimaryButton(
-            title = "Continue",
-            onClick = onContinue,
-            takeFullWidth = false,
-            width = 180.dp
+            title = "Have a product",
+            modifier = Modifier.weight(1f),
+            takeFullWidth = true,
+            width = 0.dp,
+            onClick = null
         )
     }
+    Spacer(modifier = Modifier.height(32.dp))
+
 }
 
 @Composable
