@@ -8,11 +8,14 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Apple
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.IDToken
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserSession
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -33,6 +36,13 @@ class AuthRepository(
 
     suspend fun currentSessionOrNull(): UserSession? = withContext(Dispatchers.IO) {
         supabaseClient.auth.currentSessionOrNull()
+    }
+
+    val sessionFlow: Flow<UserSession?> = supabaseClient.auth.sessionStatus.map { status ->
+        when (status) {
+            is SessionStatus.Authenticated -> status.session
+            else -> null
+        }
     }
 
     suspend fun accessTokenOrNull(): String? = withContext(Dispatchers.IO) {

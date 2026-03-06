@@ -170,9 +170,9 @@ private fun buildBiteBuddyFamilyRequest(): CreateFamilyRequest {
         name = "Bite Buddy",
         color = "#FFFFBA",
         joined = true,
-        invitePending = null,
+            invitePending = null,
         imageFileHash = "memoji_3"
-    )
+        )
     return CreateFamilyRequest(
         name = "Bite Buddy",
         selfMember = selfMember,
@@ -209,15 +209,15 @@ private fun PreferenceSummarySheetContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
+        Text(
                 text = if (isFamilyFlow) {
                     "Your family’s food preferences are already added. or edit a specific preference section by tapping Edit."
                 } else {
                     "Your food preferences are saved. You can review them anytime,or edit a specific preference section by tapping Edit."
                 },
-                fontFamily = Manrope,
+            fontFamily = Manrope,
                 fontWeight = FontWeight.Normal,
-                fontSize = 14.sp,
+            fontSize = 14.sp,
                 color = Greyscale120,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)
@@ -236,15 +236,38 @@ private fun PreferenceSummarySheetContent(
 }
 
 /**
+ * Local mode for the Just Me avatar section inside the "Meet your profile" sheet.
+ * We keep the overall sheet (background, hello text, etc.) the same and swap only
+ * the avatar controls between:
+ * - StaticRow: simple ChooseAvatarRow with + icon
+ * - Picker: full avatar picker UI (tabs + chips)
+ * - Generating: memoji generating UI with robot + shimmer
+ */
+private enum class JustMeAvatarUiMode {
+    StaticRow,
+    Picker,
+    Generating
+}
+
+/**
  * Bottom-sheet content for the Just Me flow after AI summary Continue: "Meet your profile"
  * with Hello + family name from backend and profile/avatar explanation.
+ * When user taps Save in avatar edit mode, [onAvatarSaved] is called and we return to the
+ * profile state (avatar + "Hello, family name").
+ *
+ * The memoji picker/generator UI is embedded INSIDE this sheet so the background and
+ * overall sheet chrome never change—only the avatar-selection region swaps modes.
  */
 @Composable
 private fun JustMeMeetProfileSheetContent(
     familyName: String,
+    selfMemberImageUrl: String? = null,
+    emojiState: MemojiGenState,
     onBackClick: () -> Unit = {},
     onContinue: () -> Unit = {},
-    onNameCommitted: (String) -> Unit = {}
+    onNameCommitted: (String) -> Unit = {},
+    onAvatarSaved: (avatarId: String, generatedImageUrl: String?) -> Unit = { _, _ -> },
+    onGenerateAvatar: (Map<Int, String>) -> Unit = {}
 ) {
     var nameField by remember(familyName) {
         mutableStateOf(
@@ -266,13 +289,16 @@ private fun JustMeMeetProfileSheetContent(
         if (imeBottomPadding == 0.dp && isEditingName) {
             isEditingName = false
             focusManager.clearFocus(force = true)
-        }
+        } 
     }
 
     val avatarItems = OnboardingChipData.editAvatarItems
-    // Deterministic default avatar id based on familyName, so it stays the same across restarts.
-    val initialAvatarId = remember(familyName) {
-        if (avatarItems.isNotEmpty()) {
+    // If selfMemberImageUrl is a static ID (not a URL), use it as the selectedAvatarId.
+    // Otherwise, fallback to deterministic default avatar id based on familyName.
+    val initialAvatarId = remember(familyName, selfMemberImageUrl) {
+        if (selfMemberImageUrl != null && !selfMemberImageUrl.startsWith("http")) {
+            selfMemberImageUrl
+        } else if (avatarItems.isNotEmpty()) {
             val idx = kotlin.math.abs(familyName.hashCode()) % avatarItems.size
             avatarItems[idx].first
         } else ""
@@ -281,10 +307,78 @@ private fun JustMeMeetProfileSheetContent(
     val selectedAvatarRes = avatarItems.firstOrNull { it.first == selectedAvatarId }?.second
         ?: avatarItems.firstOrNull()?.second
         ?: R.drawable.father
-    val hasAvatarChanged = selectedAvatarId.isNotBlank() && selectedAvatarId != initialAvatarId
+    // Active avatar URL shown in the big circle (current or newly generated memoji).
+    // Only treat as URL if it starts with http.
+    var activeAvatarUrl by remember(selfMemberImageUrl) { 
+        mutableStateOf(selfMemberImageUrl?.takeIf { it.startsWith("http") }) 
+    }
+    // Local mode for the avatar controls inside this sheet.
+    var avatarUiMode by remember { mutableStateOf(JustMeAvatarUiMode.StaticRow) }
+    // Local selections for memoji generation (per-category ids).
+    var avatarSelections by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    // Consider avatar "changed" if either the static id changed or a new memoji URL was applied.
+    val hasAvatarChanged =
+        selectedAvatarId != initialAvatarId || (activeAvatarUrl != null && activeAvatarUrl != selfMemberImageUrl)
     var isEditingAvatar by remember { mutableStateOf(false) }
 
-    Column(
+    // Helper to persist a renamed profile when leaving this sheet via Continue / Back / Save,
+    // even if the user didn't tap the keyboard Done action.
+    fun commitNameIfNeeded() {
+        val trimmed = nameField.text.trim()
+        if (trimmed.isNotBlank() && trimmed != familyName) {
+            onNameCommitted(trimmed)
+        }
+    }
+
+    // If user is in avatar edit mode and has tapped "+", show ONLY the picker/generator
+    // UI in this sheet (no profile header, no big avatar, no Save button). This matches
+    // the iOS flow where "Generate Avatar for @Name" takes over the sheet.
+    if (isEditingAvatar && avatarUiMode != JustMeAvatarUiMode.StaticRow) {
+        when (avatarUiMode) {
+            JustMeAvatarUiMode.Picker -> {
+                AddFamilyAvatarPickerSheet(
+                    displayName = familyName,
+                    selections = avatarSelections,
+                    onBackClick = {
+                        avatarUiMode = JustMeAvatarUiMode.StaticRow
+                    },
+                    onAvatarSelected = { updated ->
+                        avatarSelections = updated
+                    },
+                    onGenerateClick = {
+                        avatarUiMode = JustMeAvatarUiMode.Generating
+                        onGenerateAvatar(avatarSelections)
+                    }
+                )
+            }
+            JustMeAvatarUiMode.Generating -> {
+                AddFamilyAvatarGeneratingSheet(
+                    state = emojiState,
+                    selections = avatarSelections,
+                    onBackClick = {
+                        avatarUiMode = JustMeAvatarUiMode.Picker
+                    },
+                    onRetry = {
+                        onGenerateAvatar(avatarSelections)
+                    },
+                    onRegenerate = {
+                        avatarUiMode = JustMeAvatarUiMode.Picker
+                    },
+                    onAssign = { imageUrl ->
+                        // Apply generated memoji to the big avatar preview when
+                        // returning to the profile/edit sheet. We do NOT call backend
+                        // here; Save will handle that.
+                        activeAvatarUrl = imageUrl
+                        avatarUiMode = JustMeAvatarUiMode.StaticRow
+                    }
+                )
+            }
+            else -> Unit
+        }
+        return
+    }
+
+            Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -294,7 +388,17 @@ private fun JustMeMeetProfileSheetContent(
         ) {
 
             IconButton(
-                onClick = onBackClick,
+                onClick = {
+                    // If user is editing avatar, back arrow should just exit edit mode
+                    // and return to the profile state within this sheet.
+                    if (isEditingAvatar) {
+                        isEditingAvatar = false
+                    } else {
+                        // Commit name changes (if any) before navigating back.
+                        commitNameIfNeeded()
+                        onBackClick()
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.TopStart)
 
@@ -306,8 +410,8 @@ private fun JustMeMeetProfileSheetContent(
                     tint = Greyscale150
                 )
             }
-            Box(
-                modifier = Modifier
+                Box(
+                    modifier = Modifier
                     .size(if (isEditingAvatar) 124.dp else 96.dp)
                     .align(Alignment.Center)
                     .clickable {
@@ -319,8 +423,8 @@ private fun JustMeMeetProfileSheetContent(
                     }
             ) {
                 if (!isEditingAvatar) {
-                    Box(
-                        modifier = Modifier
+        Box(
+            modifier = Modifier
                             .size(96.dp)
                             .border(
                                 width = 2.dp,
@@ -330,25 +434,52 @@ private fun JustMeMeetProfileSheetContent(
                             .align(Alignment.Center),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(id = selectedAvatarRes),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(84.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
+                        val url = activeAvatarUrl
+                        if (!url.isNullOrBlank()) {
+                            SubcomposeAsyncImage(
+                                model = url,
+                                contentDescription = null,
+            modifier = Modifier
+                                    .size(84.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            ) {
+                                when (painter.state) {
+                                    is coil.compose.AsyncImagePainter.State.Loading -> {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(32.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    }
+                                    else -> SubcomposeAsyncImageContent()
+                                }
+                            }
+                            } else {
+                            Image(
+                                painter = painterResource(id = selectedAvatarRes),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(84.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                     // Edit badge (pen icon) over the avatar, similar to member memoji edit chip
-                    Box(
-                        modifier = Modifier
+                                Box(
+                                    modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .offset(x = -10.dp, y = 2.dp)
                             .size(24.dp)
-                            .clip(CircleShape)
+                                        .clip(CircleShape)
                             .background(color = Greyscale40),
-                        contentAlignment = Alignment.Center
-                    ) {
+                                    contentAlignment = Alignment.Center
+                                ) {
                         Icon(
                             painter = painterResource(id = R.drawable.pen_line_icon),
                             tint = Greyscale150,
@@ -358,14 +489,41 @@ private fun JustMeMeetProfileSheetContent(
                     }
                 } else {
                     // Avatar edit mode: larger image without outer border, pen chip kept separate.
-                    Image(
-                        painter = painterResource(id = selectedAvatarRes),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(124.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    val url = activeAvatarUrl
+                    if (!url.isNullOrBlank()) {
+                                            SubcomposeAsyncImage(
+                            model = url,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                .size(124.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                                            ) {
+                                                when (painter.state) {
+                                                    is coil.compose.AsyncImagePainter.State.Loading -> {
+                                                        Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            CircularProgressIndicator(
+                                            modifier = Modifier.size(40.dp),
+                                            strokeWidth = 2.dp
+                                                            )
+                                                        }
+                                                    }
+                                else -> SubcomposeAsyncImageContent()
+                                                    }
+                                                }
+                    } else {
+                                            Image(
+                            painter = painterResource(id = selectedAvatarRes),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                .size(124.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
 
@@ -375,16 +533,16 @@ private fun JustMeMeetProfileSheetContent(
             // Greeting + family name chip with edit icon, laid out horizontally
             Box(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
+                                                contentAlignment = Alignment.Center
+                                            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // "Hello," text outside of the chip
-                    Text(
+                                                Text(
                         text = "Hello, ",
                         fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
+                                                        fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         color = Greyscale150
                     )
@@ -430,7 +588,7 @@ private fun JustMeMeetProfileSheetContent(
                             focusManager.clearFocus(force = true)
                             keyboardController?.hide()
                         }),
-                        modifier = Modifier
+                                        modifier = Modifier
                             .focusRequester(focusRequester)
                             .onFocusChanged { focusState ->
                                 isEditingName = focusState.isFocused
@@ -456,10 +614,10 @@ private fun JustMeMeetProfileSheetContent(
                             ) {
                                 innerTextField()
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    painter = painterResource(id = R.drawable.pen_line_icon),
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.pen_line_icon),
                                     tint = Color.Unspecified,
-                                    contentDescription = null,
+                                            contentDescription = null,
                                     modifier = Modifier
                                         .size(12.dp)
                                         .clickable {
@@ -473,9 +631,9 @@ private fun JustMeMeetProfileSheetContent(
                 }
             }
 
-            Text(
+                                Text(
                 text = "We've created a profile name and avatar based on your preferences. You can edit the name or avatar anytime to make it truly yours.",
-                fontFamily = Manrope,
+                                        fontFamily = Manrope,
                 fontWeight = FontWeight.Normal,
                 fontSize = 14.sp,
                 color = Greyscale120,
@@ -486,14 +644,18 @@ private fun JustMeMeetProfileSheetContent(
             PrimaryButton(
                 title = "Continue",
                 takeFullWidth = false,
-                onClick = onContinue
+                onClick = {
+                    // Ensure latest name is saved before leaving the sheet.
+                    commitNameIfNeeded()
+                    onContinue()
+                }
             )
         } else {
             // Avatar edit mode content
             Text(
                 text = "Update your avatar?",
                 fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 color = Greyscale150,
                 textAlign = TextAlign.Center,
@@ -510,53 +672,70 @@ private fun JustMeMeetProfileSheetContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Ensure "Choose Avatar" header and row are laid out with full width and start-aligned,
-            // matching other screens that use ChooseAvatarRow.
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Column(
+            // Static avatar-row mode: simple row with + icon. The memoji picker/generator
+            // modes are handled earlier and take over the whole sheet.
+            if (avatarUiMode == JustMeAvatarUiMode.StaticRow) {
+                Box(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.Start
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    ChooseAvatarRow(
-                        selectedAvatarId = selectedAvatarId,
-                        avatarItems = avatarItems,
-                        onAddAvatarClick = { /* TODO: hook up avatar generator if needed */ },
-                        onAvatarSelect = { selectedAvatarId = it }
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        ChooseAvatarRow(
+                            selectedAvatarId = selectedAvatarId,
+                            avatarItems = avatarItems,
+                            onAddAvatarClick = {
+                                avatarUiMode = JustMeAvatarUiMode.Picker
+                            },
+                            onAvatarSelect = { selectedAvatarId = it }
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.bulb_svgrepo_com),
+                                                contentDescription = null,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                                            Text(
+                        " Choose an optional avatar or tap + to generate a new one",
+                                            fontFamily = Nunito,
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 12.sp,
+                        color = Color(color = 0xFFB6B6B6)
                     )
                 }
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start)
-            {
-
-                Image(
-                    painter = painterResource(R.drawable.bulb_svgrepo_com),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-                Text(" Choose an optional avatar or tap + to generate a new one" ,
-                     fontFamily = Nunito ,
-                    fontWeight = FontWeight.Normal ,
-                fontSize = 12.sp ,
-                  color =  Color(color = 0xFFB6B6B6)
-                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
             Box(
                 modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
+                                contentAlignment = Alignment.Center
+                            ) {
                 PrimaryButton(
                     title = "Save",
                     modifier = Modifier.width(160.dp),
                     takeFullWidth = false,
-                    onClick = onContinue,
+                    onClick = {
+                        // Save within this sheet:
+                        // 1) commit any pending name change
+                        // 2) notify host so it can update backend avatar
+                        // 3) exit avatar edit mode and return to the profile state.
+                        commitNameIfNeeded()
+                        onAvatarSaved(
+                            selectedAvatarId,
+                            activeAvatarUrl?.takeIf { it.isNotBlank() }
+                        )
+                        isEditingAvatar = false
+                    },
                     width = 160.dp,
                     isDisabled = !hasAvatarChanged
                 )
@@ -1004,7 +1183,7 @@ fun OnboardingHost(
             onDismissRequest = onExitOnboarding,
             horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER && step != OnboardingStep.ADD_FAMILY_ALLERGIES,
             showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
-                    step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
+                step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
             baseBottomPaddingOverride = if (step == OnboardingStep.ADD_FAMILY_ALLERGIES) 8.dp else null,
             // For the Just Me \"Meet your profile\" sheet we want iOS-like behavior where the
             // keyboard can overlap the lower description/button but not the greeting row.
@@ -1012,10 +1191,10 @@ fun OnboardingHost(
             respectImePadding = !(step == OnboardingStep.ADD_FAMILY_ALLERGIES && showJustMeMeetProfile),
             onSheetHeightChanged = { sheetHeight = it },
             backgroundContent = {
-                AnimatedContent(
-                    targetState = backgroundKey,
-                    label = "onboardingBackground",
-                    transitionSpec = {
+            AnimatedContent(
+                targetState = backgroundKey,
+                label = "onboardingBackground",
+                transitionSpec = {
                         fadeIn(
                             animationSpec = tween(
                                 300,
@@ -1028,89 +1207,89 @@ fun OnboardingHost(
                                         easing = FastOutSlowInEasing
                                     )
                                 )
-                    }
-                ) { k ->
-                    when (k) {
-                        1 -> {
+                }
+            ) { k ->
+                when (k) {
+                    1 -> {
                             SignInBackground(
                                 imageRes = R.drawable.iphone_app_img,
                                 showLogo = true
                             )
-                        }
+                    }
 
-                        2 -> {
-                            SignInBackground(
-                                imageRes = R.drawable.welcome_family_img,
-                                showLogo = false,
-                                title = "Welcome to IngrediFam !",
-                                subtitle = "Join your family space and personalize\nfood choices together.",
-                                aspectRatio = 1f
-                            )
-                        }
+                    2 -> {
+                        SignInBackground(
+                            imageRes = R.drawable.welcome_family_img,
+                            showLogo = false,
+                            title = "Welcome to IngrediFam !",
+                            subtitle = "Join your family space and personalize\nfood choices together.",
+                            aspectRatio = 1f
+                        )
+                    }
 
-                        3 -> {
-                            SignInBackground(
-                                imageRes = R.drawable.welcome_family_and_me_img,
-                                showLogo = false,
-                                title = "Welcome to Ingredicheck",
-                                subtitle = "Create a space for yourself or the people\nyou care about.",
-                                aspectRatio = 1f
-                            )
-                        }
+                    3 -> {
+                        SignInBackground(
+                            imageRes = R.drawable.welcome_family_and_me_img,
+                            showLogo = false,
+                            title = "Welcome to Ingredicheck",
+                            subtitle = "Create a space for yourself or the people\nyou care about.",
+                            aspectRatio = 1f
+                        )
+                    }
 
-                        4 -> {
-                            val members = vm.familyOverviewMembers.toList()
+                    4 -> {
+                        val members = vm.familyOverviewMembers.toList()
 
-                            if (members.isNotEmpty()) {
-                                FamilyOverviewBackground(
-                                    members = members,
-                                    bottomSheetHeight = sheetHeight,
-                                    // In onboarding flow, do NOT allow immediate "Leave Family"
-                                    // so onLeaveFamily is left null here.
-                                    onInvite = { member ->
-                                        memberToInvite = member
-                                    },
-                                    onEditMember = { member ->
-                                        Log.d(
-                                            "OnboardingHost",
-                                            "Edit member tapped id=${member.id}, name=${member.name}"
-                                        )
-                                        vm.editingMemberId = member.id
-                                        vm.addFamilyName = member.name
-                                        vm.addFamilyAvatarId = member.avatarId
+                        if (members.isNotEmpty()) {
+                            FamilyOverviewBackground(
+                                members = members,
+                                bottomSheetHeight = sheetHeight,
+                                // In onboarding flow, do NOT allow immediate "Leave Family"
+                                // so onLeaveFamily is left null here.
+                                onInvite = { member ->
+                                    memberToInvite = member
+                                },
+                                onEditMember = { member ->
+                                    Log.d(
+                                        "OnboardingHost",
+                                        "Edit member tapped id=${member.id}, name=${member.name}"
+                                    )
+                                    vm.editingMemberId = member.id
+                                    vm.addFamilyName = member.name
+                                    vm.addFamilyAvatarId = member.avatarId
                                         vm.addFamilyGeneratedAvatarUrl =
                                             member.generatedAvatarUrl
-                                        val selections = buildMap<Int, String> {
-                                            if (member.avatarId.isNotBlank()) {
-                                                put(0, member.avatarId)
-                                            }
-                                            if (member.backgroundColorId.isNotBlank()) {
-                                                put(5, member.backgroundColorId)
-                                            }
+                                    val selections = buildMap<Int, String> {
+                                        if (member.avatarId.isNotBlank()) {
+                                            put(0, member.avatarId)
                                         }
-                                        if (selections.isNotEmpty()) {
-                                            vm.addFamilyAvatarSelections = selections
+                                        if (member.backgroundColorId.isNotBlank()) {
+                                            put(5, member.backgroundColorId)
                                         }
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_EDIT_MEMBER)
                                     }
-                                )
-                            } else {
-                                SignInBackground(
-                                    imageRes = R.drawable.family_img_add_family,
-                                    showLogo = false,
-                                    title = "Getting Started!",
-                                    subtitle = "Add profiles so IngredientCheck can personalize results for each person.",
-                                    aspectRatio = 1f
-                                )
-                            }
-                        }
-
-                        5 -> {
-                            FallingCapsulesScreen(
-                                modifier = Modifier.fillMaxSize().background(Color.White),
-                                bottomInset = sheetHeight
+                                    if (selections.isNotEmpty()) {
+                                        vm.addFamilyAvatarSelections = selections
+                                    }
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_EDIT_MEMBER)
+                                }
+                            )
+                        } else {
+                            SignInBackground(
+                                imageRes = R.drawable.family_img_add_family,
+                                showLogo = false,
+                                title = "Getting Started!",
+                                subtitle = "Add profiles so IngredientCheck can personalize results for each person.",
+                                aspectRatio = 1f
                             )
                         }
+                    }
+
+                    5 -> {
+                        FallingCapsulesScreen(
+                                modifier = Modifier.fillMaxSize().background(Color.White),
+                            bottomInset = sheetHeight
+                        )
+                    }
 
                         6 -> {
                             if (showJustMeMeetProfile) {
@@ -1119,10 +1298,10 @@ fun OnboardingHost(
                                     imageRes = R.drawable.family_img_add_family,
                                     showLogo = false,
                                     title = "Meet your profile",
-                                    subtitle = "This helps us tailor food checks and tips just for you.",
+                                    subtitle = "This helps us tailor food checks and\ntips just for you.",
                                     aspectRatio = 1f
                                 )
-                            } else {
+                                } else {
                                 OnboardingAllergyBackground(
                                     dynamicStepsLoaded = dynamicStepsLoaded,
                                     allergySteps = allergySteps,
@@ -1157,35 +1336,41 @@ fun OnboardingHost(
                     }
                 }
 
-            },
-            sheetContent = {
-                AnimatedContent(
-                    targetState = step,
-                    label = "onboardingSheet",
-                    transitionSpec = {
-                        val duration = 300
-                        val easing = FastOutSlowInEasing
-                        fadeIn(animationSpec = tween(duration, easing = easing)) togetherWith
-                                fadeOut(animationSpec = tween(duration, easing = easing))
-                    }
-                ) { s ->
-                    Column {
-                        when (s) {
+        },
+        sheetContent = {
+            AnimatedContent(
+                targetState = step,
+                label = "onboardingSheet",
+                transitionSpec = {
+                    val duration = 300
+                    val easing = FastOutSlowInEasing
+                    fadeIn(animationSpec = tween(duration, easing = easing)) togetherWith
+                            fadeOut(animationSpec = tween(duration, easing = easing))
+                }
+            ) { s ->
+                Column {
+                    when (s) {
                             OnboardingStep.FALLING_CAPSULES -> {
-                                AddFamilyLetsGoSheet(
-                                    onLetsGo = {
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_ALLERGIES)
-                                    }
-                                )
-                            }
+                            AddFamilyLetsGoSheet(
+                                onLetsGo = {
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_ALLERGIES)
+                                }
+                            )
+                        }
 
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
                                 if (showJustMeMeetProfile) {
-                                    val profileName = currentFamily?.name
-                                        ?: currentFamily?.selfMember?.name
+                                    // For Just Me profile, prefer the self member's name over the
+                                    // family name so that renaming from "Bite Buddy" persists.
+                                    val profileName = currentFamily?.selfMember?.name
+                                        ?: currentFamily?.name
                                         ?: "Bite Buddy"
+                                    val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
+                                    Log.d("OnboardingHost", "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl")
                                     JustMeMeetProfileSheetContent(
                                         familyName = profileName,
+                                        selfMemberImageUrl = selfAvatarUrl,
+                                        emojiState = emojiState,
                                         onBackClick = {
                                             showJustMeMeetProfile = false
                                             showPreferenceSummary = true
@@ -1193,6 +1378,15 @@ fun OnboardingHost(
                                         onContinue = onExitOnboarding,
                                         onNameCommitted = { newName ->
                                             authViewModel.updateSelfMemberName(newName)
+                                            authViewModel.updateFamilyName(newName)
+                                        },
+                                        onAvatarSaved = { selectedId, generatedImageUrl ->
+                                            // Save updates backend so the new memoji is used everywhere.
+                                            val avatarToSave = if (!generatedImageUrl.isNullOrBlank()) generatedImageUrl else selectedId
+                                            authViewModel.updateSelfMemberAvatar(avatarToSave)
+                                        },
+                                        onGenerateAvatar = { selections ->
+                                            authViewModel.generateAddFamilyMemoji(selections)
                                         }
                                     )
                                 } else if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
@@ -1302,10 +1496,10 @@ fun OnboardingHost(
                                         )
                                     }
                                 } else {
-                                    // Compute per-member selections for the bottom sheet:
-                                    // the sheet should reflect ONLY what the currently selected member
-                                    // (or Everyone) has chosen, not the union across all members.
-                                    val activeMemberId = selectedAllergyMemberIdState.value
+                            // Compute per-member selections for the bottom sheet:
+                            // the sheet should reflect ONLY what the currently selected member
+                            // (or Everyone) has chosen, not the union across all members.
+                            val activeMemberId = selectedAllergyMemberIdState.value
                                     val activeMemberKey =
                                         if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
 
@@ -1316,8 +1510,8 @@ fun OnboardingHost(
                                                 ?: emptySet()
                                         if (activeMemberSelections != latest) {
                                             activeMemberSelections = latest
-                                            Log.d(
-                                                "OnboardingAllergies",
+                            Log.d(
+                                "OnboardingAllergies",
                                                 "[SYNC] activeMemberSelections updated to=$latest for memberKey=$activeMemberKey revision=$allergySelectionRevision"
                                             )
                                         }
@@ -1342,9 +1536,9 @@ fun OnboardingHost(
                                                     ignoreCase = true
                                                 )
                                             }
-                                        AddAllergiesSheet(
-                                            members = vm.familyOverviewMembers.toList(),
-                                            selectedMemberId = selectedAllergyMemberIdState.value,
+                            AddAllergiesSheet(
+                                members = vm.familyOverviewMembers.toList(),
+                                selectedMemberId = selectedAllergyMemberIdState.value,
                                             selectedAllergies = activeMemberSelections,
                                             onMemberSelected = {
                                                 val oldMemberKey =
@@ -1362,48 +1556,48 @@ fun OnboardingHost(
                                                     selectedAllergiesByMember[newMemberKey]?.toSet()
                                                         ?: emptySet()
                                             },
-                                            onToggleAllergy = { allergyId ->
+                                onToggleAllergy = { allergyId ->
                                                 val activeMemberId =
                                                     selectedAllergyMemberIdState.value
                                                 val memberKey =
                                                     if (activeMemberId.isBlank()) EVERYONE_MEMBER_ID else activeMemberId
 
-                                                Log.d(
-                                                    "OnboardingAllergies",
+                                    Log.d(
+                                        "OnboardingAllergies",
                                                     "[TAP] START chip=$allergyId memberKey=$memberKey " +
                                                             "beforeChips=${selectedAllergiesByMember[memberKey]?.toSet()}"
-                                                )
+                                    )
 
                                                 // Copy out, mutate, then write back so SnapshotStateMap sees a change
                                                 // and the sheet recomposes. Mutating the inner MutableSet in place
                                                 // does not trigger recomposition.
-                                                val chipsForMember =
+                                    val chipsForMember =
                                                     (selectedAllergiesByMember[memberKey]?.toMutableSet()
                                                         ?: mutableSetOf())
-                                                if (chipsForMember.contains(allergyId)) {
-                                                    chipsForMember.remove(allergyId)
-                                                    if (chipsForMember.isEmpty()) {
+                                    if (chipsForMember.contains(allergyId)) {
+                                        chipsForMember.remove(allergyId)
+                                        if (chipsForMember.isEmpty()) {
                                                         selectedAllergiesByMember.remove(
                                                             memberKey
                                                         )
                                                     } else {
                                                         selectedAllergiesByMember[memberKey] =
                                                             chipsForMember
-                                                    }
-                                                } else {
-                                                    chipsForMember.add(allergyId)
+                                        }
+                                    } else {
+                                        chipsForMember.add(allergyId)
                                                     selectedAllergiesByMember[memberKey] =
                                                         chipsForMember
-                                                }
+                                    }
 
-                                                // Rebuild the flat selectedAllergies list as the union of all chips
-                                                // selected by any member (used only for background capsules).
-                                                selectedAllergies.clear()
-                                                selectedAllergies.addAll(
-                                                    selectedAllergiesByMember.values
-                                                        .flatMap { it }
-                                                        .toSet()
-                                                )
+                                    // Rebuild the flat selectedAllergies list as the union of all chips
+                                    // selected by any member (used only for background capsules).
+                                    selectedAllergies.clear()
+                                    selectedAllergies.addAll(
+                                        selectedAllergiesByMember.values
+                                            .flatMap { it }
+                                            .toSet()
+                                    )
 
                                                 // Immediately update activeMemberSelections if this is for the active member
                                                 // BEFORE incrementing revision so the key block sees the updated value
@@ -1415,15 +1609,15 @@ fun OnboardingHost(
 
                                                 allergySelectionRevision++
 
-                                                Log.d(
-                                                    "OnboardingAllergies",
+                                    Log.d(
+                                        "OnboardingAllergies",
                                                     "[TAP] END chip=$allergyId memberKey=$memberKey " +
                                                             "afterChips=${selectedAllergiesByMember[memberKey]?.toSet()} " +
                                                             "revision=$allergySelectionRevision " +
                                                             "activeMemberSelections=$activeMemberSelections"
-                                                )
-                                            },
-                                            onNext = {
+                                    )
+                                },
+                                onNext = {
                                                 // Between Life Style (index 6) and Nutrition (index 7),
                                                 // show a dedicated fine‑tune decision screen that does
                                                 // NOT advance progress until the user confirms.
@@ -1431,9 +1625,9 @@ fun OnboardingHost(
                                                     showFineTuneDecision = true
                                                 } else {
                                                     showFineTuneDecision = false
-                                                    if (allergyStepIndex < allergySteps.lastIndex) {
-                                                        allergyStepIndex++
-                                                    } else {
+                                    if (allergyStepIndex < allergySteps.lastIndex) {
+                                        allergyStepIndex++
+                                    } else {
                                                         // Sync dietary preferences to backend (same as iOS) before showing summary
                                                         val preferenceText =
                                                             buildDietaryPreferenceText(
@@ -1485,9 +1679,9 @@ fun OnboardingHost(
                                                 showChatBotIntro = false
                                                 showPreferenceSummary = true
                                             },
-                                            questionStepIndex = allergyStepIndex
-                                        )
-                                    }
+                                questionStepIndex = allergyStepIndex
+                            )
+                        }
                                 }
                             }
 
@@ -1502,23 +1696,23 @@ fun OnboardingHost(
                                     authViewModel = authViewModel,
                                     context = context,
                                     onBack = handleBack,
-                                    onGoogleClick = {
-                                        if (activity != null) {
+                                onGoogleClick = {
+                                    if (activity != null) {
                                             val client =
                                                 GoogleAuthDataSource.getClient(activity)
-                                            googleLauncher.launch(client.signInIntent)
-                                        }
-                                    },
-                                    onAppleClick = {
-                                        if (activity != null) {
-                                            val redirectUri =
-                                                "${AuthEnv.OAUTH_REDIRECT_SCHEME}://${AuthEnv.OAUTH_REDIRECT_HOST}"
+                                        googleLauncher.launch(client.signInIntent)
+                                    }
+                                },
+                                onAppleClick = {
+                                    if (activity != null) {
+                                        val redirectUri =
+                                            "${AuthEnv.OAUTH_REDIRECT_SCHEME}://${AuthEnv.OAUTH_REDIRECT_HOST}"
                                             val authUrl =
                                                 Uri.parse(AuthEnv.SUPABASE_URL).buildUpon()
-                                                    .appendPath("auth")
-                                                    .appendPath("v1")
-                                                    .appendPath("authorize")
-                                                    .appendQueryParameter("provider", "apple")
+                                            .appendPath("auth")
+                                            .appendPath("v1")
+                                            .appendPath("authorize")
+                                            .appendQueryParameter("provider", "apple")
                                                     .appendQueryParameter(
                                                         "redirect_to",
                                                         redirectUri
@@ -1527,16 +1721,16 @@ fun OnboardingHost(
                                                         "flow_type",
                                                         "implicit"
                                                     )
-                                                    .build()
-                                            val intent = Intent(
-                                                activity,
-                                                AppleLoginWebViewActivity::class.java
-                                            ).apply {
-                                                putExtra("auth_url", authUrl.toString())
-                                                putExtra("redirect_uri", redirectUri)
-                                            }
-                                            appleLauncher.launch(intent)
+                                            .build()
+                                        val intent = Intent(
+                                            activity,
+                                            AppleLoginWebViewActivity::class.java
+                                        ).apply {
+                                            putExtra("auth_url", authUrl.toString())
+                                            putExtra("redirect_uri", redirectUri)
                                         }
+                                        appleLauncher.launch(intent)
+                                    }
                                     },
                                     isJustMeLoading = isCreatingBiteBuddyFamily,
                                     isAuthLoading = isAuthLoading,
@@ -1550,216 +1744,43 @@ fun OnboardingHost(
                                         )
                                     },
                                     onNavigateToFallingCapsules = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) }
-                                )
-                            }
+                            )
+                        }
 
-                            OnboardingStep.ADD_FAMILY_WELCOME -> {
-                                AddFamilyWelcomeSheet(
-                                    onBackClick = handleBack,
-                                    onContinue = {
-                                        authViewModel.debugLogCurrentSession("Add Family welcome continue")
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME)
+                        OnboardingStep.ADD_FAMILY_WELCOME -> {
+                            AddFamilyWelcomeSheet(
+                                onBackClick = handleBack,
+                                onContinue = {
+                                    authViewModel.debugLogCurrentSession("Add Family welcome continue")
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME)
+                                }
+                            )
+                        }
+
+                        OnboardingStep.ADD_FAMILY_NAME -> {
+                            AddFamilyNameSheet(
+                                name = vm.addFamilyName,
+                                selectedAvatarId = vm.addFamilyAvatarId,
+                                generatedAvatarUrl = vm.addFamilyGeneratedAvatarUrl,
+                                onNameChange = { vm.addFamilyName = it },
+                                onAvatarSelect = {
+                                    vm.addFamilyAvatarId = it
+                                    vm.addFamilyAvatarSelections = mapOf(0 to it)
+                                },
+                                onAddAvatarClick = {
+                                    vm.addFamilyAvatarId = ""
+                                    vm.addFamilyAvatarSelections = emptyMap()
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_PICKER)
+                                },
+                                onBackClick = handleBack,
+                                onContinue = {
+                                    if (isCreatingFamily) {
+                                        return@AddFamilyNameSheet
                                     }
-                                )
-                            }
-
-                            OnboardingStep.ADD_FAMILY_NAME -> {
-                                AddFamilyNameSheet(
-                                    name = vm.addFamilyName,
-                                    selectedAvatarId = vm.addFamilyAvatarId,
-                                    generatedAvatarUrl = vm.addFamilyGeneratedAvatarUrl,
-                                    onNameChange = { vm.addFamilyName = it },
-                                    onAvatarSelect = {
-                                        vm.addFamilyAvatarId = it
-                                        vm.addFamilyAvatarSelections = mapOf(0 to it)
-                                    },
-                                    onAddAvatarClick = {
-                                        vm.addFamilyAvatarId = ""
-                                        vm.addFamilyAvatarSelections = emptyMap()
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_PICKER)
-                                    },
-                                    onBackClick = handleBack,
-                                    onContinue = {
-                                        if (isCreatingFamily) {
-                                            return@AddFamilyNameSheet
-                                        }
-                                        focusManager.clearFocus(force = true)
-                                        authViewModel.debugLogCurrentSession("Add Family name continue")
-                                        val editingId = vm.editingMemberId
-                                        if (editingId != null) {
-                                            val existing =
-                                                vm.familyOverviewMembers.firstOrNull { it.id == editingId }
-                                            val draft = vm.currentDraftFamilyMemberOrNull()
-                                            if (existing == null || draft == null) {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Please enter a name",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                return@AddFamilyNameSheet
-                                            }
-
-                                            val updated = existing.copy(
-                                                name = draft.name,
-                                                avatarId = draft.avatarId,
-                                                generatedAvatarUrl = draft.generatedAvatarUrl,
-                                                backgroundColorId = draft.backgroundColorId
-                                            )
-                                            vm.updateFamilyOverviewMember(updated)
-                                            vm.clearAddFamilyDraft()
-                                            vm.editingMemberId = null
-                                            vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
-                                            return@AddFamilyNameSheet
-                                        }
-                                        val isFirstMember = vm.familyOverviewMembers.isEmpty()
-                                        if (!isFirstMember) {
-                                            val draft = vm.currentDraftFamilyMemberOrNull()
-                                            if (draft == null) {
-                                                Toast.makeText(
-                                                    context,
-                                                    "Please enter a name",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                return@AddFamilyNameSheet
-                                            }
-
-                                            // Persist additional member to backend family before inviting.
-                                            val memberDto = FamilyMemberDto(
-                                                id = draft.id,
-                                                name = draft.name,
-                                                color = draft.colorHex.ifBlank { "#BAE1FF" },
-                                                joined = false,
-                                                invitePending = null,
-                                                imageFileHash = draft.generatedAvatarUrl.trim()
-                                                    .ifBlank { null }
-                                            )
-
-                                            isCreatingFamily = true
-                                            authViewModel.addFamilyMember(memberDto) { result ->
-                                                isCreatingFamily = false
-                                                result.fold(
-                                                    onSuccess = {
-                                                        Log.d(
-                                                            "OnboardingHost",
-                                                            "addMember persisted for id=${memberDto.id}, name=${memberDto.name}"
-                                                        )
-                                                        vm.commitDraftFamilyMember()
-                                                        vm.clearAddFamilyDraft()
-                                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
-                                                    },
-                                                    onFailure = { e ->
-                                                        Log.e(
-                                                            "OnboardingHost",
-                                                            "addMember failed for id=${memberDto.id}, name=${memberDto.name}",
-                                                            e
-                                                        )
-                                                        Toast.makeText(
-                                                            context,
-                                                            e.localizedMessage
-                                                                ?: "Failed to add member",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                )
-                                            }
-                                            return@AddFamilyNameSheet
-                                        }
-
-                                        val draft = vm.currentDraftFamilyMemberOrNull()
-                                        if (draft == null) {
-                                            Toast.makeText(
-                                                context,
-                                                "Please enter a name",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            return@AddFamilyNameSheet
-                                        }
-
-                                        val req =
-                                            buildCreateFamilyRequestFromMembers(listOf(draft))
-                                        if (req == null) {
-                                            Toast.makeText(
-                                                context,
-                                                "Please enter a name",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            return@AddFamilyNameSheet
-                                        }
-
-                                        isCreatingFamily = true
-                                        authViewModel.createFamily(req) { result ->
-                                            isCreatingFamily = false
-                                            result.fold(
-                                                onSuccess = {
-                                                    vm.commitDraftFamilyMember()
-                                                    vm.clearAddFamilyDraft()
-                                                },
-                                                onFailure = { e ->
-                                                    Log.e(
-                                                        "OnboardingHost",
-                                                        "createFamily failed on first member",
-                                                        e
-                                                    )
-                                                    Toast.makeText(
-                                                        context,
-                                                        e.localizedMessage
-                                                            ?: "Failed to create family",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            )
-                                        }
-                                    },
-                                    isAdditionalMember = vm.familyOverviewMembers.isNotEmpty(),
-                                    isLoading = isCreatingFamily,
-                                    showBackArrow = vm.familyOverviewMembers.size >= 2,
-                                    isEditing = vm.editingMemberId != null
-                                )
-                            }
-
-                            OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE -> {
-                                AddFamilyAllSetOrMoreSheet(
-                                    onAllSet = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) },
-                                    onAddMore = { vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME) }
-                                )
-                            }
-
-                            OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> {
-                                val editingMember =
-                                    vm.familyOverviewMembers.firstOrNull { it.id == vm.editingMemberId }
-                                val draft = vm.currentDraftFamilyMemberOrNull()
-                                val editAvatarBg =
-                                    if (editingMember != null) avatarBackgroundColorForId(
-                                        editingMember.backgroundColorId
-                                    )
-                                    else avatarBackgroundColorForId(vm.addFamilyAvatarSelections[5].orEmpty())
-                                val isSaveEnabled = editingMember != null && draft != null && (
-                                        draft.name != editingMember.name ||
-                                                draft.avatarId != editingMember.avatarId ||
-                                                draft.generatedAvatarUrl != editingMember.generatedAvatarUrl
-                                        )
-                                EditFamilyMemberSheet(
-                                    name = vm.addFamilyName,
-                                    selectedAvatarId = vm.addFamilyAvatarId,
-                                    generatedAvatarUrl = vm.addFamilyGeneratedAvatarUrl,
-                                    avatarBackgroundColor = editAvatarBg,
-                                    isSaveEnabled = isSaveEnabled,
-                                    onNameChange = { vm.addFamilyName = it },
-                                    onAvatarSelect = {
-                                        vm.addFamilyAvatarId = it
-                                        vm.addFamilyAvatarSelections =
-                                            vm.addFamilyAvatarSelections + (0 to it)
-                                    },
-                                    onAddAvatarClick = {
-                                        vm.addFamilyAvatarId = ""
-                                        vm.addFamilyAvatarSelections = emptyMap()
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_PICKER)
-                                    },
-                                    onBackClick = handleBack,
-                                    onSave = {
-                                        focusManager.clearFocus(force = true)
-                                        val editingId = vm.editingMemberId
-                                        if (editingId == null) return@EditFamilyMemberSheet
+                                    focusManager.clearFocus(force = true)
+                                    authViewModel.debugLogCurrentSession("Add Family name continue")
+                                    val editingId = vm.editingMemberId
+                                    if (editingId != null) {
                                         val existing =
                                             vm.familyOverviewMembers.firstOrNull { it.id == editingId }
                                         val draft = vm.currentDraftFamilyMemberOrNull()
@@ -1769,8 +1790,9 @@ fun OnboardingHost(
                                                 "Please enter a name",
                                                 Toast.LENGTH_SHORT
                                             ).show()
-                                            return@EditFamilyMemberSheet
+                                            return@AddFamilyNameSheet
                                         }
+
                                         val updated = existing.copy(
                                             name = draft.name,
                                             avatarId = draft.avatarId,
@@ -1780,117 +1802,11 @@ fun OnboardingHost(
                                         vm.updateFamilyOverviewMember(updated)
                                         vm.clearAddFamilyDraft()
                                         vm.editingMemberId = null
-                                        vm.back()
-                                    },
-                                    largeAvatarContent = {
-                                        val trimmedUrl = vm.addFamilyGeneratedAvatarUrl.trim()
-                                        val res =
-                                            lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData.avatarResOrNull(
-                                                vm.addFamilyAvatarId.trim()
-                                            )
-                                        val circleBg = editAvatarBg
-                                        when {
-                                            trimmedUrl.isNotBlank() -> {
-                                                SubcomposeAsyncImage(
-                                                    model = trimmedUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize()
-                                                        .clip(CircleShape)
-                                                ) {
-                                                    when (painter.state) {
-                                                        is coil.compose.AsyncImagePainter.State.Loading -> {
-                                                            Box(
-                                                                modifier = Modifier.fillMaxSize()
-                                                                    .background(circleBg),
-                                                                contentAlignment = Alignment.Center
-                                                            ) {
-                                                                CircularProgressIndicator(
-                                                                    modifier = Modifier.size(24.dp),
-                                                                    strokeWidth = 2.dp,
-                                                                    color = Primary800
-                                                                )
-                                                            }
-                                                        }
-
-                                                        else -> SubcomposeAsyncImageContent()
-                                                    }
-                                                }
-                                            }
-
-                                            res != null -> {
-                                                Image(
-                                                    painter = painterResource(id = res),
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize()
-                                                        .clip(CircleShape),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            }
-
-                                            else -> {
-                                                val bg =
-                                                    familyPlaceholderColor(vm.addFamilyName.ifBlank { "?" })
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize()
-                                                        .clip(CircleShape).background(bg),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    val initial =
-                                                        vm.addFamilyName.trim().firstOrNull()
-                                                            ?.uppercase() ?: "?"
-                                                    Text(
-                                                        text = initial,
-                                                        style = TextStyle(
-                                                            fontFamily = Manrope,
-                                                            fontWeight = FontWeight.Bold,
-                                                            fontSize = 36.sp,
-                                                            color = Color.White
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        }
+                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
+                                        return@AddFamilyNameSheet
                                     }
-                                )
-                            }
-
-                            OnboardingStep.ADD_FAMILY_AVATAR_PICKER -> {
-                                AddFamilyAvatarPickerSheet(
-                                    displayName = vm.addFamilyName,
-                                    selections = vm.addFamilyAvatarSelections,
-                                    onBackClick = handleBack,
-                                    onAvatarSelected = {
-                                        vm.addFamilyAvatarSelections = it
-                                    },
-                                    onGenerateClick = {
-                                        vm.memojiGenerationCompleted = false
-                                        authViewModel.generateAddFamilyMemoji(vm.addFamilyAvatarSelections)
-                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_GENERATING)
-                                    }
-                                )
-                            }
-
-                            OnboardingStep.ADD_FAMILY_AVATAR_GENERATING -> {
-                                AddFamilyAvatarGeneratingSheet(
-                                    state = emojiState,
-                                    selections = vm.addFamilyAvatarSelections,
-                                    onBackClick = handleBack,
-                                    onRetry = { authViewModel.generateAddFamilyMemoji(vm.addFamilyAvatarSelections) },
-                                    onRegenerate = { vm.back() },
-                                    onAssign = { imageUrl ->
-                                        vm.addFamilyGeneratedAvatarUrl = imageUrl
-                                        if (vm.editingMemberId != null) {
-                                            vm.navigateTo(OnboardingStep.ADD_FAMILY_EDIT_MEMBER)
-                                            return@AddFamilyAvatarGeneratingSheet
-                                        }
-                                        if (isCreatingFamily) return@AddFamilyAvatarGeneratingSheet
-                                        val isFirstMember = vm.familyOverviewMembers.isEmpty()
-                                        if (!isFirstMember) {
-                                            vm.commitDraftFamilyMember()
-                                            vm.clearAddFamilyDraft()
-                                            vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
-                                            return@AddFamilyAvatarGeneratingSheet
-                                        }
+                                    val isFirstMember = vm.familyOverviewMembers.isEmpty()
+                                    if (!isFirstMember) {
                                         val draft = vm.currentDraftFamilyMemberOrNull()
                                         if (draft == null) {
                                             Toast.makeText(
@@ -1898,54 +1814,332 @@ fun OnboardingHost(
                                                 "Please enter a name",
                                                 Toast.LENGTH_SHORT
                                             ).show()
-                                            return@AddFamilyAvatarGeneratingSheet
+                                            return@AddFamilyNameSheet
                                         }
-                                        val req =
-                                            buildCreateFamilyRequestFromMembers(listOf(draft))
-                                        if (req == null) {
-                                            Toast.makeText(
-                                                context,
-                                                "Please enter a name",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            return@AddFamilyAvatarGeneratingSheet
-                                        }
+
+                                        // Persist additional member to backend family before inviting.
+                                        val memberDto = FamilyMemberDto(
+                                            id = draft.id,
+                                            name = draft.name,
+                                            color = draft.colorHex.ifBlank { "#BAE1FF" },
+                                            joined = false,
+                                            invitePending = null,
+                                                imageFileHash = draft.generatedAvatarUrl.trim()
+                                                    .ifBlank { null }
+                                        )
+
                                         isCreatingFamily = true
-                                        authViewModel.createFamily(req) { result ->
+                                        authViewModel.addFamilyMember(memberDto) { result ->
                                             isCreatingFamily = false
                                             result.fold(
                                                 onSuccess = {
+                                                    Log.d(
+                                                        "OnboardingHost",
+                                                        "addMember persisted for id=${memberDto.id}, name=${memberDto.name}"
+                                                    )
                                                     vm.commitDraftFamilyMember()
                                                     vm.clearAddFamilyDraft()
-                                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME)
+                                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
                                                 },
                                                 onFailure = { e ->
                                                     Log.e(
                                                         "OnboardingHost",
-                                                        "createFamily failed on first member (Assign)",
+                                                        "addMember failed for id=${memberDto.id}, name=${memberDto.name}",
                                                         e
                                                     )
                                                     Toast.makeText(
                                                         context,
-                                                        e.localizedMessage
-                                                            ?: "Failed to create family",
+                                                            e.localizedMessage
+                                                                ?: "Failed to add member",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
                                                 }
                                             )
                                         }
+                                        return@AddFamilyNameSheet
                                     }
-                                )
-                            }
 
-                            OnboardingStep.GET_STARTED -> {
-                            }
+                                    val draft = vm.currentDraftFamilyMemberOrNull()
+                                    if (draft == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "Please enter a name",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@AddFamilyNameSheet
+                                    }
+
+                                        val req =
+                                            buildCreateFamilyRequestFromMembers(listOf(draft))
+                                    if (req == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "Please enter a name",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@AddFamilyNameSheet
+                                    }
+
+                                    isCreatingFamily = true
+                                    authViewModel.createFamily(req) { result ->
+                                        isCreatingFamily = false
+                                        result.fold(
+                                            onSuccess = {
+                                                vm.commitDraftFamilyMember()
+                                                vm.clearAddFamilyDraft()
+                                            },
+                                            onFailure = { e ->
+                                                Log.e(
+                                                    "OnboardingHost",
+                                                    "createFamily failed on first member",
+                                                    e
+                                                )
+                                                Toast.makeText(
+                                                    context,
+                                                        e.localizedMessage
+                                                            ?: "Failed to create family",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        )
+                                    }
+                                },
+                                isAdditionalMember = vm.familyOverviewMembers.isNotEmpty(),
+                                isLoading = isCreatingFamily,
+                                showBackArrow = vm.familyOverviewMembers.size >= 2,
+                                isEditing = vm.editingMemberId != null
+                            )
+                        }
+
+                        OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE -> {
+                            AddFamilyAllSetOrMoreSheet(
+                                    onAllSet = { vm.navigateTo(OnboardingStep.FALLING_CAPSULES) },
+                                onAddMore = { vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME) }
+                            )
+                        }
+
+                        OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> {
+                            val editingMember =
+                                vm.familyOverviewMembers.firstOrNull { it.id == vm.editingMemberId }
+                            val draft = vm.currentDraftFamilyMemberOrNull()
+                            val editAvatarBg =
+                                    if (editingMember != null) avatarBackgroundColorForId(
+                                        editingMember.backgroundColorId
+                                    )
+                                else avatarBackgroundColorForId(vm.addFamilyAvatarSelections[5].orEmpty())
+                            val isSaveEnabled = editingMember != null && draft != null && (
+                                draft.name != editingMember.name ||
+                                    draft.avatarId != editingMember.avatarId ||
+                                    draft.generatedAvatarUrl != editingMember.generatedAvatarUrl
+                                )
+                            EditFamilyMemberSheet(
+                                name = vm.addFamilyName,
+                                selectedAvatarId = vm.addFamilyAvatarId,
+                                generatedAvatarUrl = vm.addFamilyGeneratedAvatarUrl,
+                                avatarBackgroundColor = editAvatarBg,
+                                isSaveEnabled = isSaveEnabled,
+                                onNameChange = { vm.addFamilyName = it },
+                                onAvatarSelect = {
+                                    vm.addFamilyAvatarId = it
+                                        vm.addFamilyAvatarSelections =
+                                            vm.addFamilyAvatarSelections + (0 to it)
+                                },
+                                onAddAvatarClick = {
+                                    vm.addFamilyAvatarId = ""
+                                    vm.addFamilyAvatarSelections = emptyMap()
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_PICKER)
+                                },
+                                onBackClick = handleBack,
+                                onSave = {
+                                    focusManager.clearFocus(force = true)
+                                    val editingId = vm.editingMemberId
+                                    if (editingId == null) return@EditFamilyMemberSheet
+                                        val existing =
+                                            vm.familyOverviewMembers.firstOrNull { it.id == editingId }
+                                    val draft = vm.currentDraftFamilyMemberOrNull()
+                                    if (existing == null || draft == null) {
+                                            Toast.makeText(
+                                                context,
+                                                "Please enter a name",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        return@EditFamilyMemberSheet
+                                    }
+                                    val updated = existing.copy(
+                                        name = draft.name,
+                                        avatarId = draft.avatarId,
+                                        generatedAvatarUrl = draft.generatedAvatarUrl,
+                                        backgroundColorId = draft.backgroundColorId
+                                    )
+                                    vm.updateFamilyOverviewMember(updated)
+                                    vm.clearAddFamilyDraft()
+                                    vm.editingMemberId = null
+                                    vm.back()
+                                },
+                                largeAvatarContent = {
+                                    val trimmedUrl = vm.addFamilyGeneratedAvatarUrl.trim()
+                                        val res =
+                                            lc.fungee.Ingredicheck.onboarding.data.OnboardingChipData.avatarResOrNull(
+                                                vm.addFamilyAvatarId.trim()
+                                            )
+                                    val circleBg = editAvatarBg
+                                    when {
+                                        trimmedUrl.isNotBlank() -> {
+                                            SubcomposeAsyncImage(
+                                                model = trimmedUrl,
+                                                contentDescription = null,
+                                                    modifier = Modifier.fillMaxSize()
+                                                        .clip(CircleShape)
+                                            ) {
+                                                when (painter.state) {
+                                                    is coil.compose.AsyncImagePainter.State.Loading -> {
+                                                        Box(
+                                                                modifier = Modifier.fillMaxSize()
+                                                                    .background(circleBg),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            CircularProgressIndicator(
+                                                                modifier = Modifier.size(24.dp),
+                                                                strokeWidth = 2.dp,
+                                                                color = Primary800
+                                                            )
+                                                        }
+                                                    }
+
+                                                    else -> SubcomposeAsyncImageContent()
+                                                }
+                                            }
+                                        }
+
+                                        res != null -> {
+                                            Image(
+                                                painter = painterResource(id = res),
+                                                contentDescription = null,
+                                                    modifier = Modifier.fillMaxSize()
+                                                        .clip(CircleShape),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        }
+
+                                        else -> {
+                                                val bg =
+                                                    familyPlaceholderColor(vm.addFamilyName.ifBlank { "?" })
+                                            Box(
+                                                    modifier = Modifier.fillMaxSize()
+                                                        .clip(CircleShape).background(bg),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                    val initial =
+                                                        vm.addFamilyName.trim().firstOrNull()
+                                                            ?.uppercase() ?: "?"
+                                                Text(
+                                                    text = initial,
+                                                    style = TextStyle(
+                                                        fontFamily = Manrope,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 36.sp,
+                                                        color = Color.White
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+
+                        OnboardingStep.ADD_FAMILY_AVATAR_PICKER -> {
+                            AddFamilyAvatarPickerSheet(
+                                displayName = vm.addFamilyName,
+                                selections = vm.addFamilyAvatarSelections,
+                                onBackClick = handleBack,
+                                onAvatarSelected = {
+                                    vm.addFamilyAvatarSelections = it
+                                },
+                                onGenerateClick = {
+                                    vm.memojiGenerationCompleted = false
+                                    authViewModel.generateAddFamilyMemoji(vm.addFamilyAvatarSelections)
+                                    vm.navigateTo(OnboardingStep.ADD_FAMILY_AVATAR_GENERATING)
+                                }
+                            )
+                        }
+
+                        OnboardingStep.ADD_FAMILY_AVATAR_GENERATING -> {
+                            AddFamilyAvatarGeneratingSheet(
+                                    state = emojiState,
+                                selections = vm.addFamilyAvatarSelections,
+                                onBackClick = handleBack,
+                                onRetry = { authViewModel.generateAddFamilyMemoji(vm.addFamilyAvatarSelections) },
+                                onRegenerate = { vm.back() },
+                                onAssign = { imageUrl ->
+                                    vm.addFamilyGeneratedAvatarUrl = imageUrl
+                                    if (vm.editingMemberId != null) {
+                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_EDIT_MEMBER)
+                                        return@AddFamilyAvatarGeneratingSheet
+                                    }
+                                    if (isCreatingFamily) return@AddFamilyAvatarGeneratingSheet
+                                    val isFirstMember = vm.familyOverviewMembers.isEmpty()
+                                    if (!isFirstMember) {
+                                        vm.commitDraftFamilyMember()
+                                        vm.clearAddFamilyDraft()
+                                        vm.navigateTo(OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE)
+                                        return@AddFamilyAvatarGeneratingSheet
+                                    }
+                                    val draft = vm.currentDraftFamilyMemberOrNull()
+                                    if (draft == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "Please enter a name",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@AddFamilyAvatarGeneratingSheet
+                                    }
+                                        val req =
+                                            buildCreateFamilyRequestFromMembers(listOf(draft))
+                                    if (req == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "Please enter a name",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        return@AddFamilyAvatarGeneratingSheet
+                                    }
+                                    isCreatingFamily = true
+                                    authViewModel.createFamily(req) { result ->
+                                        isCreatingFamily = false
+                                        result.fold(
+                                            onSuccess = {
+                                                vm.commitDraftFamilyMember()
+                                                vm.clearAddFamilyDraft()
+                                                vm.navigateTo(OnboardingStep.ADD_FAMILY_NAME)
+                                            },
+                                            onFailure = { e ->
+                                                Log.e(
+                                                    "OnboardingHost",
+                                                    "createFamily failed on first member (Assign)",
+                                                    e
+                                                )
+                                                Toast.makeText(
+                                                    context,
+                                                        e.localizedMessage
+                                                            ?: "Failed to create family",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        )
+                                    }
+                                }
+                            )
+                        }
+
+                        OnboardingStep.GET_STARTED -> {
+                        }
 
                             else -> {}
-                        }
                     }
                 }
             }
+        }
         )
         if (memberToInvite != null) {
             InviteMemberOverlayScrim(onDismiss = { memberToInvite = null })
@@ -1956,12 +2150,12 @@ fun OnboardingHost(
                 member = member,
                 onDismiss = { memberToInvite = null },
                 onMaybeLater = {
-                    if (!isInviting) {
-                        vm.setInvitePending(member.id, true)
-                        memberToInvite = null
-                    }
-                },
-                onInvite = {
+                            if (!isInviting) {
+                                vm.setInvitePending(member.id, true)
+                                memberToInvite = null
+                            }
+                        },
+                        onInvite = {
                     if (!isInviting) {
                         runInviteFlow(
                             context = context,
@@ -1979,11 +2173,10 @@ fun OnboardingHost(
                             setInviting = { isInviting = it },
                             onDismiss = { memberToInvite = null }
                         )
-                    }
-                },
-                isLoading = isInviting
-            )
+                            }
+                        },
+                        isLoading = isInviting
+                    )
         }
     }
 }
-            
