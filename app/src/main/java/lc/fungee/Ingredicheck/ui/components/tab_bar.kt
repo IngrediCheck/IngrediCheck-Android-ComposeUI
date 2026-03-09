@@ -1,8 +1,10 @@
 package lc.fungee.Ingredicheck.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -68,16 +70,55 @@ fun TabBar(
     val centerIconSize = 32.dp
     val centerButtonBottomPadding = 18.dp
 
-    // iOS: when collapsed the capsule scales down so it hides more fully behind the center circle
-    val capsuleScale by animateFloatAsState(
-        // Collapse further (0.1f) but keep the long, eased animation for smoothness.
-        targetValue = if (isExpanded) 1f else 0.1f,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = FastOutSlowInEasing
-        ),
+    // Used to convert the collapse offsets to pixels for translationY.
+    val density = LocalDensity.current
+
+    // Transition drives both the scale and the vertical offset so we can approximate the iOS
+    // sequence: move slightly down, then slide up underneath the center circle while shrinking.
+    val transition = updateTransition(targetState = isExpanded, label = "tabBarTransition")
+
+    // iOS-style scale: 1f when expanded, 0.1f when collapsed.
+    val capsuleScale by transition.animateFloat(
+        transitionSpec = {
+            tween(
+                durationMillis = 550,
+                easing = FastOutSlowInEasing
+            )
+        },
         label = "tabBarCapsuleScale"
-    )
+    ) { expanded ->
+        if (expanded) 1f else 0.1f
+    }
+
+    // Smooth vertical slide:
+    // - During collapse: 0 -> small downward dip -> final position tucked up under the circle.
+    // - During expand: reverse that path for a soft return.
+    val downOffsetPx = with(density) { 8.dp.toPx() }
+    val upOffsetPx = with(density) { (-14).dp.toPx() } // negative = upward
+    val capsuleOffsetY by transition.animateFloat(
+        transitionSpec = {
+            if (!targetState) {
+                // Collapsing
+                keyframes {
+                    durationMillis = 550
+                    0f at 0              // start at rest
+                    downOffsetPx at 200   // dip slightly downward
+                    upOffsetPx at 550     // end tucked under the circle
+                }
+            } else {
+                // Expanding
+                keyframes {
+                    durationMillis = 550
+                    upOffsetPx at 0       // start tucked under the circle
+                    downOffsetPx at 200   // small downward overshoot
+                    0f at 550             // settle back to rest
+                }
+            }
+        },
+        label = "tabBarCapsuleOffsetY"
+    ) { expanded ->
+        if (expanded) 0f else upOffsetPx
+    }
 
     Box(
         modifier = modifier,
@@ -89,14 +130,10 @@ fun TabBar(
                 .width(capsuleWidth)
                 .graphicsLayer(
                     scaleX = capsuleScale,
-                    scaleY = capsuleScale
+                    scaleY = capsuleScale,
+                    translationY = capsuleOffsetY
                 )
-//                .shadow(
-//                    elevation = 8.dp,
-//                    shape = capsuleShape,
-//                    spotColor = capsuleShadowColor,
-//                    ambientColor = capsuleShadowColor
-//                )
+
                 .clip(capsuleShape)
                 .background(Color.White)
                 .border(0.25.dp, capsuleStroke, capsuleShape)
@@ -131,7 +168,6 @@ fun TabBar(
         }
 
         // Center scanner button: Primary effect + circular drop shadow (blur 8.5dp, spread 2dp, #85AF0A 44%)
-        val density = LocalDensity.current
         Box(
             modifier = Modifier
                 .padding(bottom = centerButtonBottomPadding)
@@ -139,12 +175,15 @@ fun TabBar(
 
                 .primaryChipEffect(RoundedCornerShape(percent = 50))
                 .clip(CircleShape)
+
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
                     onScannerTap()
-                },
+                }
+
+            ,
             contentAlignment = Alignment.Center
         ) {
             Icon(
