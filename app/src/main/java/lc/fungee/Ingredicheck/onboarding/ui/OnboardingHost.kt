@@ -1175,7 +1175,15 @@ fun OnboardingHost(
     }
 
     if (showHomeScreen) {
-        HomeScreen()
+        val displayName = currentFamily?.selfMember?.name
+            ?: currentFamily?.name
+            ?: "Bite Buddy"
+        val avatarUrl = currentFamily?.selfMember?.imageFileHash
+
+        HomeScreen(
+            displayName = displayName,
+            avatarImageUrl = avatarUrl
+        )
         return
     }
 
