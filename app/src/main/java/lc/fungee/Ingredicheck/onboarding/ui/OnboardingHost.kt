@@ -1058,6 +1058,16 @@ fun OnboardingHost(
         val phase = restoredAllergyPhase
         if (phase != null && isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             when (phase) {
+                // If the last recorded phase was "home", send the user straight to the HomeScreen.
+                OnboardingPersistence.ALLERGY_PHASE_HOME -> {
+                    showHomeScreen = true
+                    showProductHandyGuidance = false
+                    showJustMeMeetProfile = false
+                    showPreferenceSummary = false
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
                 "product_handy_guidance" -> {
                     showProductHandyGuidance = true
                     showJustMeMeetProfile = false
@@ -1115,7 +1125,7 @@ fun OnboardingHost(
         }
     }
 
-    // Persist allergy sub-phase (summary_robot / chat_intro / chat_conversation / preference_summary) so user
+    // Persist allergy sub-phase (summary_robot / chat_intro / chat_conversation / preference_summary / home) so user
     // lands on a consistent screen after kill/launch. Treat summary_robot as transient; after restart we prefer
     // to show the chips/question UI at the same step index rather than the robot itself.
     LaunchedEffect(
@@ -1124,10 +1134,12 @@ fun OnboardingHost(
         showChatBotIntro,
         showChatConversation,
         showPreferenceSummary,
-        showJustMeMeetProfile
+        showJustMeMeetProfile,
+        showHomeScreen
     ) {
         if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val phase = when {
+                showHomeScreen -> OnboardingPersistence.ALLERGY_PHASE_HOME
                 showProductHandyGuidance -> "product_handy_guidance"
                 showJustMeMeetProfile -> "just_me_meet_profile"
                 showPreferenceSummary -> "preference_summary"
