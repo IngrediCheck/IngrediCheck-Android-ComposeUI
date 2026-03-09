@@ -142,6 +142,7 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
+import lc.fungee.Ingredicheck.ui.HomeScreen
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 
@@ -1041,6 +1042,8 @@ fun OnboardingHost(
     var showJustMeMeetProfile by remember { mutableStateOf(false) }
     // New guidance screen after profile/family summary.
     var showProductHandyGuidance by remember { mutableStateOf(false) }
+    var guidanceSubStep by remember { mutableStateOf(ProductGuidanceSubStep.INITIAL) }
+    var showHomeScreen by remember { mutableStateOf(false) }
     // When non-null, indicates we are editing a specific preference section from the
     // summary screen (iOS EditSectionBottomSheet equivalent).
     var editingSummaryStepIndex by remember { mutableStateOf<Int?>(null) }
@@ -1157,6 +1160,11 @@ fun OnboardingHost(
             }
             authViewModel.loadFoodNotesSummary()
         }
+    }
+
+    if (showHomeScreen) {
+        HomeScreen()
+        return
     }
 
     if (step == OnboardingStep.GET_STARTED) {
@@ -1386,7 +1394,23 @@ fun OnboardingHost(
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
                                         if (showProductHandyGuidance) {
                                             GotProductHandyGuidanceSheet(
-                                                onContinue = onExitOnboarding
+                                                subStep = guidanceSubStep,
+                                                onNotRightNow = {
+                                                    guidanceSubStep = ProductGuidanceSubStep.QUICK_LOOK
+                                                },
+                                                onHaveProduct = {
+                                                    // For now, Have Product also goes to QUICK_LOOK or exits?
+                                                    // User said: "after taping Not Right now the new state..."
+                                                    // I'll assume Have Product currently does the same or exits.
+                                                    // Let's make it exit directly for now if they have a product.
+                                                    onExitOnboarding()
+                                                },
+                                                onGotIt = {
+                                                    guidanceSubStep = ProductGuidanceSubStep.QUICK_ACCESS
+                                                },
+                                                onGoToHome = {
+                                                    showHomeScreen = true
+                                                }
                                             )
                                         } else if (showJustMeMeetProfile) {
                                             if (isFamilyLoading && currentFamily == null) {
