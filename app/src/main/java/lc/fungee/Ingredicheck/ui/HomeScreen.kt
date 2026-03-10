@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.ui.components.AllergySummaryCard
 import lc.fungee.Ingredicheck.ui.components.MyIcon
 import lc.fungee.Ingredicheck.ui.components.TabBar
 import lc.fungee.Ingredicheck.ui.theme.Greyscale100
@@ -54,9 +55,11 @@ import lc.fungee.Ingredicheck.ui.theme.titleTextStyle
 fun HomeScreen(
     displayName: String = "Bite Buddy",
     avatarImageUrl: String? = null,
+    foodNotesSummary: String? = null,
     onRecentScansTap: () -> Unit = {},
     onChatBotTap: () -> Unit = {},
-    onScannerTap: () -> Unit = {}
+    onScannerTap: () -> Unit = {},
+    onAllergySummaryTap: () -> Unit = {}
 ) {
     // Extra bottom padding so the tab bar sits above the 3-button system navigation bar.
     val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -65,7 +68,8 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            // Match iOS HomeView Color.pageBackground (#F2F2F9)
+            .background(Color(0xFFF2F2F9))
             .padding(top = 44.dp)
     ) {
         Column(
@@ -133,45 +137,62 @@ fun HomeScreen(
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
-Column(modifier = Modifier.weight(1f)) {
-
-    Text(
-        text = "Food Notes",
-        fontFamily = Manrope,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        color = Greyscale150,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
-    )
-    Text(
-        text = "Here’s what your family\navoids  or needs to watch\nout for.",
-        fontFamily = Manrope,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        color = Greyscale100,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis
-    )
-
-
-}
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Food Notes",
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                        color = Greyscale150,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Here’s what your family\navoids  or needs to watch\nout for.",
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        color = Greyscale100,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Food Notes",
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                        color = Greyscale150,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Here’s what your family\navoids  or needs to watch\nout for.",
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        color = Greyscale100,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Box(
-                    modifier = Modifier.weight(1f).background(Color.Yellow)
+                    modifier = Modifier.weight(1f)
                       ,
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = rememberVectorPainter(image = MyIcon),
-                        contentDescription = "MyIcon preview",
-                        modifier = Modifier.size(193.dp, 214.dp)
+
+                    AllergySummaryCard(
+                        summary = foodNotesSummary,
+                        tagLabel = null,
+                        onTap = onAllergySummaryTap
                     )
+
                 }
 
 
 
             }
+        
         }
 
 

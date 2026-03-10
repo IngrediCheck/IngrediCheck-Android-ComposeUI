@@ -138,6 +138,8 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
+import lc.fungee.Ingredicheck.ui.HomeScreen
+import lc.fungee.Ingredicheck.ui.ScanCameraScreen
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
@@ -1044,6 +1046,8 @@ fun OnboardingHost(
     var showProductHandyGuidance by remember { mutableStateOf(false) }
     var guidanceSubStep by remember { mutableStateOf(ProductGuidanceSubStep.INITIAL) }
     var showHomeScreen by remember { mutableStateOf(false) }
+    // When true, show the scanner/camera screen (from Home tab bar scanner button).
+    var showScanCamera by remember { mutableStateOf(false) }
     // When non-null, indicates we are editing a specific preference section from the
     // summary screen (iOS EditSectionBottomSheet equivalent).
     var editingSummaryStepIndex by remember { mutableStateOf<Int?>(null) }
@@ -1174,6 +1178,32 @@ fun OnboardingHost(
         }
     }
 
+    // When we land directly on the Home screen after restart, ensure the AI summary is loaded
+    // so the Home AllergySummaryCard can display real text instead of the placeholder.
+    LaunchedEffect(showHomeScreen, foodNotesSummary) {
+        if (showHomeScreen && foodNotesSummary == null) {
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "OnboardingAllergies",
+                    "[AI_SUMMARY] showHomeScreen=true but foodNotesSummary is null, requesting FoodNotesSummary from backend"
+                )
+            }
+            authViewModel.loadFoodNotesSummary()
+        }
+    }
+
+    if (showScanCamera) {
+        // Dedicated scanner screen, launched from Home tab bar scanner button.
+        ScanCameraScreen(
+            onClose = {
+                // Match iOS: closing scanner returns to Home.
+                showScanCamera = false
+                showHomeScreen = true
+            }
+        )
+        return
+    }
+
     if (showHomeScreen) {
         val displayName = currentFamily?.selfMember?.name
             ?: currentFamily?.name
@@ -1182,7 +1212,26 @@ fun OnboardingHost(
 
         HomeScreen(
             displayName = displayName,
-            avatarImageUrl = avatarUrl
+            avatarImageUrl = avatarUrl,
+            foodNotesSummary = foodNotesSummary,
+            onRecentScansTap = {
+                // TODO: Wire to an Android history screen when implemented.
+            },
+            onChatBotTap = {
+                // Existing chat bot flows live inside onboarding; keep them there for now.
+                showChatBotIntro = true
+            },
+            onScannerTap = {
+                // Match iOS TabBar.swift: center scanner button opens camera.
+                showHomeScreen = false
+                showScanCamera = true
+            },
+            onAllergySummaryTap = {
+                // Match iOS: tapping the bottom-right circle on the Home summary card
+                // should open the AI summary / editable canvas sheet.
+                showHomeScreen = false
+                showPreferenceSummary = true
+            }
         )
         return
     }
