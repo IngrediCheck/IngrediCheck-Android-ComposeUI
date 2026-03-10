@@ -134,7 +134,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-Column(modifier = Modifier.weight(1f).background(Color.Red)) {
+Column(modifier = Modifier.weight(1f)) {
 
     Text(
         text = "Food Notes",
@@ -154,6 +154,8 @@ Column(modifier = Modifier.weight(1f).background(Color.Red)) {
         maxLines = 3,
         overflow = TextOverflow.Ellipsis
     )
+
+
 }
                 Box(
                     modifier = Modifier.weight(1f).background(Color.Yellow)
