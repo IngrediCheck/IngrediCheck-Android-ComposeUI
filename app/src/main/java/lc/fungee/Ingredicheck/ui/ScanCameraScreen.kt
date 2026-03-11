@@ -15,7 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -45,6 +45,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -61,6 +62,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +78,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.model.ScannerViewModel
+import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 
 /**
@@ -96,6 +100,7 @@ fun ScanCameraScreen(
     val isTorchOn = uiState.isTorchOn
 
     var camera by remember { mutableStateOf<Camera?>(null) }
+    var scanAreaBottomPx by remember { mutableStateOf<Float?>(null) }
     
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -143,12 +148,11 @@ fun ScanCameraScreen(
         }
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(top = 48.dp)          // distance from top of screen
                 .padding(horizontal = 20.dp)
                 .zIndex(1f),
-            horizontalAlignment = Alignment.CenterHorizontally ,
-
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Top Overlay: Back button and Torch (drawn above dim overlay)
             Row(
@@ -195,147 +199,152 @@ fun ScanCameraScreen(
 
             }
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Guidance capsule + 66dp spacer, measured to drive scan window position
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.TopCenter
+                    .fillMaxWidth()
+                    .onGloballyPositioned { coords ->
+                        // bottom of guidance + 66dp spacer
+                        scanAreaBottomPx = coords.boundsInRoot().bottom
+                    }
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = Color(0x33E8E8E8), // #E8E8E833
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Ensure good lighting and steady hands",
-                        color = Color.White,
-                        fontFamily = Nunito,
-                        fontSize = 14.sp
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+//                            .fillMaxWidth()
+                            .background(
+                                color = Color(0x33E8E8E8),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.light_and_stars),
+                                    contentDescription = "lights and stars",
+                                    colorFilter = ColorFilter.tint(Color.White),
+                                    modifier = Modifier.size(20.dp)
+                                )
+
+                                Text(
+                                    text = " Ensure good lighting and steady hands",
+                                    color = Color.White,
+                                    fontFamily = Manrope,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 14.sp
+                                )
+                            }
+
+
+                   Spacer(modifier = Modifier.height(70.dp))
                 }
             }
-
         }
 
-        // Scanner Frame Overlay (Visual only for now)
+        // Full-screen dim overlay + transparent cutout + scanner frame & scan line
         if (hasCameraPermission) {
-            Box(
-                modifier = Modifier.fillMaxSize()
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(alpha = 1f)
             ) {
-                // Dim overlay with transparent cutout in the center
-                BoxWithConstraints(
+                val density = LocalDensity.current
+                val frameWidth = maxWidth * 0.8f
+                val aspectRatio = 286f / 121f
+                val frameHeight = frameWidth / aspectRatio
+
+                // Position frame using measured bottom of guidance+66dp spacer from column
+                val frameTopOffset = scanAreaBottomPx?.let { with(density) { it.toDp() } } ?: 0.dp
+                val left = (maxWidth - frameWidth) / 2
+
+                // Animated scan line inside the frame
+                val frameHeightPx = with(density) { frameHeight.toPx() - 4.dp.toPx() }
+                val infiniteTransition = rememberInfiniteTransition(label = "scanLineTransition")
+                val scanLineOffset by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = frameHeightPx.coerceAtLeast(0f),
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(
+                            durationMillis = 1800,
+                            easing = FastOutSlowInEasing
+                        ),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "scanLineOffset"
+                )
+
+                Canvas(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .graphicsLayer(alpha = 1f)
                 ) {
-                    val density = LocalDensity.current
-                    val frameWidth = maxWidth * 0.8f
-                    val aspectRatio = 286f / 121f
-                    val frameHeight = frameWidth / aspectRatio
+                    // Dim the entire screen
+                    drawRect(color = Color.Black.copy(alpha = 0.6f))
 
-                    val left = (maxWidth - frameWidth) / 2
-                    val top = (maxHeight - frameHeight) / 2
-
-                    // Animated scan line inside the frame
-                    val frameHeightPx = with(density) { frameHeight.toPx() - 4.dp.toPx() }
-                    val infiniteTransition = rememberInfiniteTransition(label = "scanLineTransition")
-                    val scanLineOffset by infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = frameHeightPx.coerceAtLeast(0f),
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(
-                                durationMillis = 1800,
-                                easing = FastOutSlowInEasing
-                            ),
-                            repeatMode = RepeatMode.Reverse
+                    // Clear the rounded rectangle scan window
+                    drawRoundRect(
+                        color = Color.Transparent,
+                        topLeft = Offset(
+                            left.toPx(),
+                            with(density) { frameTopOffset.toPx() }
                         ),
-                        label = "scanLineOffset"
+                        size = Size(frameWidth.toPx(), frameHeight.toPx()),
+                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                        blendMode = BlendMode.Clear
                     )
+                }
 
-                    Canvas(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer(alpha = 1f)
-                    ) {
-                        // Draw full-screen dim layer
-                        drawRect(color = Color.Black.copy(alpha = 0.6f))
+                // Vector frame and animated scan line on top of the transparent cutout
+                Box(
+                    modifier = Modifier
+                        .size(width = frameWidth, height = frameHeight)
+                        .align(Alignment.TopCenter)
+                        .offset(y = frameTopOffset)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    val scanLineColor = Color(0xFFFDB518)
+                    val scanLineY = with(density) { scanLineOffset.toDp() }
+                    val maxTail = (frameHeight - scanLineY).coerceAtLeast(0.dp)
+                    val tailHeight = (maxTail * 0.35f).coerceAtLeast(0.dp)
 
-                        // Clear the center rounded rectangle to reveal the camera preview
-                        drawRoundRect(
-                            color = Color.Transparent,
-                            topLeft = Offset(left.toPx(), top.toPx()),
-                            size = Size(frameWidth.toPx(), frameHeight.toPx()),
-                            cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
-                            blendMode = BlendMode.Clear
-                        )
-                    }
-
-                    // Vector frame and animated scan line on top of the transparent cutout
-                    Box(
-                        modifier = Modifier
-                            .size(width = frameWidth, height = frameHeight)
-                            .align(Alignment.Center)
-                            .clip(RoundedCornerShape(12.dp))
-                    ) {
-                        // Moving solid line and gradient tail that follows it
-                        val scanLineColor = Color(0xFFFDB518)
-                        val scanLineY = with(density) { scanLineOffset.toDp() }
-                        // Shorter gradient tail (only a fraction of the remaining height)
-                        val maxTail = (frameHeight - scanLineY).coerceAtLeast(0.dp)
-                        val tailHeight = (maxTail * 0.35f).coerceAtLeast(0.dp)
-
-                        // Gradient tail from the line downwards (100% -> 0% alpha),
-                        // clipped to the area below the moving line so it appears to move with it.
-                        if (tailHeight > 0.dp) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(tailHeight)
-                                    .offset(y = scanLineY)
-                                    .background(
-                                        brush = Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color(0x8AFDB518), // ~54% alpha
-                                                Color(0x00FDB518)  // 0% alpha
-                                            )
-                                        )
-                                    )
-                            )
-                        }
-
-                        // Solid scan line on top of the gradient tail
+                    if (tailHeight > 0.dp) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(tailHeight)
                                 .offset(y = scanLineY)
-                                .background(scanLineColor)
-                        )
-
-                        // Scanner frame vector above the scan line
-                        Image(
-                            painter = painterResource(id = R.drawable.scanner_container),
-                            contentDescription = "Scanner frame",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.FillBounds
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0x8AFDB518),
+                                            Color(0x00FDB518)
+                                        )
+                                    )
+                                )
                         )
                     }
 
-                    Text(
-                        text = "Center the barcode within the frame",
-                        color = Color.White,
-                        fontFamily = Nunito,
-                        fontSize = 14.sp,
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 200.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .offset(y = scanLineY)
+                            .background(scanLineColor)
+                    )
+
+                    Image(
+                        painter = painterResource(id = R.drawable.scanner_container),
+                        contentDescription = "Scanner frame",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.FillBounds
                     )
                 }
+
             }
         }
     }
