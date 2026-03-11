@@ -123,7 +123,7 @@ internal fun AddFamilyAvatarPickerSheet(
     ) {
         IconButton(onClick = onBackClick) {
             Icon(
-                painter = painterResource(id = R.drawable.ion_chevron_back),
+                painter = painterResource(id = R.drawable.icon_chevron_back),
                 contentDescription = "Back",
                 modifier = Modifier.size(24.dp),
                 tint = Greyscale150
@@ -1171,7 +1171,7 @@ internal fun AddFamilyNameSheet(
                     modifier = Modifier.align(Alignment.Start)
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ion_chevron_back),
+                        painter = painterResource(id = R.drawable.icon_chevron_back),
                         contentDescription = "Back",
                         modifier = Modifier.size(24.dp),
                         tint = Greyscale150

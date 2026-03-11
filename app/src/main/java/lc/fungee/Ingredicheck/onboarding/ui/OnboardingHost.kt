@@ -7,12 +7,10 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.net.Uri
 import android.util.Log
-import androidx.annotation.DrawableRes
 import androidx.activity.compose.BackHandler
 import lc.fungee.Ingredicheck.R
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,18 +29,12 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -63,12 +55,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -81,8 +71,6 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -92,7 +80,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -104,8 +91,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 
 import lc.fungee.Ingredicheck.auth.AppleLoginWebViewActivity
 import lc.fungee.Ingredicheck.ui.theme.Nunito
-import lc.fungee.Ingredicheck.ui.theme.Greyscale10
-import lc.fungee.Ingredicheck.ui.theme.Greyscale30
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.Greyscale80
 import lc.fungee.Ingredicheck.auth.AuthViewModel
@@ -126,29 +111,17 @@ import lc.fungee.Ingredicheck.onboarding.data.avatarBackgroundColorForId
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingStep
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModel
 import lc.fungee.Ingredicheck.onboarding.model.OnboardingViewModelFactory
-import lc.fungee.Ingredicheck.onboarding.ui.components.AnimatedProgressLine
 import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStep
-import lc.fungee.Ingredicheck.onboarding.ui.components.CapsuleStepperRow
 import lc.fungee.Ingredicheck.onboarding.ui.components.FallingCapsulesScreen
-import lc.fungee.Ingredicheck.onboarding.ui.components.PreferenceCapsuleCard
 import lc.fungee.Ingredicheck.onboarding.ui.components.FamilyOverviewBackground
-import lc.fungee.Ingredicheck.onboarding.ui.components.FlowRowChips
-import lc.fungee.Ingredicheck.onboarding.ui.components.SelectedChipPill
-import lc.fungee.Ingredicheck.ui.theme.Greyscale100
-import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.HomeScreen
 import lc.fungee.Ingredicheck.ui.ScanCameraScreen
-import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
-import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
-import lc.fungee.Ingredicheck.ui.HomeScreen
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Primary800
-
-import kotlin.random.Random
 
 private fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -407,7 +380,7 @@ private fun JustMeMeetProfileSheetContent(
 
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ion_chevron_back),
+                    painter = painterResource(id = R.drawable.icon_chevron_back),
                     contentDescription = "Back",
                     modifier = Modifier.size(24.dp),
                     tint = Greyscale150
