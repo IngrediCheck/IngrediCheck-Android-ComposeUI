@@ -1,5 +1,4 @@
 package lc.fungee.Ingredicheck.ui
-
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -28,8 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -40,12 +37,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.filled.FlashlightOff
@@ -57,6 +57,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -70,8 +71,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.model.ScannerViewModel
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 
 /**
@@ -85,31 +88,29 @@ fun ScanCameraScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
-    var isTorchOn by remember { mutableStateOf(false) }
+    val viewModel: ScannerViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+
+    val hasCameraPermission = uiState.hasCameraPermission
+    val showPermissionRationale = uiState.showPermissionRationale
+    val isTorchOn = uiState.isTorchOn
+
     var camera by remember { mutableStateOf<Camera?>(null) }
     
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-    
-    var showPermissionRationale by remember { mutableStateOf(false) }
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        hasCameraPermission = granted
-        if (!granted) {
-            showPermissionRationale = true
-        }
+        viewModel.onPermissionResult(granted)
     }
 
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
+        val initialGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        viewModel.onInitialPermissionCheck(initialGranted)
+
+        if (!initialGranted) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
@@ -140,54 +141,82 @@ fun ScanCameraScreen(
                 onBack = onClose
             )
         }
-
-        // Top Overlay: Back button and Title
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 48.dp)
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(top = 48.dp)          // distance from top of screen
+                .padding(horizontal = 20.dp)
+                .zIndex(1f),
+            horizontalAlignment = Alignment.CenterHorizontally ,
+
         ) {
+            // Top Overlay: Back button and Torch (drawn above dim overlay)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x33E8E8E8))
+                        .clickable { onClose() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.icon_chevron_back),
+                        contentDescription = "Close",
+                        colorFilter = ColorFilter.tint(Color.White),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x33E8E8E8))
+                        .clickable {
+                            val newState = !isTorchOn
+                            viewModel.setTorchEnabled(newState)
+                            camera?.cameraControl?.enableTorch(newState)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isTorchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
+                        contentDescription = if (isTorchOn) "Torch on" else "Torch off",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+
+            }
+            Spacer(modifier = Modifier.height(24.dp))
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x33E8E8E8))
-                    .clickable { onClose() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.icon_chevron_back),
-                    contentDescription = "Close",
-                    colorFilter = ColorFilter.tint(Color.White),
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = Color(0x33E8E8E8), // #E8E8E833
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = "Ensure good lighting and steady hands",
+                        color = Color.White,
+                        fontFamily = Nunito,
+                        fontSize = 14.sp
+                    )
+                }
             }
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x33E8E8E8))
-                    .clickable {
-                        val newState = !isTorchOn
-                        isTorchOn = newState
-                        camera?.cameraControl?.enableTorch(newState)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isTorchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
-                    contentDescription = if (isTorchOn) "Torch on" else "Torch off",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            
-
-
 
         }
 
@@ -226,8 +255,6 @@ fun ScanCameraScreen(
                         label = "scanLineOffset"
                     )
 
-                    val scanLineColor = Color(0xFFFDB518)
-
                     Canvas(
                         modifier = Modifier
                             .matchParentSize()
@@ -253,12 +280,38 @@ fun ScanCameraScreen(
                             .align(Alignment.Center)
                             .clip(RoundedCornerShape(12.dp))
                     ) {
-                        // Moving gradient scan line inside the frame
+                        // Moving solid line and gradient tail that follows it
+                        val scanLineColor = Color(0xFFFDB518)
+                        val scanLineY = with(density) { scanLineOffset.toDp() }
+                        // Shorter gradient tail (only a fraction of the remaining height)
+                        val maxTail = (frameHeight - scanLineY).coerceAtLeast(0.dp)
+                        val tailHeight = (maxTail * 0.35f).coerceAtLeast(0.dp)
+
+                        // Gradient tail from the line downwards (100% -> 0% alpha),
+                        // clipped to the area below the moving line so it appears to move with it.
+                        if (tailHeight > 0.dp) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(tailHeight)
+                                    .offset(y = scanLineY)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0x8AFDB518), // ~54% alpha
+                                                Color(0x00FDB518)  // 0% alpha
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        // Solid scan line on top of the gradient tail
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(4.dp)
-                                .offset(y = with(density) { scanLineOffset.toDp() })
+                                .offset(y = scanLineY)
                                 .background(scanLineColor)
                         )
 
