@@ -7,6 +7,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -26,6 +27,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -44,6 +48,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +85,9 @@ fun ScanCameraScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     
+    var isTorchOn by remember { mutableStateOf(false) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -112,7 +121,10 @@ fun ScanCameraScreen(
         if (hasCameraPermission) {
             // Real Camera Preview using CameraX
             CameraPreview(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onCameraReady = { boundCamera ->
+                    camera = boundCamera
+                }
             )
         } else {
             // Permission Denied / Rationale UI
@@ -158,13 +170,17 @@ fun ScanCameraScreen(
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(Color(0x33E8E8E8))
-                    .clickable { onClose() },
+                    .clickable {
+                        val newState = !isTorchOn
+                        isTorchOn = newState
+                        camera?.cameraControl?.enableTorch(newState)
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.icon_chevron_back),
-                    contentDescription = "Close",
-                    colorFilter = ColorFilter.tint(Color.White),
+                Icon(
+                    imageVector = if (isTorchOn) Icons.Filled.FlashlightOn else Icons.Filled.FlashlightOff,
+                    contentDescription = if (isTorchOn) "Torch on" else "Torch off",
+                    tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -273,7 +289,10 @@ fun ScanCameraScreen(
 }
 
 @Composable
-fun CameraPreview(modifier: Modifier = Modifier) {
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    onCameraReady: (Camera) -> Unit = {}
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -295,11 +314,12 @@ fun CameraPreview(modifier: Modifier = Modifier) {
 
                 try {
                     cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    val camera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
                         preview
                     )
+                    onCameraReady(camera)
                 } catch (exc: Exception) {
                     exc.printStackTrace()
                 }
