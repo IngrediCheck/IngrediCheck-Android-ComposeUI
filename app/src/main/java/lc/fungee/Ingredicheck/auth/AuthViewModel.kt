@@ -63,6 +63,19 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow<AuthState>(AuthState.Idle)
     val state: StateFlow<AuthState> = _state
 
+
+    private val _debugLog = MutableStateFlow<List<String>>(emptyList())
+    val debugLog: StateFlow<List<String>> = _debugLog.asStateFlow()
+
+    private val _currentFamily = MutableStateFlow<FamilyDto?>(null)
+    val currentFamily: StateFlow<FamilyDto?> = _currentFamily.asStateFlow()
+
+    private val _isFamilyLoading = MutableStateFlow<Boolean>(true)
+    val isFamilyLoading: StateFlow<Boolean> = _isFamilyLoading.asStateFlow()
+
+    private val _memojiState = MutableStateFlow<MemojiGenState>(MemojiGenState.Idle)
+    val memojiState: StateFlow<MemojiGenState> = _memojiState.asStateFlow()
+
     init {
         // Fetch current family on startup if a session exists
         viewModelScope.launch {
@@ -73,19 +86,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                     loadCurrentFamily()
                 } else {
                     Log.d("AuthViewModel", "Session update: No active session")
+                    _isFamilyLoading.value = false
                 }
             }
         }
     }
-
-    private val _debugLog = MutableStateFlow<List<String>>(emptyList())
-    val debugLog: StateFlow<List<String>> = _debugLog.asStateFlow()
-
-    private val _currentFamily = MutableStateFlow<FamilyDto?>(null)
-    val currentFamily: StateFlow<FamilyDto?> = _currentFamily.asStateFlow()
-
-    private val _memojiState = MutableStateFlow<MemojiGenState>(MemojiGenState.Idle)
-    val memojiState: StateFlow<MemojiGenState> = _memojiState.asStateFlow()
 
     // AI-generated summary of food notes (text), exposed from FoodNotesUseCase.
     val foodNotesSummary: StateFlow<String?> = foodNotesUseCase.foodNotesSummary
@@ -170,16 +175,19 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 pushDebug("loadCurrentFamily: No access token, skipping")
                 return@launch
             }
+            _isFamilyLoading.value = true
             Log.d("AuthViewModel", "loadCurrentFamily: Fetching current family from backend...")
             pushDebug("loadCurrentFamily: Fetching from backend")
             val result = familyRepository.getFamily(accessToken)
             result.fold(
                 onSuccess = { family ->
                     _currentFamily.value = family
+                    _isFamilyLoading.value = false
                     Log.d("AuthViewModel", "loadCurrentFamily: Success! familyName=${family.name}, selfName=${family.selfMember.name}, avatar=${family.selfMember.imageFileHash}")
                     pushDebug("loadCurrentFamily: Success name=${family.name}")
                 },
                 onFailure = { e ->
+                    _isFamilyLoading.value = false
                     Log.e("AuthViewModel", "loadCurrentFamily: Failed", e)
                     pushDebug("loadCurrentFamily: Failed ${e.localizedMessage ?: e.javaClass.simpleName}")
                     Log.w("AuthDebug", "loadCurrentFamily failed", e)

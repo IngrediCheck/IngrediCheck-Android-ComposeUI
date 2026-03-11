@@ -138,10 +138,13 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale100
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
+import lc.fungee.Ingredicheck.ui.HomeScreen
+import lc.fungee.Ingredicheck.ui.ScanCameraScreen
 import lc.fungee.Ingredicheck.ui.theme.Greyscale60
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Secondary200
 import lc.fungee.Ingredicheck.onboarding.ui.components.familyPlaceholderColor
+import lc.fungee.Ingredicheck.ui.HomeScreen
 import lc.fungee.Ingredicheck.ui.components.buttons.PrimaryButton
 import lc.fungee.Ingredicheck.ui.theme.Primary800
 
@@ -303,7 +306,7 @@ private fun JustMeMeetProfileSheetContent(
             avatarItems[idx].first
         } else ""
     }
-    var selectedAvatarId by remember { mutableStateOf(initialAvatarId) }
+    var selectedAvatarId by remember(initialAvatarId) { mutableStateOf(initialAvatarId) }
     val selectedAvatarRes = avatarItems.firstOrNull { it.first == selectedAvatarId }?.second
         ?: avatarItems.firstOrNull()?.second
         ?: R.drawable.father
@@ -689,7 +692,10 @@ private fun JustMeMeetProfileSheetContent(
                             onAddAvatarClick = {
                                 avatarUiMode = JustMeAvatarUiMode.Picker
                             },
-                            onAvatarSelect = { selectedAvatarId = it }
+                            onAvatarSelect = { 
+                                selectedAvatarId = it 
+                                activeAvatarUrl = null
+                            }
                         )
                     }
                 }
@@ -803,6 +809,7 @@ fun OnboardingHost(
     val emojiState by authViewModel.memojiState.collectAsState()
     val isAuthLoading = authState is AuthState.Loading
     val currentFamily by authViewModel.currentFamily.collectAsState()
+    val isFamilyLoading by authViewModel.isFamilyLoading.collectAsState()
     val foodNotesSummary by authViewModel.foodNotesSummary.collectAsState()
 
     var sheetHeight by remember { mutableStateOf(0.dp) }
@@ -1035,6 +1042,12 @@ fun OnboardingHost(
     var showPreferenceSummary by remember { mutableStateOf(false) }
     // Just Me flow only: when true, show "Meet your profile" (no step change; avoids jerky back).
     var showJustMeMeetProfile by remember { mutableStateOf(false) }
+    // New guidance screen after profile/family summary.
+    var showProductHandyGuidance by remember { mutableStateOf(false) }
+    var guidanceSubStep by remember { mutableStateOf(ProductGuidanceSubStep.INITIAL) }
+    var showHomeScreen by remember { mutableStateOf(false) }
+    // When true, show the scanner/camera screen (from Home tab bar scanner button).
+    var showScanCamera by remember { mutableStateOf(false) }
     // When non-null, indicates we are editing a specific preference section from the
     // summary screen (iOS EditSectionBottomSheet equivalent).
     var editingSummaryStepIndex by remember { mutableStateOf<Int?>(null) }
@@ -1049,6 +1062,24 @@ fun OnboardingHost(
         val phase = restoredAllergyPhase
         if (phase != null && isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             when (phase) {
+                // If the last recorded phase was "home", send the user straight to the HomeScreen.
+                OnboardingPersistence.ALLERGY_PHASE_HOME -> {
+                    showHomeScreen = true
+                    showProductHandyGuidance = false
+                    showJustMeMeetProfile = false
+                    showPreferenceSummary = false
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
+                "product_handy_guidance" -> {
+                    showProductHandyGuidance = true
+                    showJustMeMeetProfile = false
+                    showPreferenceSummary = false
+                    showChatConversation = false
+                    showChatBotIntro = false
+                    showSummaryScreen = false
+                }
                 "just_me_meet_profile" -> {
                     showJustMeMeetProfile = true
                     showPreferenceSummary = false
@@ -1098,7 +1129,7 @@ fun OnboardingHost(
         }
     }
 
-    // Persist allergy sub-phase (summary_robot / chat_intro / chat_conversation / preference_summary) so user
+    // Persist allergy sub-phase (summary_robot / chat_intro / chat_conversation / preference_summary / home) so user
     // lands on a consistent screen after kill/launch. Treat summary_robot as transient; after restart we prefer
     // to show the chips/question UI at the same step index rather than the robot itself.
     LaunchedEffect(
@@ -1107,10 +1138,13 @@ fun OnboardingHost(
         showChatBotIntro,
         showChatConversation,
         showPreferenceSummary,
-        showJustMeMeetProfile
+        showJustMeMeetProfile,
+        showHomeScreen
     ) {
         if (isRestored && step == OnboardingStep.ADD_FAMILY_ALLERGIES) {
             val phase = when {
+                showHomeScreen -> OnboardingPersistence.ALLERGY_PHASE_HOME
+                showProductHandyGuidance -> "product_handy_guidance"
                 showJustMeMeetProfile -> "just_me_meet_profile"
                 showPreferenceSummary -> "preference_summary"
                 showChatConversation -> "chat_conversation"
@@ -1142,6 +1176,64 @@ fun OnboardingHost(
             }
             authViewModel.loadFoodNotesSummary()
         }
+    }
+
+    // When we land directly on the Home screen after restart, ensure the AI summary is loaded
+    // so the Home AllergySummaryCard can display real text instead of the placeholder.
+    LaunchedEffect(showHomeScreen, foodNotesSummary) {
+        if (showHomeScreen && foodNotesSummary == null) {
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "OnboardingAllergies",
+                    "[AI_SUMMARY] showHomeScreen=true but foodNotesSummary is null, requesting FoodNotesSummary from backend"
+                )
+            }
+            authViewModel.loadFoodNotesSummary()
+        }
+    }
+
+    if (showScanCamera) {
+        // Dedicated scanner screen, launched from Home tab bar scanner button.
+        ScanCameraScreen(
+            onClose = {
+                // Match iOS: closing scanner returns to Home.
+                showScanCamera = false
+                showHomeScreen = true
+            }
+        )
+        return
+    }
+
+    if (showHomeScreen) {
+        val displayName = currentFamily?.selfMember?.name
+            ?: currentFamily?.name
+            ?: "Bite Buddy"
+        val avatarUrl = currentFamily?.selfMember?.imageFileHash
+
+        HomeScreen(
+            displayName = displayName,
+            avatarImageUrl = avatarUrl,
+            foodNotesSummary = foodNotesSummary,
+            onRecentScansTap = {
+                // TODO: Wire to an Android history screen when implemented.
+            },
+            onChatBotTap = {
+                // Existing chat bot flows live inside onboarding; keep them there for now.
+                showChatBotIntro = true
+            },
+            onScannerTap = {
+                // Match iOS TabBar.swift: center scanner button opens camera.
+                showHomeScreen = false
+                showScanCamera = true
+            },
+            onAllergySummaryTap = {
+                // Match iOS: tapping the bottom-right circle on the Home summary card
+                // should open the AI summary / editable canvas sheet.
+                showHomeScreen = false
+                showPreferenceSummary = true
+            }
+        )
+        return
     }
 
     if (step == OnboardingStep.GET_STARTED) {
@@ -1183,7 +1275,8 @@ fun OnboardingHost(
             onDismissRequest = onExitOnboarding,
             horizontalPaddingEnabled = step != OnboardingStep.ADD_FAMILY_AVATAR_PICKER && step != OnboardingStep.ADD_FAMILY_ALLERGIES,
             showFocusedShadow = step == OnboardingStep.SIGN_IN_INITIAL ||
-                step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN,
+                step == OnboardingStep.SIGN_IN_SOCIAL_LOGIN ||
+                showProductHandyGuidance,
             baseBottomPaddingOverride = if (step == OnboardingStep.ADD_FAMILY_ALLERGIES) 8.dp else null,
             // For the Just Me \"Meet your profile\" sheet we want iOS-like behavior where the
             // keyboard can overlap the lower description/button but not the greeting row.
@@ -1292,7 +1385,16 @@ fun OnboardingHost(
                     }
 
                         6 -> {
-                            if (showJustMeMeetProfile) {
+                            if (showProductHandyGuidance) {
+                                SignInBackground(
+                                    imageRes = R.drawable.phone_imge_with_product,
+                                    showLogo = false,
+                                    title = "Got a product handy?",
+                                    subtitle = "This helps us tailor food checks and\ntips just for you.",
+                                    aspectRatio = 0.7f,
+                                    stackContent = true
+                                )
+                            } else if (showJustMeMeetProfile) {
                                 // Just Me flow: "Meet your profile" (same layout as Add Family welcome)
                                 SignInBackground(
                                     imageRes = R.drawable.family_img_add_family,
@@ -1359,36 +1461,75 @@ fun OnboardingHost(
                         }
 
                             OnboardingStep.ADD_FAMILY_ALLERGIES -> {
-                                if (showJustMeMeetProfile) {
-                                    // For Just Me profile, prefer the self member's name over the
-                                    // family name so that renaming from "Bite Buddy" persists.
-                                    val profileName = currentFamily?.selfMember?.name
-                                        ?: currentFamily?.name
-                                        ?: "Bite Buddy"
-                                    val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
-                                    Log.d("OnboardingHost", "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl")
-                                    JustMeMeetProfileSheetContent(
-                                        familyName = profileName,
-                                        selfMemberImageUrl = selfAvatarUrl,
-                                        emojiState = emojiState,
-                                        onBackClick = {
-                                            showJustMeMeetProfile = false
-                                            showPreferenceSummary = true
-                                        },
-                                        onContinue = onExitOnboarding,
-                                        onNameCommitted = { newName ->
-                                            authViewModel.updateSelfMemberName(newName)
-                                            authViewModel.updateFamilyName(newName)
-                                        },
-                                        onAvatarSaved = { selectedId, generatedImageUrl ->
-                                            // Save updates backend so the new memoji is used everywhere.
-                                            val avatarToSave = if (!generatedImageUrl.isNullOrBlank()) generatedImageUrl else selectedId
-                                            authViewModel.updateSelfMemberAvatar(avatarToSave)
-                                        },
-                                        onGenerateAvatar = { selections ->
-                                            authViewModel.generateAddFamilyMemoji(selections)
-                                        }
-                                    )
+                                        if (showProductHandyGuidance) {
+                                            GotProductHandyGuidanceSheet(
+                                                subStep = guidanceSubStep,
+                                                onNotRightNow = {
+                                                    guidanceSubStep = ProductGuidanceSubStep.QUICK_LOOK
+                                                },
+                                                onHaveProduct = {
+                                                    // For now, Have Product also goes to QUICK_LOOK or exits?
+                                                    // User said: "after taping Not Right now the new state..."
+                                                    // I'll assume Have Product currently does the same or exits.
+                                                    // Let's make it exit directly for now if they have a product.
+                                                    onExitOnboarding()
+                                                },
+                                                onGotIt = {
+                                                    guidanceSubStep = ProductGuidanceSubStep.QUICK_ACCESS
+                                                },
+                                                onGoToHome = {
+                                                    showHomeScreen = true
+                                                }
+                                            )
+                                        } else if (showJustMeMeetProfile) {
+                                            if (isFamilyLoading && currentFamily == null) {
+                                                // Still loading initially, show a placeholder to avoid "Bite Buddy" flicker
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(32.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CircularProgressIndicator(color = Color(0xFF91B640))
+                                                }
+                                            } else {
+                                                // For Just Me profile, prefer the self member's name over the
+                                                // family name so that renaming from "Bite Buddy" persists.
+                                                val profileName = currentFamily?.selfMember?.name
+                                                    ?: currentFamily?.name
+                                                    ?: "Bite Buddy"
+                                                val selfAvatarUrl = currentFamily?.selfMember?.imageFileHash
+                                                Log.d(
+                                                    "OnboardingHost",
+                                                    "Just Me Profile: name=$profileName, avatar=$selfAvatarUrl"
+                                                )
+                                                JustMeMeetProfileSheetContent(
+                                                    familyName = profileName,
+                                                    selfMemberImageUrl = selfAvatarUrl,
+                                                    emojiState = emojiState,
+                                                    onBackClick = {
+                                                        showJustMeMeetProfile = false
+                                                        showPreferenceSummary = true
+                                                    },
+                                                    onContinue = {
+                                                        showJustMeMeetProfile = false
+                                                        showProductHandyGuidance = true
+                                                    },
+                                                    onNameCommitted = { newName ->
+                                                        authViewModel.updateSelfMemberName(newName)
+                                                        authViewModel.updateFamilyName(newName)
+                                                    },
+                                            onAvatarSaved = { selectedId, generatedImageUrl ->
+                                                // Save updates backend so the new memoji is used everywhere.
+                                                val avatarToSave =
+                                                    if (!generatedImageUrl.isNullOrBlank()) generatedImageUrl else selectedId
+                                                authViewModel.updateSelfMemberAvatar(avatarToSave)
+                                            },
+                                            onGenerateAvatar = { selections ->
+                                                authViewModel.generateAddFamilyMemoji(selections)
+                                            }
+                                        )
+                                    }
                                 } else if (!dynamicStepsLoaded || allergySteps.isEmpty()) {
                                     // Don't show sheet content until steps are loaded so chips and question are visible (e.g. after restart).
                                     Box(
@@ -1406,9 +1547,9 @@ fun OnboardingHost(
                                         PreferenceSummarySheetContent(
                                             isFamilyFlow = isFamilyFlow,
                                             onContinue = {
-                                                showPreferenceSummary = false
                                                 if (isFamilyFlow) {
-                                                    onExitOnboarding()
+                                                    showPreferenceSummary = false
+                                                    showProductHandyGuidance = true
                                                 } else {
                                                     // Just me flow: show "Meet your profile" (local state, no step change = smooth back)
                                                     showPreferenceSummary = false

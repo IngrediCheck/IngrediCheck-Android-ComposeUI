@@ -646,6 +646,100 @@ internal fun AddFamilyAllSetOrMoreSheet(
     }
 }
 
+enum class ProductGuidanceSubStep {
+    INITIAL,
+    QUICK_LOOK,
+    QUICK_ACCESS
+}
+
+@Composable
+internal fun GotProductHandyGuidanceSheet(
+    subStep: ProductGuidanceSubStep = ProductGuidanceSubStep.INITIAL,
+    onNotRightNow: () -> Unit,
+    onHaveProduct: () -> Unit,
+    onGotIt: () -> Unit,
+    onGoToHome: () -> Unit
+) {
+    when (subStep) {
+        ProductGuidanceSubStep.INITIAL -> {
+            SheetHeader(
+                title = "Ready to scan your\n first product?",
+                subtitle = "Do you have any food product around you right now?",
+                onBackClick = null
+            )
+
+            Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SecondaryButton(
+                    title = "Not right now",
+                    modifier = Modifier.weight(1f),
+                    takeFullWidth = true,
+                    width = 0.dp,
+                    onClick = onNotRightNow,
+                    textColor = lc.fungee.Ingredicheck.ui.theme.Primary800,
+                    borderColor = Greyscale40,
+                    disabledBackgroundColor = Greyscale40
+                )
+                PrimaryButton(
+                    title = "Have a product",
+                    modifier = Modifier.weight(1f),
+                    takeFullWidth = true,
+                    width = 0.dp,
+                    onClick = onHaveProduct
+                )
+            }
+        }
+        ProductGuidanceSubStep.QUICK_LOOK -> {
+            SheetHeader(
+                title = "Here’s a quick look at how you can scan products when you’re ready.",
+                subtitle = null,
+                onBackClick = null
+            )
+
+            Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                PrimaryButton(
+                    title = "Got it",
+                    onClick = onGotIt,
+                    takeFullWidth = false,
+                    width = 180.dp
+                )
+            }
+        }
+        ProductGuidanceSubStep.QUICK_ACCESS -> {
+            SheetHeader(
+                title = "Quick access needed",
+                subtitle = "So we can scan products and personalize results for you.",
+                onBackClick = null
+            )
+
+            Spacer(modifier = Modifier.height(responsiveSpacerHeight(36.dp, 40.dp, 44.dp)))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                PrimaryButton(
+                    title = "Go to Home",
+                    onClick = onGoToHome,
+                    takeFullWidth = false,
+                    width = 180.dp
+                )
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(32.dp))
+}
+
 @Composable
 internal fun AddFamilyLetsGoSheet(
     onLetsGo: () -> Unit

@@ -21,7 +21,7 @@ private val Context.onboardingDataStore: DataStore<Preferences> by preferencesDa
 class OnboardingPersistence(
     private val context: Context
 ) {
-    private companion object {
+    companion object {
         private val KEY_CURRENT_STEP = stringPreferencesKey("onboarding_current_step")
         private val KEY_STEP_HISTORY = stringPreferencesKey("onboarding_step_history")
         private val KEY_ADD_FAMILY_NAME = stringPreferencesKey("onboarding_add_family_name")
@@ -41,6 +41,8 @@ class OnboardingPersistence(
         const val ALLERGY_PHASE_CHAT_INTRO = "chat_intro"
         const val ALLERGY_PHASE_CHAT_CONVERSATION = "chat_conversation"
         const val ALLERGY_PHASE_PREFERENCE_SUMMARY = "preference_summary"
+        /** Marker used when the user has already navigated to the Home screen from allergies. */
+        const val ALLERGY_PHASE_HOME = "home"
     }
 
     data class RestoredAllergyState(

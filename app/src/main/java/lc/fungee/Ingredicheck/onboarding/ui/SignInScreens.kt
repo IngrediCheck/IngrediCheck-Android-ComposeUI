@@ -76,7 +76,8 @@ internal fun SignInBackground(
     showLogo: Boolean = true,
     title: String? = null,
     subtitle: String? = null,
-    aspectRatio: Float = 8f / 16f
+    aspectRatio: Float = 8f / 16f,
+    stackContent: Boolean = false
 ) {
     SignInBackgroundTunable(
         imageRes = imageRes,
@@ -85,7 +86,8 @@ internal fun SignInBackground(
         mockAspectRatio = aspectRatio,
         showLogo = showLogo,
         title = title,
-        subtitle = subtitle
+        subtitle = subtitle,
+        stackContent = stackContent
     )
 }
 
@@ -97,7 +99,8 @@ private fun SignInBackgroundTunable(
     modifier: Modifier = Modifier,
     showLogo: Boolean = true,
     title: String? = null,
-    subtitle: String? = null
+    subtitle: String? = null,
+    stackContent: Boolean = false
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -121,16 +124,7 @@ private fun SignInBackgroundTunable(
                     )
                     Spacer(modifier = Modifier.height(44.dp))
                 }
-                Box(
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Image(
-                        painter = painterResource(id = imageRes),
-                        contentDescription = null,
-                        modifier = Modifier.aspectRatio(mockAspectRatio).fillMaxWidth(),
-                        contentScale = ContentScale.Fit
-                    )
+                if (stackContent) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
@@ -148,11 +142,54 @@ private fun SignInBackgroundTunable(
                             Text(
                                 text = subtitle,
                                 style = subtitleTextStyle(),
-                                maxLines = 2,
+                                maxLines = 4,
                                 color = Greyscale110,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 20.dp)
                             )
+                        }
+                        Spacer(modifier = Modifier.height(0.dp))
+                        Image(
+                            painter = painterResource(id = imageRes),
+                            contentDescription = null,
+                            modifier = Modifier.aspectRatio(mockAspectRatio).fillMaxWidth(),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Image(
+                            painter = painterResource(id = imageRes),
+                            contentDescription = null,
+                            modifier = Modifier.aspectRatio(mockAspectRatio).fillMaxWidth(),
+                            contentScale = ContentScale.Fit
+                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (title != null) {
+                                Text(
+                                    text = title,
+                                    style = titleTextStyle(),
+                                    color = Greyscale150,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            if (subtitle != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = subtitle,
+                                    style = subtitleTextStyle(),
+                                    maxLines = 2,
+                                    color = Greyscale110,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 20.dp)
+                                )
+                            }
                         }
                     }
                 }
