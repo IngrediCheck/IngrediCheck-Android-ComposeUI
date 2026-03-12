@@ -85,4 +85,11 @@ dependencies {
     implementation(libs.androidx.camera.view)
     // CameraX core library
 
+    // ML Kit barcode scanning
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // OkHttp + SSE for streaming scan results
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
+
 }

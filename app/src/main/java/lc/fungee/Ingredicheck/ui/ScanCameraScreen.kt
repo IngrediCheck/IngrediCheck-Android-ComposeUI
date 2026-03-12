@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
@@ -37,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -68,6 +70,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,8 +78,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.launch
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.model.ScannerViewModel
 import lc.fungee.Ingredicheck.ui.components.IOSStyleLoadingSpinner
 import lc.fungee.Ingredicheck.ui.theme.Manrope
@@ -94,7 +100,11 @@ fun ScanCameraScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     
     val viewModel: ScannerViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val scanResult by viewModel.scanResult.collectAsState()
+    val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
 
     val hasCameraPermission = uiState.hasCameraPermission
     val showPermissionRationale = uiState.showPermissionRationale
@@ -102,6 +112,7 @@ fun ScanCameraScreen(
 
     var camera by remember { mutableStateOf<Camera?>(null) }
     var scanAreaBottomPx by remember { mutableStateOf<Float?>(null) }
+    var lastStreamedBarcode by remember { mutableStateOf<String?>(null) }
     
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -131,6 +142,34 @@ fun ScanCameraScreen(
                 modifier = Modifier.fillMaxSize(),
                 onCameraReady = { boundCamera ->
                     camera = boundCamera
+                },
+                onBarcodeDetected = { barcode ->
+                    // Debounce/Filter: Only process if it's a new code AND we aren't currently "Locked" 
+                    // onto a scanning session that is less than 2 seconds old (unless it's the exact same code)
+                    val currentScan = viewModel.scanResult.value
+                    val isBusy = currentScan != null && (currentScan.state == "fetching_product_info" || currentScan.state == "analyzing")
+                    
+                    if (barcode != lastStreamedBarcode) {
+                        if (isBusy) {
+                            // If we are currently busy with a different barcode, ignore the new one for a bit
+                            // to avoid the "Cancellation Storm" seen in logs
+                             android.util.Log.d("ScanCameraScreen", "Busy with ${currentScan?.barcode}; ignoring new barcode $barcode")
+                        } else {
+                            android.util.Log.d(
+                                "ScanCameraScreen",
+                                "New barcode detected: $barcode (last=$lastStreamedBarcode)"
+                            )
+                            lastStreamedBarcode = barcode
+                            // Haptic feedback on new barcode
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            scope.launch {
+                                val token = authViewModel.accessTokenOrNull()
+                                if (!token.isNullOrBlank()) {
+                                    viewModel.startBarcodeStream(barcode, token)
+                                }
+                            }
+                        }
+                    }
                 }
             )
         } else {
@@ -362,11 +401,42 @@ fun ScanCameraScreen(
                         textAlign = TextAlign.Center
                     )
 
-          Spacer(modifier = Modifier.height(140.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    ProductDetailCardinCameraScreen()
-                    Spacer(modifier = Modifier.height(14.dp))
-                    IOSStyleLoadingSpinner()
+                    // Simple debug/product info from SSE so you can test quickly
+                    val productName = scanResult?.productInfo?.name ?: "Waiting for product..."
+                    val brand = scanResult?.productInfo?.brand
+                    val stateLabel = scanResult?.state ?: "idle"
+
+                    Text(
+                        text = productName,
+                        color = Color.White,
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    if (!brand.isNullOrBlank()) {
+                        Text(
+                            text = brand,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontFamily = Manrope,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Text(
+                        text = "State: $stateLabel",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
 
                 }
             }
@@ -377,7 +447,8 @@ fun ScanCameraScreen(
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
-    onCameraReady: (Camera) -> Unit = {}
+    onCameraReady: (Camera) -> Unit = {},
+    onBarcodeDetected: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -388,10 +459,10 @@ fun CameraPreview(
             val previewView = PreviewView(ctx).apply {
                 scaleType = PreviewView.ScaleType.FILL_CENTER
             }
-            
+
             cameraProviderFuture.addListener({
                 val cameraProvider = cameraProviderFuture.get()
-                
+
                 val preview = Preview.Builder().build().also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
@@ -400,17 +471,30 @@ fun CameraPreview(
 
                 try {
                     cameraProvider.unbindAll()
+                    val imageAnalysis = ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .build()
+                        .also { analysis ->
+                            analysis.setAnalyzer(
+                                ContextCompat.getMainExecutor(ctx),
+                                BarcodeAnalyzer { barcode ->
+                                    onBarcodeDetected(barcode)
+                                }
+                            )
+                        }
+
                     val camera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
-                        preview
+                        preview,
+                        imageAnalysis
                     )
                     onCameraReady(camera)
                 } catch (exc: Exception) {
                     exc.printStackTrace()
                 }
             }, ContextCompat.getMainExecutor(ctx))
-            
+
             previewView
         },
         modifier = modifier

@@ -197,6 +197,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * Expose the current access token for other features (e.g., scanner SSE).
+     */
+    suspend fun accessTokenOrNull(): String? = repository.accessTokenOrNull()
+
+    /**
      * Update the current family's self member name (used in Just Me \"Meet your profile\" flow).
      * Mirrors iOS MeetYourProfileView.commitPrimaryName behavior for the self member only.
      */
