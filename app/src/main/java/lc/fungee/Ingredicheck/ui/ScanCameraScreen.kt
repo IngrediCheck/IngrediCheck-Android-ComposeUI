@@ -78,6 +78,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.model.ScannerViewModel
+import lc.fungee.Ingredicheck.ui.components.IOSStyleLoadingSpinner
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 
@@ -345,8 +346,29 @@ fun ScanCameraScreen(
                     )
                 }
 
+                // Helper text and empty product card below the scan window
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = frameTopOffset + frameHeight + 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Align the barcode within the\nframe to scan",
+                        color = Color.White,
+                        fontFamily = Manrope,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
 
+          Spacer(modifier = Modifier.height(140.dp))
 
+                    ProductDetailCardinCameraScreen()
+                    Spacer(modifier = Modifier.height(14.dp))
+                    IOSStyleLoadingSpinner()
+
+                }
             }
         }
     }
@@ -464,7 +486,7 @@ private fun PermissionDeniedContent(
 }
 
 @Composable
-fun EmptyProductDetailCard(
+fun ProductDetailCardinCameraScreen(
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -480,35 +502,41 @@ fun EmptyProductDetailCard(
             modifier = Modifier
                 .size(width = 68.dp, height = 92.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFE8E8E8))
+                .background(Color(0x33E8E8E8))
         )
 
         Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp, )
+//            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp )
         ) {
 
 
-            Box(
+            Row(
                 modifier = Modifier
                     .size(width = 185.dp, height = 25.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE8E8E8))
-            )
+                    .background(Color(0x33E8E8E8))
+            ){}
 
-            Box(
+          Row(
                 modifier = Modifier
                     .size(width = 132.dp, height = 20.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFE8E8E8))
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
+                    .background(Color(0x33E8E8E8))
+            ){
+
+          }
+     Spacer(modifier = Modifier.height(1.dp))
+           Row(
                 modifier = Modifier
                     .size(width = 79.dp, height = 24.dp)
                     .clip(RoundedCornerShape(52.dp))
-                    .background(Color(0xFFE8E8E8))
-            )
+                    .background(Color(0x33E8E8E8))
+
+            ){
+
+
+           }
         }
     }
 }
