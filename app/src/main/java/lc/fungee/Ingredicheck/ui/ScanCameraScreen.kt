@@ -346,6 +346,7 @@ fun ScanCameraScreen(
                 }
 
 
+
             }
         }
     }
@@ -461,4 +462,60 @@ private fun PermissionDeniedContent(
         )
     }
 }
+
+@Composable
+fun EmptyProductDetailCard(
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .size(width = 300.dp, height = 120.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0x33E8E8E8))
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 68.dp, height = 92.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFE8E8E8))
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp, )
+        ) {
+
+
+            Box(
+                modifier = Modifier
+                    .size(width = 185.dp, height = 25.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFE8E8E8))
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(width = 132.dp, height = 20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFE8E8E8))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(width = 79.dp, height = 24.dp)
+                    .clip(RoundedCornerShape(52.dp))
+                    .background(Color(0xFFE8E8E8))
+            )
+        }
+    }
+}
+
+//@Preview(showBackground = true)
+//@Composable
+//private fun EmptyProductDetailCardPreview() {
+//    EmptyProductDetailCard()
+//}
 
