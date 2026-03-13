@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,6 +34,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +53,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
@@ -84,7 +88,9 @@ import kotlinx.coroutines.launch
 import lc.fungee.Ingredicheck.R
 import lc.fungee.Ingredicheck.auth.AuthViewModel
 import lc.fungee.Ingredicheck.model.ScannerViewModel
+import lc.fungee.Ingredicheck.model.ScanResponse
 import lc.fungee.Ingredicheck.ui.components.IOSStyleLoadingSpinner
+import lc.fungee.Ingredicheck.ui.components.buttons.ScannerSwipeButton
 import lc.fungee.Ingredicheck.ui.theme.Manrope
 import lc.fungee.Ingredicheck.ui.theme.Nunito
 
@@ -131,6 +137,8 @@ fun ScanCameraScreen(
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
+
+    val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Box(
         modifier = modifier
@@ -401,45 +409,55 @@ fun ScanCameraScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(140.dp))
 
                     // Simple debug/product info from SSE so you can test quickly
-                    val productName = scanResult?.productInfo?.name ?: "Waiting for product..."
-                    val brand = scanResult?.productInfo?.brand
-                    val stateLabel = scanResult?.state ?: "idle"
-
-                    Text(
-                        text = productName,
-                        color = Color.White,
-                        fontFamily = Manrope,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
+                    ProductDetailCardinCameraScreen(
+                        scanResult = scanResult
                     )
 
-                    if (!brand.isNullOrBlank()) {
-                        Text(
-                            text = brand,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontFamily = Manrope,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-
-                    Text(
-                        text = "State: $stateLabel",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontFamily = Manrope,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+//                    Text(
+//                        text = productName,
+//                        color = Color.White,
+//                        fontFamily = Manrope,
+//                        fontWeight = FontWeight.SemiBold,
+//                        fontSize = 16.sp,
+//                        textAlign = TextAlign.Center
+//                    )
+//
+//                    if (!brand.isNullOrBlank()) {
+//                        Text(
+//                            text = brand,
+//                            color = Color.White.copy(alpha = 0.8f),
+//                            fontFamily = Manrope,
+//                            fontWeight = FontWeight.Normal,
+//                            fontSize = 14.sp,
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
+//
+//                    Text(
+//                        text = "State: $stateLabel",
+//                        color = Color.White.copy(alpha = 0.7f),
+//                        fontFamily = Manrope,
+//                        fontWeight = FontWeight.Normal,
+//                        fontSize = 12.sp,
+//                        textAlign = TextAlign.Center,
+//                        modifier = Modifier.padding(top = 8.dp)
+//                    )
 
                 }
             }
+        }
+
+        // Bottom scanner swipe button, above system navigation bar
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = navBarBottomPadding ),
+            contentAlignment = Alignment.Center
+        ) {
+            ScannerSwipeButton()
         }
     }
 }
@@ -571,8 +589,66 @@ private fun PermissionDeniedContent(
 
 @Composable
 fun ProductDetailCardinCameraScreen(
+    scanResult: ScanResponse?,
     modifier: Modifier = Modifier
 ) {
+    // Idle / skeleton state when there is no scan yet
+    if (scanResult == null) {
+        Row(
+            modifier = modifier
+                .size(width = 300.dp, height = 120.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0x33E8E8E8))
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 68.dp, height = 92.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0x33E8E8E8))
+            )
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .size(width = 185.dp, height = 25.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x33E8E8E8))
+                ) {}
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .size(width = 132.dp, height = 20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x33E8E8E8))
+                ) {}
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier
+                        .size(width = 79.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(52.dp))
+                        .background(Color(0x33E8E8E8))
+                ) {}
+            }
+        }
+        return
+    }
+
+    // Active scan state (pending / analyzing / done)
+    val productName = scanResult.productInfo?.name
+    val brandName = scanResult.productInfo?.brand
+    val hasProductInfo = !productName.isNullOrBlank() || !brandName.isNullOrBlank()
+
+    // Try to use first image URL when available
+    val imageUrl = scanResult.images.firstOrNull()?.url
+    val showRealImage = !imageUrl.isNullOrBlank()
+
     Row(
         modifier = modifier
             .size(width = 300.dp, height = 120.dp)
@@ -582,45 +658,106 @@ fun ProductDetailCardinCameraScreen(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.Top
     ) {
+        // Left side: product image or placeholder barcode frame
         Box(
             modifier = Modifier
-                .size(width = 68.dp, height = 92.dp)
+                .size(width = 71.dp, height = 95.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0x33E8E8E8))
-        )
-
-        Column(
-//            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp )
         ) {
+            if (showRealImage) {
+                coil.compose.SubcomposeAsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Product image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.barcode_scaning_frame),
+                    contentDescription = "Barcode placeholder",
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentScale = ContentScale.FillBounds
+                )
+            }
+        }
 
+        // Right side: text + loading capsule or brand/product
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            if (!hasProductInfo) {
+                // Pending state: looking up product
+                Text(
+                    text = "Looking up this product…",
+                    color = Color.White,
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "We’re checking our database for this product.",
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(15.dp))
 
-            Row(
-                modifier = Modifier
-                    .size(width = 185.dp, height = 25.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0x33E8E8E8))
-            ){}
-
-          Row(
-                modifier = Modifier
-                    .size(width = 132.dp, height = 20.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0x33E8E8E8))
-            ){
-
-          }
-     Spacer(modifier = Modifier.height(1.dp))
-           Row(
-                modifier = Modifier
-                    .size(width = 79.dp, height = 24.dp)
-                    .clip(RoundedCornerShape(52.dp))
-                    .background(Color(0x33E8E8E8))
-
-            ){
-
-
-           }
+                // Gradient capsule with spinner and "Fetching details"
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFFFFFFF),
+                                    Color(0xFFEAEAEA)
+                                )
+                            )
+                        )
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color(0xFFA6A6A6),
+                        strokeWidth = 2.dp
+                    )
+                    Text(
+                        text = "Fetching details",
+                        color = Color(0xFF4C4C4C),
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                }
+            } else {
+                // Product found: show brand and product name
+                if (!brandName.isNullOrBlank()) {
+                    Text(
+                        text = brandName,
+                        color = Color.White,
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                if (!productName.isNullOrBlank()) {
+                    Text(
+                        text = productName,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp
+                    )
+                }
+            }
         }
     }
 }
