@@ -20,6 +20,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -90,7 +92,9 @@ fun FillingPipeLine(
 fun GetStatedScreen(
     onGetStarted: () -> Unit = {}
 ) {
-    var isFillingComplete by remember { mutableStateOf(false) }
+    val viewModel: GetStartedViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    val isFillingComplete = uiState.isFillingComplete
 
     Column(
         modifier = Modifier
@@ -107,7 +111,7 @@ fun GetStatedScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             FillingPipeLine(
-                onComplete = { isFillingComplete = true }
+                onComplete = { viewModel.onFillingComplete() }
             )
         }
 

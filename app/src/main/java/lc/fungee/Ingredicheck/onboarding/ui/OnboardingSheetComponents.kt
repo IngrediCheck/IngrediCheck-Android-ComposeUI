@@ -16,7 +16,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import lc.fungee.Ingredicheck.R
-import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale120
 import lc.fungee.Ingredicheck.ui.theme.Greyscale150
 import lc.fungee.Ingredicheck.ui.theme.ScreenCategory
@@ -64,7 +63,7 @@ internal fun SheetHeader(
 //                    .padding(start = 21 .dp) // Adjusting for IconButton default 48dp size (12dp internal padding)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ion_chevron_back),
+                    painter = painterResource(id = R.drawable.icon_chevron_back),
                     contentDescription = "Back",
                     modifier = Modifier.size(24.dp),
                     tint = Greyscale150

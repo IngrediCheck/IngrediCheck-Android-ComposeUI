@@ -31,6 +31,8 @@ import lc.fungee.Ingredicheck.ui.theme.Greyscale10
 import lc.fungee.Ingredicheck.ui.theme.Greyscale110
 import lc.fungee.Ingredicheck.ui.theme.Greyscale40
 import lc.fungee.Ingredicheck.ui.theme.NunitoSemiBold
+import lc.fungee.Ingredicheck.ui.theme.PrimaryGradientEnd
+import lc.fungee.Ingredicheck.ui.theme.PrimaryGradientStart
 import lc.fungee.Ingredicheck.ui.theme.buttonHeight
 import lc.fungee.Ingredicheck.ui.theme.buttonTextSize
 import lc.fungee.Ingredicheck.ui.theme.buttonIconSize
@@ -171,7 +173,7 @@ fun Modifier.primaryButtonEffect(
         // linear-gradient(143.74deg, #9DCF10 21.16%, #6B8E06 68.87%);
         // We'll approximate 143.74 deg as top-leading to bottom-trailing stop points
         val brush = Brush.linearGradient(
-            colors = listOf(Color(0xFF9DCF10), Color(0xFF6B8E06)),
+            colors = listOf(PrimaryGradientStart, PrimaryGradientEnd),
             start = Offset(0f, 0f),
             end = Offset(size.width, size.height)
         )
@@ -274,7 +276,7 @@ fun Modifier.primaryChipEffect(
 
     // 2. Background Gradient (same as primaryButtonEffect)
     val brush = Brush.linearGradient(
-        colors = listOf(Color(0xFF9DCF10), Color(0xFF6B8E06)),
+        colors = listOf(PrimaryGradientStart, PrimaryGradientEnd),
         start = Offset(0f, 0f),
         end = Offset(size.width, size.height)
     )
