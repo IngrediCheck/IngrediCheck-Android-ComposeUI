@@ -44,7 +44,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import lc.fungee.Ingredicheck.R
+import lc.fungee.Ingredicheck.ui.theme.Greyscale70
 import lc.fungee.Ingredicheck.ui.theme.Manrope
+import lc.fungee.Ingredicheck.ui.theme.PrimaryGradientEnd
+import lc.fungee.Ingredicheck.ui.theme.PrimaryGradientStart
 
 @Composable
 fun ScannerSwipeButton(
@@ -98,7 +101,7 @@ fun ScannerSwipeButton(
         if (scanner) 0f else 180f
     }
     // Shimmer base color (we vary only opacity)
-    val shimmerBase = Color(0xFFDCDCDC)
+    val shimmerBase = Greyscale70
 
     /**
      * Smooth shimmer:
@@ -170,7 +173,7 @@ fun ScannerSwipeButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left circle (Scanner) — active uses provided green linear gradient
+            // Left circle (Scanner) — active uses shared primary green linear gradient
             Row(
                 modifier = Modifier
                     .size(59.dp)
@@ -179,10 +182,7 @@ fun ScannerSwipeButton(
                         if (isScannerMode) {
                             Modifier.background(
                                 brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF9DCF10),
-                                        Color(0xFF6B8E06)
-                                    )
+                                    colors = listOf(PrimaryGradientStart, PrimaryGradientEnd)
                                 ),
                                 shape = CircleShape
                             )
@@ -243,7 +243,7 @@ fun ScannerSwipeButton(
                 )
             }
 
-            // Right circle (Photo) — active uses same green linear gradient
+            // Right circle (Photo) — active uses same shared primary green linear gradient
             Row(
                 modifier = Modifier
                     .size(59.dp)
@@ -257,10 +257,7 @@ fun ScannerSwipeButton(
                         } else {
                             Modifier.background(
                                 brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF9DCF10),
-                                        Color(0xFF6B8E06)
-                                    )
+                                    colors = listOf(PrimaryGradientStart, PrimaryGradientEnd)
                                 ),
                                 shape = CircleShape
                             )
@@ -282,9 +279,9 @@ fun ScannerSwipeButton(
         }
 
         // Bottom row: "Barcode" .... "Photo"
-        Spacer(modifier = Modifier.height(6.dp))
+//        Spacer(modifier = Modifier.height(6.dp))
         Row(
-            modifier = Modifier.size(width = 230.dp, height = 18.dp).padding(horizontal = 12.dp),
+            modifier = Modifier.size(width = 230.dp, height = 18.dp).padding(horizontal = 12.dp)            ,
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

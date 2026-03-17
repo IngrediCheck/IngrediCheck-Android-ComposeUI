@@ -44,6 +44,10 @@ val Primary600 = Color(0xFFA6CE52)
 val Primary700 = Color(0xFF91B640)
 val Primary800 = Color(0xFF9A9696)
 
+// Primary brand gradient endpoints (used across buttons, chips, and swipe controls)
+val PrimaryGradientStart = Color(0xFF9DCF10)
+val PrimaryGradientEnd = Color(0xFF6B8E06)
+
 val Secondary200 = Color(0xFFFFF4E3)
 val Secondary400 = Color(0xFFFFEAC3)
 val Secondary600 = Color(0xFFFBCB7F)

@@ -457,7 +457,7 @@ fun ScanCameraScreen(
                 .padding(bottom = navBarBottomPadding ),
             contentAlignment = Alignment.Center
         ) {
-            ScannerSwipeButton()
+                    ScannerSwipeButton()
         }
     }
 }

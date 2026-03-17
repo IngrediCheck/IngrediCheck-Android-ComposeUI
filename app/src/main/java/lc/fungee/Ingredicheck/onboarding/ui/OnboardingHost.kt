@@ -900,6 +900,9 @@ fun OnboardingHost(
     // This prevents the persistence effect from writing default/empty state back to
     // DataStore before restore has finished (which would overwrite the real values).
     var hasAppliedRestoredAllergies by remember { mutableStateOf(false) }
+    // Once the user has reached the Home screen at least once, we "lock" the saved allergy
+    // phase to HOME so that future restarts always land on Home and never fall back to chips.
+    var hasLockedHomePhase by remember { mutableStateOf(false) }
 
     // Restore allergy selections state from persistence (per‑member chip ids + active member + step index)
     // without blocking the main thread.
@@ -1037,6 +1040,7 @@ fun OnboardingHost(
             when (phase) {
                 // If the last recorded phase was "home", send the user straight to the HomeScreen.
                 OnboardingPersistence.ALLERGY_PHASE_HOME -> {
+                    hasLockedHomePhase = true
                     showHomeScreen = true
                     showProductHandyGuidance = false
                     showJustMeMeetProfile = false
@@ -1124,6 +1128,15 @@ fun OnboardingHost(
                 showChatBotIntro -> "chat_intro"
                 showSummaryScreen -> "summary_robot"
                 else -> "chips"
+            }
+            // Once we've recorded HOME at least once, never downgrade the saved phase back to chips
+            // or any other intermediate screen. This guarantees that every future cold start will
+            // land on the Home screen instead of bouncing back into onboarding.
+            if (hasLockedHomePhase && phase != OnboardingPersistence.ALLERGY_PHASE_HOME) {
+                return@LaunchedEffect
+            }
+            if (phase == OnboardingPersistence.ALLERGY_PHASE_HOME) {
+                hasLockedHomePhase = true
             }
             persistence.setAllergyPhase(phase)
         }
