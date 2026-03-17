@@ -3,11 +3,13 @@ package lc.fungee.Ingredicheck.model
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import lc.fungee.Ingredicheck.AppConfig
+import lc.fungee.Ingredicheck.store.AnalyticsService
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -83,6 +85,9 @@ class ScannerViewModel(
      * Start an SSE stream for the given barcode. Caller must provide a valid access token.
      */
     fun startBarcodeStream(barcode: String, accessToken: String) {
+        val requestId = UUID.randomUUID().toString()
+        val startTimeMs = System.currentTimeMillis()
+
         // 1. Normalize barcode: UPC-A (12 digits) should be sent as EAN-13 (13 digits) to match iOS/Backend
         val normalizedBarcode = if (barcode.length == 11) {
             "00$barcode"
@@ -107,9 +112,17 @@ class ScannerViewModel(
 
         val base = AppConfig.flyIOBaseURL
         val baseUrl = if (base.endsWith("/")) base.dropLast(1) else base
-        val url = "$baseUrl/v2/scan/barcode"
+        val url = "$baseUrl/v2/scan/barcode?nullable_analysis=true"
 
         Log.d("ScannerViewModel", "Starting barcode stream. barcode=$normalizedBarcode (raw=$barcode) url=$url")
+
+        AnalyticsService.capture(
+            "Barcode Scan Started",
+            mapOf(
+                "request_id" to requestId,
+                "barcode" to normalizedBarcode
+            )
+        )
 
         val bodyJson = """{"barcode": "$normalizedBarcode"}"""
         val request = Request.Builder()
@@ -132,6 +145,27 @@ class ScannerViewModel(
                     runCatching {
                         json.decodeFromString(ScanResponse.serializer(), data)
                     }.onSuccess { response ->
+                        val latencyMs = System.currentTimeMillis() - startTimeMs
+                        AnalyticsService.capture(
+                            "Barcode Scan State",
+                            mapOf(
+                                "request_id" to requestId,
+                                "scan_id" to response.id,
+                                "state" to response.state,
+                                "latency_ms" to latencyMs
+                            )
+                        )
+
+                        if (response.state == "done" && response.analysisResult != null) {
+                            AnalyticsService.capture(
+                                "Barcode Scan Analysis",
+                                mapOf(
+                                    "request_id" to requestId,
+                                    "scan_id" to response.id
+                                )
+                            )
+                        }
+
                         Log.d(
                             "ScannerViewModel",
                             "Decoded ScanResponse: id=${response.id} state=${response.state} " +
@@ -140,6 +174,11 @@ class ScannerViewModel(
                         _scanResult.value = response
                     }.onFailure { e ->
                         Log.e("ScannerViewModel", "Failed to decode ScanResponse", e)
+                        AnalyticsService.captureApiError(
+                            endpoint = "startBarcodeStream",
+                            errorType = "decode",
+                            error = e.localizedMessage
+                        )
                     }
                 }
             }
@@ -164,6 +203,21 @@ class ScannerViewModel(
                     Log.d("ScannerViewModel", "Ignoring cancellation failure: $errorMsg")
                     return
                 }
+
+                AnalyticsService.capture(
+                    "Barcode Scan Error",
+                    mapOf(
+                        "request_id" to requestId,
+                        "scan_id" to "unknown",
+                        "error" to errorMsg
+                    )
+                )
+                AnalyticsService.captureApiError(
+                    endpoint = "startBarcodeStream",
+                    errorType = "network",
+                    statusCode = response?.code,
+                    error = errorMsg
+                )
 
                 _scanResult.value = ScanResponse(
                     id = "error",

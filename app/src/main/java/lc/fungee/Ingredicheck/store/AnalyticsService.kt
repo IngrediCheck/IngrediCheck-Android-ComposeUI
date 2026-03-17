@@ -2,24 +2,38 @@ package lc.fungee.Ingredicheck.store
 
 import android.os.Build
 import android.content.Context
+import android.util.Log
 import lc.fungee.Ingredicheck.BuildConfig
 import com.posthog.PostHog
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 
 object AnalyticsService {
-    private const val POSTHOG_API_KEY: String = "phc_BFYelq2GeyigXBP3MgML57wKoWfLe5MW7m6HMYhtX8m"
-    private const val POSTHOG_HOST: String = "https://us.i.posthog.com"
+	private const val TAG = "AnalyticsService"
+
+    private val apiKey: String
+        get() = BuildConfig.POSTHOG_API_KEY
+
+    private val host: String
+        get() = BuildConfig.POSTHOG_HOST
 
     private val isEnabled: Boolean
-        get() = !BuildConfig.DEBUG
+        get() = apiKey.isNotBlank()
 
     fun configure(context: Context) {
-        if (!isEnabled) return
+		if (!isEnabled) {
+			Log.d(TAG, "PostHog disabled (missing POSTHOG_API_KEY)")
+			return
+		}
+
+		Log.d(
+			TAG,
+			"Configuring PostHog: host=$host key_present=${apiKey.isNotBlank()} sdk=${Build.VERSION.SDK_INT}"
+		)
 
         val config = PostHogAndroidConfig(
-            apiKey = POSTHOG_API_KEY,
-            host = POSTHOG_HOST
+            apiKey = apiKey,
+            host = host
         ).apply {
             captureApplicationLifecycleEvents = true
 
@@ -29,10 +43,13 @@ object AnalyticsService {
                 sessionReplayConfig.maskAllImages = false
                 sessionReplayConfig.screenshot = true
                 sessionReplayConfig.throttleDelayMs = 1000
+            } else {
+                Log.d(TAG, "Session replay disabled (requires API 26+)")
             }
         }
 
         PostHogAndroid.setup(context, config)
+		Log.d(TAG, "PostHog setup complete")
     }
 
     fun resetAnalytics(preservingInternalFlag: Boolean?) {
@@ -49,7 +66,12 @@ object AnalyticsService {
     }
 
     fun capture(event: String, properties: Map<String, Any> = emptyMap()) {
-        if (!isEnabled) return
+        if (!isEnabled) {
+            Log.d(TAG, "capture skipped (disabled): event=$event")
+            return
+        }
+
+        Log.d(TAG, "capture: event=$event props=${properties.keys}")
         PostHog.capture(event = event, properties = properties)
     }
 
