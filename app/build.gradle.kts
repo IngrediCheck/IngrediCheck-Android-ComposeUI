@@ -5,6 +5,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
 android {
     namespace = "lc.fungee.Ingredicheck"
     compileSdk {
@@ -17,6 +26,25 @@ android {
         targetSdk = 36
         versionCode = 8
         versionName = "2.0.0"
+
+        val posthogApiKey = (
+            (project.findProperty("POSTHOG_API_KEY") as String?)
+                ?: localProperties.getProperty("POSTHOG_API_KEY")
+                ?: ""
+            )
+            .trim()
+            .orEmpty()
+
+        val posthogHost = (
+            (project.findProperty("POSTHOG_HOST") as String?)
+                ?: localProperties.getProperty("POSTHOG_HOST")
+                ?: ""
+            )
+            .trim()
+            .ifBlank { "https://us.i.posthog.com" }
+
+        buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
+        buildConfigField("String", "POSTHOG_HOST", "\"$posthogHost\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -39,7 +67,9 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
 }
 
 dependencies {
@@ -48,6 +78,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    implementation("com.posthog:posthog-android:3.+")
     implementation("androidx.datastore:datastore-preferences:1.2.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

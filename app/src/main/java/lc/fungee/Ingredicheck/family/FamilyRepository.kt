@@ -25,6 +25,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import lc.fungee.Ingredicheck.AppConfig
+import lc.fungee.Ingredicheck.network.ApiUrlBuilder
+import lc.fungee.Ingredicheck.network.SafeEatsEndpoint
 
 class FamilyRepository {
 
@@ -47,11 +49,6 @@ class FamilyRepository {
                 writeTimeout(30, TimeUnit.SECONDS)
             }
         }
-    }
-
-    private fun url(path: String): String {
-        val base = AppConfig.supabaseFunctionsURLBase
-        return if (base.endsWith("/")) base + path else base + path
     }
 
     private fun baseRequestHeaders(accessToken: String): Map<String, String> {
@@ -94,7 +91,7 @@ class FamilyRepository {
     suspend fun createFamily(accessToken: String, request: CreateFamilyRequest): Result<FamilyDto> {
         val body = json.encodeToString(request)
         return runCatching {
-            val response: HttpResponse = client.post(url("family")) {
+            val response: HttpResponse = client.post(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -138,7 +135,7 @@ class FamilyRepository {
 
     suspend fun getFamily(accessToken: String): Result<FamilyDto> {
         return runCatching {
-            val response: HttpResponse = client.get(url("family")) {
+            val response: HttpResponse = client.get(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
             }
@@ -159,7 +156,7 @@ class FamilyRepository {
     suspend fun joinFamily(accessToken: String, inviteCode: String): Result<FamilyDto> {
         val body = json.encodeToString(JoinFamilyRequest(inviteCode = inviteCode))
         return runCatching {
-            val responseText = client.post(url("family/join")) {
+            val responseText = client.post(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_JOIN)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -171,7 +168,7 @@ class FamilyRepository {
 
     suspend fun leaveFamily(accessToken: String): Result<Unit> {
         return runCatching {
-            client.post(url("family/leave")) {
+            client.post(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_LEAVE)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
             }
@@ -182,7 +179,7 @@ class FamilyRepository {
     suspend fun addMember(accessToken: String, member: FamilyMemberDto): Result<FamilyDto> {
         val body = json.encodeToString(member)
         return runCatching {
-            val responseText = client.post(url("family/members")) {
+            val responseText = client.post(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_MEMBERS)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -196,7 +193,7 @@ class FamilyRepository {
         val body = json.encodeToString(InviteRequest(memberId = memberId))
 
         suspend fun requestOnce(): String? {
-            val response: HttpResponse = client.post(url("family/invite")) {
+            val response: HttpResponse = client.post(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_INVITE)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -236,7 +233,7 @@ class FamilyRepository {
     suspend fun updateFamily(accessToken: String, name: String): Result<FamilyDto> {
         val body = json.encodeToString(UpdateFamilyRequest(name = name))
         return runCatching {
-            val responseText = client.patch(url("family")) {
+            val responseText = client.patch(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -249,7 +246,7 @@ class FamilyRepository {
     suspend fun editMember(accessToken: String, memberId: String, request: UpdateMemberRequest): Result<FamilyDto> {
         val body = json.encodeToString(request)
         return runCatching {
-            val responseText = client.patch(url("family/members/$memberId")) {
+            val responseText = client.patch(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_MEMBER, memberId)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
                 setBody(body)
@@ -261,7 +258,7 @@ class FamilyRepository {
 
     suspend fun deleteMember(accessToken: String, memberId: String): Result<FamilyDto> {
         return runCatching {
-            val responseText = client.delete(url("family/members/$memberId")) {
+            val responseText = client.delete(ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_MEMBER, memberId)) {
                 baseRequestHeaders(accessToken).forEach { (k, v) -> header(k, v) }
                 accept(ContentType.Application.Json)
             }.bodyAsText()

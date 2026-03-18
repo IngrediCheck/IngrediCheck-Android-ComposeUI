@@ -23,6 +23,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import lc.fungee.Ingredicheck.AppConfig
 import lc.fungee.Ingredicheck.foodnotes.FoodNotesSummaryResponse
+import lc.fungee.Ingredicheck.network.ApiUrlBuilder
+import lc.fungee.Ingredicheck.network.SafeEatsEndpoint
 
 
 private const val TAG = "FoodNotes"
@@ -54,19 +56,6 @@ class FoodNotesRepository {
         }
     }
 
-    private fun baseUrl(path: String): String {
-        val base = AppConfig.supabaseFunctionsURLBase
-        return if (base.endsWith("/")) base + path else "$base$path"
-    }
-
-    // iOS calls Food Notes summary on Fly.io (Config.flyIOBaseURL + "/family/food-notes/summary").
-    // Mirror that here instead of using Supabase functions base.
-    private fun summaryUrl(): String {
-        val base = AppConfig.flyIOBaseURL
-        return if (base.endsWith("/")) base + "family/food-notes/summary"
-        else "$base/family/food-notes/summary"
-    }
-
     private fun authHeaders(accessToken: String): Map<String, String> = mapOf(
         "apikey" to AppConfig.supabaseKey,
         "Authorization" to "Bearer $accessToken",
@@ -94,7 +83,7 @@ class FoodNotesRepository {
      * GET family/food-notes/all – load family note + all member notes (for versions/cache).
      */
     suspend fun fetchFoodNotesAll(accessToken: String): Result<FoodNotesAllResponse?> {
-        val url = baseUrl("family/food-notes/all")
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_FOOD_NOTES_ALL)
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "fetchFoodNotesAll: GET $url")
         }
@@ -137,7 +126,7 @@ class FoodNotesRepository {
      * Returns null on 404 or empty/null body, matching iOS behavior.
      */
     suspend fun fetchFoodNotesSummary(accessToken: String): Result<FoodNotesSummaryResponse?> {
-        val url = summaryUrl()
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_FOOD_NOTES_SUMMARY)
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "fetchFoodNotesSummary: GET $url")
         }
@@ -190,7 +179,7 @@ class FoodNotesRepository {
         retryCount: Int = 0
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
-        val url = baseUrl("family/food-notes")
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_FOOD_NOTES)
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "FoodNotes API: updateFamilyFoodNotes PUT $url version=$version")
         }
@@ -249,7 +238,7 @@ class FoodNotesRepository {
         retryCount: Int = 0
     ): Result<FoodNotesResponse> {
         val requestContent = toRequestContent(content)
-        val url = baseUrl("family/members/$memberId/food-notes")
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.FAMILY_MEMBER_FOOD_NOTES, memberId)
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "FoodNotes API: updateMemberFoodNotes PUT $url version=$version")
         }

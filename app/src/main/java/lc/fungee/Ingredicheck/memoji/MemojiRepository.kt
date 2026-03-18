@@ -13,6 +13,8 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
 import lc.fungee.Ingredicheck.AppConfig
+import lc.fungee.Ingredicheck.network.ApiUrlBuilder
+import lc.fungee.Ingredicheck.network.SafeEatsEndpoint
 
 class MemojiRepository {
 
@@ -42,7 +44,7 @@ class MemojiRepository {
         accessToken: String,
         request: MemojiRequest
     ): Result<MemojiResponse> {
-        val url = AppConfig.supabaseFunctionsURLBase + "memoji"
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.MEMOJI)
         val payload = json.encodeToString(request)
 
         return runCatching {

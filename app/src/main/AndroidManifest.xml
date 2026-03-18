@@ -25,6 +25,9 @@
             <meta-data
                 android:name="app.rive.runtime.kotlin.RiveInitializer"
                 android:value="androidx.startup" />
+            <meta-data
+                android:name="lc.fungee.Ingredicheck.startup.AnalyticsInitializer"
+                android:value="androidx.startup" />
         </provider>
 
         <activity

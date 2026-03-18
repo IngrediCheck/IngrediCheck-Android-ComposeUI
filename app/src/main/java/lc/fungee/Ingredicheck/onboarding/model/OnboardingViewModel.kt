@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import lc.fungee.Ingredicheck.store.AnalyticsService
 
 class OnboardingViewModel(
     private val savedStateHandle: SavedStateHandle,
@@ -23,6 +24,7 @@ class OnboardingViewModel(
         private const val TAG = "OnboardingViewModel"
         private const val KEY_CURRENT_STEP = "onboarding_current_step"
         private const val KEY_STEP_HISTORY = "onboarding_step_history"
+        private const val KEY_ONBOARDING_STARTED_TRACKED = "onboarding_started_tracked"
         private const val KEY_INVITE_CODE = "onboarding_invite_code"
         private const val KEY_ADD_FAMILY_NAME = "onboarding_add_family_name"
         private const val KEY_ADD_FAMILY_AVATAR = "onboarding_add_family_avatar"
@@ -127,6 +129,12 @@ class OnboardingViewModel(
         }
 
     init {
+        val startedTracked = savedStateHandle.get<Boolean>(KEY_ONBOARDING_STARTED_TRACKED) ?: false
+        if (!startedTracked) {
+            AnalyticsService.trackOnboarding("Onboarding Started")
+            savedStateHandle[KEY_ONBOARDING_STARTED_TRACKED] = true
+        }
+
         viewModelScope.launch {
             persistence.savedStateFlow.collect { state ->
                 val history = ArrayList(state.history)
@@ -207,6 +215,21 @@ class OnboardingViewModel(
     fun navigateTo(step: OnboardingStep) {
         if (step == currentStep) return
 
+        val currentStepDisplayName = stepDisplayName(currentStepState)
+        val nextStepDisplayName = stepDisplayName(step)
+
+        runCatching {
+            AnalyticsService.trackOnboarding(
+                "Onboarding Step Completed",
+                mapOf(
+                    "step_id" to currentStepState.name,
+                    "step_index" to currentStepState.ordinal,
+                    "step_name" to currentStepDisplayName,
+                    "flow_type" to flowTypeForStep(currentStepState)
+                )
+            )
+        }
+
         val stack = history()
         stack.add(currentStep.name)
         savedStateHandle[KEY_STEP_HISTORY] = stack
@@ -214,8 +237,45 @@ class OnboardingViewModel(
         currentStepState = step
         updateUiState()
 
+        runCatching {
+            AnalyticsService.trackOnboarding(
+                "Onboarding Step: $nextStepDisplayName",
+                mapOf(
+                    "step_id" to step.name,
+                    "step_index" to step.ordinal,
+                    "step_name" to nextStepDisplayName,
+                    "flow_type" to flowTypeForStep(step)
+                )
+            )
+        }
+
         viewModelScope.launch {
             persistence.setSavedState(currentStep = step, history = stack)
+        }
+    }
+
+    private fun flowTypeForStep(step: OnboardingStep): String {
+        return if (step.name.startsWith("ADD_FAMILY_")) "family" else "individual"
+    }
+
+    private fun stepDisplayName(step: OnboardingStep): String {
+        return when (step) {
+            OnboardingStep.GET_STARTED -> "Get Started"
+            OnboardingStep.SIGN_IN_INITIAL -> "Already Have An Account"
+            OnboardingStep.SIGN_IN_SOCIAL_LOGIN -> "Sign In"
+            OnboardingStep.SIGN_IN_INVITE_CODE -> "Do You Have An Invite Code"
+            OnboardingStep.SIGN_IN_ENTER_INVITE_CODE -> "Enter Invite Code"
+            OnboardingStep.SIGN_IN_WHO_IS_THIS_FOR -> "Who's This For"
+            OnboardingStep.ADD_FAMILY_WELCOME -> "Lets Meet Your IngrediFam"
+            OnboardingStep.ADD_FAMILY_NAME -> "Whats Your Name"
+            OnboardingStep.ADD_FAMILY_AVATAR_PICKER -> "Avatar Picker"
+            OnboardingStep.ADD_FAMILY_AVATAR_GENERATING -> "Avatar Generating"
+            OnboardingStep.ADD_FAMILY_ALL_SET_OR_MORE -> "Add More Members"
+            OnboardingStep.ADD_FAMILY_EDIT_MEMBER -> "Edit Member"
+            OnboardingStep.FALLING_CAPSULES -> "Falling Capsules"
+            OnboardingStep.ADD_FAMILY_ALLERGIES -> "Dietary Preferences"
+            OnboardingStep.JUST_ME_MEET_PROFILE -> "Meet your profile"
+            OnboardingStep.PRODUCT_HANDY_GUIDANCE -> "Got a product handy?"
         }
     }
 
