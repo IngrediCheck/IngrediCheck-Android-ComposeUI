@@ -23,6 +23,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import lc.fungee.Ingredicheck.AppConfig
+import lc.fungee.Ingredicheck.network.ApiUrlBuilder
+import lc.fungee.Ingredicheck.network.SafeEatsEndpoint
 
 
 private const val TAG = "DietaryPreference"
@@ -54,11 +56,6 @@ class DietaryPreferenceRepository {
         }
     }
 
-    private fun baseUrl(path: String): String {
-        val base = AppConfig.supabaseFunctionsURLBase
-        return if (base.endsWith("/")) base + path else "$base$path"
-    }
-
     private fun authHeaders(accessToken: String): Map<String, String> = mapOf(
         "apikey" to AppConfig.supabaseKey,
         "Authorization" to "Bearer $accessToken"
@@ -66,7 +63,7 @@ class DietaryPreferenceRepository {
 
     /** GET list of dietary preferences. */
     suspend fun getDietaryPreferences(accessToken: String): Result<List<DietaryPreferenceDto>> {
-        val url = baseUrl("preferencelists/default")
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT)
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "getDietaryPreferences: GET $url")
         }
@@ -103,9 +100,12 @@ class DietaryPreferenceRepository {
         preferenceText: String,
         id: Int?
     ): Result<PreferenceValidationResult> {
-        val path = if (id != null) "preferencelists/default/$id" else "preferencelists/default"
         val method = if (id != null) "PUT" else "POST"
-        val url = baseUrl(path)
+        val url = if (id != null) {
+            ApiUrlBuilder.url(SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT_ITEM, id.toString())
+        } else {
+            ApiUrlBuilder.url(SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT)
+        }
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "addOrEditDietaryPreference: $method $url clientActivityId=$clientActivityId preferenceLength=${preferenceText.length} id=$id")
         }
@@ -157,7 +157,7 @@ class DietaryPreferenceRepository {
         clientActivityId: String,
         id: Int
     ): Result<Unit> {
-        val url = baseUrl("preferencelists/default/$id")
+        val url = ApiUrlBuilder.url(SafeEatsEndpoint.PREFERENCE_LISTS_DEFAULT_ITEM, id.toString())
         if (BuildConfig.DEBUG) {
             Log.d(TAG, "deleteDietaryPreference: DELETE $url id=$id")
         }

@@ -41,8 +41,10 @@ object AnalyticsService {
                 sessionReplay = true
                 sessionReplayConfig.maskAllTextInputs = false
                 sessionReplayConfig.maskAllImages = false
+                sessionReplayConfig.captureLogcat = true
                 sessionReplayConfig.screenshot = true
                 sessionReplayConfig.throttleDelayMs = 1000
+                sessionReplayConfig.sampleRate = null
             } else {
                 Log.d(TAG, "Session replay disabled (requires API 26+)")
             }

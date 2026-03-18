@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import lc.fungee.Ingredicheck.AppConfig
+import lc.fungee.Ingredicheck.network.ApiUrlBuilder
+import lc.fungee.Ingredicheck.network.SafeEatsEndpoint
 import lc.fungee.Ingredicheck.store.AnalyticsService
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -110,9 +112,10 @@ class ScannerViewModel(
         // 3. Cancel any existing stream
         sseEventSource?.cancel()
 
-        val base = AppConfig.flyIOBaseURL
-        val baseUrl = if (base.endsWith("/")) base.dropLast(1) else base
-        val url = "$baseUrl/v2/scan/barcode?nullable_analysis=true"
+        val url = ApiUrlBuilder.url(
+            SafeEatsEndpoint.SCAN_BARCODE,
+            query = mapOf("nullable_analysis" to "true")
+        )
 
         Log.d("ScannerViewModel", "Starting barcode stream. barcode=$normalizedBarcode (raw=$barcode) url=$url")
 
